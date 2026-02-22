@@ -59,6 +59,14 @@ for skill_dir in "$TOOLKIT_DIR"/skills/*/; do
 done
 echo "  + skills/ ($(ls -d "$TOOLKIT_DIR"/skills/*/ | wc -l | tr -d ' ') skills)"
 
+# --- 2b. Slash commands (symlink SKILL.md as command name) ---
+mkdir -p "$CLAUDE_DIR/commands"
+for skill_dir in "$TOOLKIT_DIR"/skills/*/; do
+  skill_name=$(basename "$skill_dir")
+  [ -f "$skill_dir/SKILL.md" ] && ln -sf "$CLAUDE_DIR/skills/$skill_name/SKILL.md" "$CLAUDE_DIR/commands/$skill_name.md"
+done
+echo "  + commands/ (slash commands)"
+
 # --- 3. Conditional rules ---
 for f in "$TOOLKIT_DIR"/conditional-rules/*.md; do
   [ -f "$f" ] && install_file "$f" "$CLAUDE_DIR/conditional-rules/$(basename "$f")"
