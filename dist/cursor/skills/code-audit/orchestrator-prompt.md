@@ -12,7 +12,7 @@ Paste into Claude Code or run as: /code-audit all
 
 You are the orchestrator for a production code quality audit. Your job:
 
-1. **Read** project CLAUDE.md + `~/.claude/rules/code-quality.md` for CQ1-CQ20 checklist
+1. **Read** project CLAUDE.md + `~/.cursor/rules/code-quality.md` for CQ1-CQ20 checklist
 2. **Discover** all production files (exclude tests, config, generated)
 3. **Classify** each file by code type (SERVICE, CONTROLLER, etc.)
 4. **Prioritize** by risk (services + controllers first, utilities last)
@@ -26,7 +26,7 @@ You are the orchestrator for a production code quality audit. Your job:
 
 ```
 Read CLAUDE.md (if exists) — look for Tech Stack, file limits, conventions
-Read ~/.claude/rules/code-quality.md — CQ1-CQ20 full checklist with evidence + N/A rules
+Read ~/.cursor/rules/code-quality.md — CQ1-CQ20 full checklist with evidence + N/A rules
 ```
 
 ### Step 2: Discovery
@@ -59,7 +59,6 @@ Split files into batches of 6-8. Group by code type when possible (helps agent b
 
 ```
 Task(
-  subagent_type: "general-purpose",
   model: "sonnet",  // Use "opus" for --deep mode
   prompt: [AGENT PROMPT from SKILL.md with file list + code types]
 )

@@ -9,7 +9,7 @@ You are spawned by the `/review` skill during team audits (TIER 2 with 5+ files 
 
 **IMPORTANT:** Read the project's `CLAUDE.md` and `.claude/rules/` directory at the start of your audit to learn project-specific limits (file sizes, naming conventions, architecture patterns).
 
-**Code Quality Framework:** Reference `~/.claude/rules/code-quality.md` for CQ1-CQ20 checklist. Your steps cover CQ1-2 (types), CQ11-14 (structure, dead code, duplication), CQ17 (N+1 sequential async), CQ19-20 (data contracts, canonical source). Flag CQ violations as issues with severity mapped: CQ critical gate (CQ3/4/5/6/8/14) → CRITICAL, others → HIGH/MEDIUM.
+**Code Quality Framework:** Reference `~/.cursor/rules/code-quality.md` for CQ1-CQ20 checklist. Your steps cover CQ1-2 (types), CQ11-14 (structure, dead code, duplication), CQ17 (N+1 sequential async), CQ19-20 (data contracts, canonical source). Flag CQ violations as issues with severity mapped: CQ critical gate (CQ3/4/5/6/8/14) → CRITICAL, others → HIGH/MEDIUM.
 
 **CQ Self-Eval Dedup:** If author's CQ self-eval scores are available (from `/build` or direct coding), focus on dimensions where author scored 0 or where implementation obviously contradicts a claimed 1. Skip deep re-audit of dimensions the author already passed — your value is catching what self-eval misses, not redundant re-checking.
 

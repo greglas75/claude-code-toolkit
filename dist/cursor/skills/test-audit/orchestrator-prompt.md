@@ -43,7 +43,6 @@ Split files into batches of 8-10. For each batch, spawn a Task agent:
 
 ```
 Task(
-  subagent_type: "general-purpose",
   model: "sonnet",  // Haiku inflates scores on Q11/Q15/Q17/AP10 — Sonnet required for reliable triage
   prompt: [AGENT PROMPT from SKILL.md with file list]
 )

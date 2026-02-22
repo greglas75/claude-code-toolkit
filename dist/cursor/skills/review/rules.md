@@ -1,7 +1,7 @@
 # Code Review Rules (Always Active)
 
 These rules govern all code reviews via `/review`.
-Full protocol with detailed checklists, red-flag patterns, and report templates is at `~/.claude/review-protocol.md` — read it on-demand when `/review` starts.
+Full protocol with detailed checklists, red-flag patterns, and report templates is at `~/.cursor/review-protocol.md` — read it on-demand when `/review` starts.
 
 ---
 
@@ -59,13 +59,13 @@ For each reported issue, show the confidence score: `Confidence: [X]/100`
 Sub-agents used during review (spawned by `/review`):
 - **Blast Radius Mapper** (Sonnet, inline prompt, parallel at start) — traces importers/callers of changed files
 - **Pre-Existing Checker** (Haiku, inline prompt, parallel at start) — git blame to classify new vs old lines
-- **Structure Auditor** (custom agent: `~/.claude/skills/review/agents/structure-auditor.md`, Sonnet, read-only) — architecture, types, integration, performance
-- **Behavior Auditor** (custom agent: `~/.claude/skills/review/agents/behavior-auditor.md`, Opus, read-only) — logic, side effects, regressions, security, observability
-- **Confidence Re-Scorer** (custom agent: `~/.claude/skills/review/agents/confidence-rescorer.md`, Haiku) — independent skeptic filtering false positives
+- **Structure Auditor** (custom agent: `~/.cursor/skills/review/agents/structure-auditor.md`, Sonnet, read-only) — architecture, types, integration, performance
+- **Behavior Auditor** (custom agent: `~/.cursor/skills/review/agents/behavior-auditor.md`, Opus, read-only) — logic, side effects, regressions, security, observability
+- **Confidence Re-Scorer** (custom agent: `~/.cursor/skills/review/agents/confidence-rescorer.md`, Haiku) — independent skeptic filtering false positives
 
 ### Team Audit Mode (TIER 2 with 5+ files OR TIER 3)
 
-For larger reviews, `/review` splits audit steps across 2 custom agents in parallel. Agents are defined in `~/.claude/skills/review/agents/` with enforced read-only tool access (no Write/Edit) and optimized model routing.
+For larger reviews, `/review` splits audit steps across 2 custom agents in parallel. Agents are defined in `~/.cursor/skills/review/agents/` with enforced read-only tool access (no Write/Edit) and optimized model routing.
 
 **Activation:** `(TIER 2 AND files_changed >= 5) OR TIER 3`
 
@@ -90,7 +90,7 @@ For larger reviews, `/review` splits audit steps across 2 custom agents in paral
 
 ### Code Quality on Execute
 
-When applying fixes during Execute, run CQ1-CQ20 self-eval (`~/.claude/rules/code-quality.md`) on each modified production file. Static critical gate: CQ3, CQ4, CQ5, CQ6, CQ8, CQ14. Conditional gate: CQ16 (money), CQ19 (I/O), CQ20 (dual fields). Thresholds: ≥16 PASS, 14-15 CONDITIONAL PASS (fix before merge encouraged), <14 FAIL. Any active critical gate = 0 → FAIL regardless of score. Evidence required for each critical CQ scored as 1.
+When applying fixes during Execute, run CQ1-CQ20 self-eval (`~/.cursor/rules/code-quality.md`) on each modified production file. Static critical gate: CQ3, CQ4, CQ5, CQ6, CQ8, CQ14. Conditional gate: CQ16 (money), CQ19 (I/O), CQ20 (dual fields). Thresholds: ≥16 PASS, 14-15 CONDITIONAL PASS (fix before merge encouraged), <14 FAIL. Any active critical gate = 0 → FAIL regardless of score. Evidence required for each critical CQ scored as 1.
 
 ### Parallel Execute Mode (3+ fixes on different files)
 
@@ -146,9 +146,9 @@ If blocked → run `/review` (report only) + `Execute BLOCKING` instead.
 - `it.todo` / `test.todo` / `describe.skip` / `it.skip` in required tests = BLOCKING
 - No merge without test coverage
 - Requirements depend on CHANGE INTENT (see table above)
-- **Before writing tests:** read `~/.claude/test-patterns.md` (global, all projects). Apply all matching patterns (check WHEN triggers against code under test).
-- **After writing tests:** run Q1-Q17 self-eval checklist (17 yes/no questions, per `~/.claude/rules/testing.md`). Score < 14 = fix before continuing. Critical gate: Q7, Q11, Q13, Q15, Q17.
-- **When user gives feedback about test gaps:** append new pattern to `~/.claude/test-patterns.md` with WHEN trigger, required tests, and source.
+- **Before writing tests:** read `~/.cursor/test-patterns.md` (global, all projects). Apply all matching patterns (check WHEN triggers against code under test).
+- **After writing tests:** run Q1-Q17 self-eval checklist (17 yes/no questions, per `~/.cursor/rules/testing.md`). Score < 14 = fix before continuing. Critical gate: Q7, Q11, Q13, Q15, Q17.
+- **When user gives feedback about test gaps:** append new pattern to `~/.cursor/test-patterns.md` with WHEN trigger, required tests, and source.
 
 ## Scope Fence (Mandatory on Execute)
 
@@ -175,7 +175,7 @@ Auto-detect stack from project files before reviewing:
 - `next.config.*` → Next.js: check Server Components, Server Actions, `"use client"`, `NEXT_PUBLIC_*`
 - `pyproject.toml` / `requirements.txt` / `manage.py` → Python: check type hints, mutable defaults, async pitfalls, pickle/eval
 - `package.json` with `react` → React: check hooks, re-renders, state management
-- Detailed checklists for each stack in `~/.claude/review-protocol.md`
+- Detailed checklists for each stack in `~/.cursor/review-protocol.md`
 
 Critical cross-stack checks (always apply):
 - Env vars: validated at startup? Secrets not exposed to client?
@@ -209,7 +209,7 @@ Verification: [how to verify the fix]
 ## Backlog Persistence (Mandatory)
 
 **Location:** `memory/backlog.md` in the project's auto memory directory.
-To find it: look for the `auto memory directory` path in your system prompt (e.g., `~/.claude/projects/{project-slug}/memory/`). The backlog file is `backlog.md` inside that directory.
+To find it: look for the `auto memory directory` path in your system prompt (e.g., `~/.cursor/projects/{project-slug}/memory/`). The backlog file is `backlog.md` inside that directory.
 If `backlog.md` doesn't exist yet, create it using the template below.
 
 Every unfixed issue from a review MUST be persisted to the backlog. No issue gets lost.

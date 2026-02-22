@@ -41,7 +41,17 @@ adapt_agent() {
 
     # Body: pass through unchanged
     { print }
-  ' "$src" > "$dst"
+  ' "$src" | awk '
+    # Skip "## Team Mode Verification" section in agent bodies
+    /^### .*Team Mode/ { skip=1; next }
+    skip && /^(### |## |---)/ { skip=0 }
+    skip { next }
+    { print }
+  ' | sed \
+    -e 's|~/.claude/skills/|~/.cursor/skills/|g' \
+    -e 's|~/.claude/rules/|~/.cursor/rules/|g' \
+    -e 's|~/.claude/|~/.cursor/|g' \
+    > "$dst"
 }
 
 # --- Skill Transform (mechanical, for skills without overlay) ---
@@ -110,9 +120,23 @@ for skill_dir in "$TOOLKIT_DIR"/skills/*/; do
     echo "  + $skill (auto-transform)"
   fi
 
-  # Copy shared files (rules, dimensions, agent prompts)
+  # Copy shared files with path + tool transformation
   for f in rules.md dimensions.md agent-prompt.md orchestrator-prompt.md; do
-    [ -f "$skill_dir/$f" ] && cp "$skill_dir/$f" "$DIST/skills/$skill/$f"
+    if [ -f "$skill_dir/$f" ]; then
+      awk '
+        # Skip "## Team Mode" section (Claude Code only, not applicable in Cursor)
+        /^## Team Mode/ { skip=1; next }
+        skip && /^## / { skip=0 }
+        skip { next }
+        { print }
+      ' "$skill_dir/$f" | sed \
+          -e 's|~/.claude/skills/|~/.cursor/skills/|g' \
+          -e 's|~/.claude/rules/|~/.cursor/rules/|g' \
+          -e 's|~/.claude/|~/.cursor/|g' \
+          -e '/^[[:space:]]*subagent_type:/d' \
+          -e '/^[[:space:]]*run_in_background:/d' \
+          > "$DIST/skills/$skill/$f"
+    fi
   done
 
   skill_count=$((skill_count + 1))
@@ -135,16 +159,26 @@ for f in "$DIST"/skills/*/SKILL.md; do
   fi
 done
 
-# Check for Claude Code-specific tool references that shouldn't be in dist
+# Check for Claude Code-specific tool references in ALL dist files
 claude_refs=$(grep -rln \
-  'TaskCreate\|TaskUpdate\|TaskList\|EnterPlanMode\|ExitPlanMode\|AskUserQuestion\|subagent_type\|run_in_background' \
-  "$DIST"/skills/*/SKILL.md 2>/dev/null || true)
+  'TaskCreate\|TaskUpdate\|TaskList\|EnterPlanMode\|ExitPlanMode\|AskUserQuestion\|subagent_type\|run_in_background\|TeamCreate\|SendMessage' \
+  "$DIST" 2>/dev/null || true)
 
 if [ -n "$claude_refs" ]; then
-  echo "  WARN: Claude Code-specific references found in SKILL.md files:"
+  echo "  WARN: Claude Code-specific references found:"
   echo "$claude_refs" | while IFS= read -r f; do
-    skill=$(basename "$(dirname "$f")")
-    echo "    $skill/SKILL.md"
+    echo "    $(echo "$f" | sed "s|$DIST/||")"
+  done
+  warnings=$((warnings + 1))
+fi
+
+# Check for untransformed ~/.claude/ paths
+claude_paths=$(grep -rln '~/.claude/' "$DIST" 2>/dev/null || true)
+
+if [ -n "$claude_paths" ]; then
+  echo "  WARN: Untransformed ~/.claude/ paths found:"
+  echo "$claude_paths" | while IFS= read -r f; do
+    echo "    $(echo "$f" | sed "s|$DIST/||")"
   done
   warnings=$((warnings + 1))
 fi

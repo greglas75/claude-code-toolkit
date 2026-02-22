@@ -56,13 +56,6 @@ Score each test file against the 17-question binary checklist:
 **Critical gate:** Q7, Q11, Q13, Q15, Q17 — any = 0 means auto-capped at FIX.
 **Scoring:** >= 14 PASS, 9-13 FIX, < 9 BLOCK.
 
-### Step 3: Team Mode Verification (if applicable)
-
-If TEAM_MODE was used during ETAP-1B:
-- Verify no spec file conflicts across agents (same describe blocks, duplicate test names)
-- Verify each agent's tests import from the correct source path
-- Verify no shared test fixtures with conflicting state
-
 ## Output Format
 
 ```

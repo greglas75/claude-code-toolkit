@@ -49,14 +49,6 @@ For each extraction in the CONTRACT:
 | BREAK_CIRCULAR | Grep for bidirectional imports between target files — verify cycle broken. Note: `madge --circular` should be run by the lead (this agent has no Bash access). |
 | DELETE_DEAD | Grep confirms zero usage of deleted code |
 
-### Step 6: Team Mode Verification (if applicable)
-
-If TEAM_MODE was used during ETAP-2:
-- All tasks from dependency graph are completed (check TaskList)
-- No leftover unfinished tasks
-- No conflicting changes between agents (verify with `git diff`)
-- Sequential tasks correctly built on parallel task outputs
-
 ## Output Format
 
 ```
