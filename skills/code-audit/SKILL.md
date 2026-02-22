@@ -36,6 +36,8 @@ This skill uses `Task` tool to spawn parallel sub-agents for batch evaluation. *
 - **Skip all "Spawn via Task tool" blocks** — do NOT attempt to call tools that don't exist
 - **Evaluate files sequentially yourself** instead of spawning batch agents — read each file, apply the CQ1-CQ20 checklist, output per-file scores
 - **Model routing is ignored** — use whatever model you are running on
+- **`AskUserQuestion` fallback** — if not available, print recommendations as plain text and wait for response. See Step 7.7.
+- **`Skill` tool fallback** — if proposing `/refactor` or `/build`, print the recommendation as text (user will invoke the skill manually)
 - The quality gates, checklists, and output format remain identical
 
 ## Step 0: Parse $ARGUMENTS
@@ -368,9 +370,65 @@ After generating the report, persist ALL findings (confidence 26+) to `memory/ba
 
 **THIS IS REQUIRED, NOT OPTIONAL.** Every finding from the audit must end up either fixed (Step 8) or in the backlog. Zero issues may be silently discarded.
 
+## Step 7.7: Propose Next Actions (MANDATORY)
+
+After showing the report, **automatically propose** what to do next. Use `AskUserQuestion` with options based on audit results.
+
+### Routing Logic
+
+Analyze the audit results and select the most impactful action:
+
+| Audit Result | Proposed Action | Why |
+|--------------|----------------|-----|
+| Tier D files exist | "Fix Tier D files" | Security/critical issues first |
+| CQ14=0 in 2+ files (shared duplication) | "Run `/refactor` to extract shared logic" | Duplication across files = structural problem, needs CONTRACT+ETAP |
+| Same CQ fails in 3+ files (e.g., CQ8=0 in 5 services) | "Fix [CQ] across all affected files" | Pattern fix — same fix applied repeatedly |
+| CQ18=0 (multi-store sync needs new mechanism) | "Run `/build` to add sync mechanism" | New infrastructure needed |
+| Only Tier B/C with varied issues | "Fix top 3 critical gate failures" | Highest ROI |
+| All Tier A | Skip — print "All files production-ready" | Nothing to fix |
+
+### Proposal Format
+
+Use `AskUserQuestion` if available, otherwise print as plain text and wait for response.
+
+**Options to present** (select applicable — max 4):
+1. "[Best action from routing table]" (Recommended) — e.g., "Fix all CQ8 failures (5 files)"
+2. "Fix Tier D only" — if Tier D exists and option 1 is different
+3. "Fix specific file" — user picks which
+4. "Skip fixes" — keep report for reference
+
+**`AskUserQuestion` format:**
+```
+Question: "Audit found [N] files needing fixes. What to do?"
+Header: "Post-audit"
+Options: [from list above]
+```
+
+**Plain text fallback** (Cursor, other IDEs):
+```
+RECOMMENDED NEXT STEP: Fix all CQ8 failures (5 files)
+  Routing: same CQ fails in 3+ files → pattern fix (direct)
+
+Other options:
+  - "Fix Tier D only" — 2 security issues
+  - "Fix [specific file]" — pick one
+  - "Skip" — keep report for reference
+
+What would you like to do?
+```
+
+**Routing examples:**
+- 2 Tier D (CAP5 secrets) + 8 Tier C → recommend "Fix Tier D files (2 security issues)"
+- 0 Tier D, CQ14=0 in 4 files → recommend "`/refactor` — extract duplicated logic from 4 services"
+- 0 Tier D, CQ8=0 in 6 files → recommend "Fix CQ8 across 6 files (add error handling)"
+- 0 Tier D, CQ4=0 in 3 controllers → recommend "Fix CQ4 (add query-level filtering to 3 controllers)"
+- Mixed issues, no dominant pattern → recommend "Fix top 3 critical gate failures"
+
+If user selects an option that requires `/refactor` or `/build` — invoke that skill instead of continuing to Step 8.
+
 ## Step 8: Post-Audit Fix Workflow
 
-After presenting the report, the user may request fixes. Follow this sequence:
+When user selects a direct fix (not `/refactor` or `/build`), follow this sequence:
 
 1. **Fix** — user says "napraw X" (specific CQs, specific files, or whole tier). Implement fixes using the audit report as context (lines, evidence, proposed fixes are already known — no re-discovery needed).
 2. **Test** — run existing tests (`npx jest --no-coverage` or project test runner) to verify fixes don't break anything.

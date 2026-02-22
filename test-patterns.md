@@ -93,7 +93,7 @@ Run this checklist IMMEDIATELY after writing tests. You already have full contex
 
 | AP | Pattern | Fix |
 |----|---------|-----|
-| AP1 | Any `describe.skip` or `it.skip` in new tests? | Remove skip or delete test |
+| AP1 | Any `describe.skip` or `it.skip` in new tests? | Remove skip or delete test. **Note:** per `testing.md`, `it.skip` in *required* tests (coverage mandated by code type) = BLOCKING, not just -1. |
 | AP2 | Any `if (element) { expect... }` conditional assertion? | Use `getByX` (throws if missing) or assert existence first |
 | AP3 | Function defined in test that mirrors production logic? | Import from production module |
 | AP4 | 3+ identical mock object literals (not using factory)? | Extract `createX()` factory |
