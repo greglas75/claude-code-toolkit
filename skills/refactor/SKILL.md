@@ -16,6 +16,16 @@ Read ~/.claude/refactoring-protocol.md       — full ETAP-1A → 1B → 2 proto
 
 Parse $ARGUMENTS to determine mode, then follow the protocol.
 
+## Path Resolution (non-Claude-Code environments)
+
+If running in Antigravity, Cursor, or other IDEs where `~/.claude/` is not accessible, resolve paths from `_agent/` in project root:
+- `~/.claude/skills/` → `_agent/skills/`
+- `~/.claude/rules/` → `_agent/rules/`
+- `~/.claude/refactoring-protocol.md` → `_agent/refactoring-protocol.md`
+- `~/.claude/refactoring-god-class.md` → `_agent/refactoring-god-class.md`
+- `~/.claude/refactoring-examples/` → `_agent/refactoring-examples/`
+- `~/.claude/test-patterns.md` → `_agent/test-patterns.md`
+
 ## Progress Tracking
 
 Use `TaskCreate` at the start to create a todo list from the ETAP stages. Update task status (`in_progress` → `completed`) as you progress. This gives the user visibility into multi-step execution.

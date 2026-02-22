@@ -19,6 +19,11 @@ Read ~/.claude/rules/security.md           — SSRF, path traversal, auth patter
 
 Parse $ARGUMENTS as target scope (directory, module, or "full" for entire project).
 
+## Path Resolution (non-Claude-Code environments)
+
+If running in Antigravity, Cursor, or other IDEs where `~/.claude/` is not accessible, resolve paths from `_agent/` in project root:
+- `~/.claude/rules/` → `_agent/rules/`
+
 ## Progress Tracking
 
 Use `TaskCreate` at the start to create a todo list from the phases below. Update task status (`in_progress` → `completed`) as you progress. This gives the user visibility into multi-step execution.

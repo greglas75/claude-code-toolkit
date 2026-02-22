@@ -14,6 +14,11 @@ Produces a tiered report: which files are fine, which need fixes, which need rew
 Read ~/.claude/test-patterns.md    — Q1-Q17 checklist, anti-patterns AP1-AP18, stack adjustments, red flags
 ```
 
+## Path Resolution (non-Claude-Code environments)
+
+If running in Antigravity, Cursor, or other IDEs where `~/.claude/` is not accessible, resolve paths from `_agent/` in project root:
+- `~/.claude/test-patterns.md` → `_agent/test-patterns.md`
+
 ## Progress Tracking
 
 Use `TaskCreate` at the start to create a todo list from the steps below. Update task status (`in_progress` → `completed`) as you progress. This gives the user visibility into multi-step execution.

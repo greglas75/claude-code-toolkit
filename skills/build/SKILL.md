@@ -37,11 +37,18 @@ This skill uses `Task` tool to spawn parallel sub-agents. **If `Task` tool is no
 
 **All agents are read-only (Explore type).** Reuses agent definitions from `~/.claude/skills/refactor/agents/`.
 
+## Path Resolution (non-Claude-Code environments)
+
+If running in Antigravity, Cursor, or other IDEs where `~/.claude/` is not accessible, resolve paths from `_agent/` in project root:
+- `~/.claude/skills/` → `_agent/skills/`
+- `~/.claude/rules/` → `_agent/rules/`
+- `~/.claude/test-patterns.md` → `_agent/test-patterns.md`
+
 ---
 
 ## Phase 0: Context
 
-1. Read project `CLAUDE.md` and `.claude/rules/` for conventions
+1. Read project `CLAUDE.md` and `.claude/rules/` (or `_agent/rules/`) for conventions
 2. Detect stack (check `package.json`, `tsconfig.json`, `pyproject.toml`, etc.)
 3. Read `memory/backlog.md` if it exists — check for related OPEN items
 

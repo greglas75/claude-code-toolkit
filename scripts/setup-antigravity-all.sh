@@ -22,6 +22,20 @@ setup() {
     ln -sf "$SKILLS/$skill/SKILL.md" "$dir/_agent/workflows/$skill.md"
   done
 
+  # Root-level protocols and patterns (referenced by skills via ~/.claude/ paths)
+  for f in review-protocol.md refactoring-protocol.md test-patterns.md refactoring-god-class.md; do
+    [ -f "$HOME/.claude/$f" ] && ln -sf "$HOME/.claude/$f" "$dir/_agent/$f"
+  done
+
+  # Rules directory (CQ1-CQ20, testing, security, etc.)
+  ln -sf "$HOME/.claude/rules" "$dir/_agent/rules"
+
+  # Refactoring examples (stack-specific test patterns)
+  [ -d "$HOME/.claude/refactoring-examples" ] && ln -sf "$HOME/.claude/refactoring-examples" "$dir/_agent/refactoring-examples"
+
+  # Conditional rules
+  [ -d "$HOME/.claude/conditional-rules" ] && ln -sf "$HOME/.claude/conditional-rules" "$dir/_agent/conditional-rules"
+
   # memory/backlog.md
   local has_mem=""
   if [ -f "$memory_src/backlog.md" ]; then
