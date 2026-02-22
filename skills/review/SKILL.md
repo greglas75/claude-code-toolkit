@@ -380,10 +380,10 @@ Return the confidence table and summary per your instructions."
 ```
 
 4. Wait for Agent 3 result
-5. DROP from report any issue scoring < 51 — but **PERSIST ALL DROPPED ISSUES TO BACKLOG** (nothing is lost)
+5. DROP from report any issue scoring < 51 — **PERSIST issues scoring 26-50 TO BACKLOG** (0-25 = DISCARD as hallucinations)
 6. Adjust severity if re-scorer disagrees (e.g., reviewer said HIGH but scorer says 55 = downgrade to MEDIUM)
 7. Write final report with issues scoring 51+
-8. **MANDATORY: Write dropped issues to `memory/backlog.md`** with their confidence score and "(dropped from report)" note — do this BEFORE showing the report to the user
+8. **MANDATORY: Write dropped issues (confidence 26-50) to `memory/backlog.md`** with their confidence score and "(dropped from report)" note — do this BEFORE showing the report to the user. Issues scoring 0-25 are DISCARDED (do not persist).
 
 ### Report Output
 

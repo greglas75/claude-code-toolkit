@@ -6,7 +6,6 @@ tools:
   - Read
   - Grep
   - Glob
-  - Bash
 ---
 
 You are a **Post-Extraction Verifier** — a read-only agent that verifies the refactoring was applied correctly after ETAP-2 execution.
@@ -30,7 +29,7 @@ For each extraction in the CONTRACT:
 - **No old import paths** remaining — grep for the old module paths across the entire codebase
 - **Barrel exports updated** — if the project uses `index.ts` barrels, verify they re-export new modules
 - **Test imports correct** — test files import from the new location
-- **No broken imports** — run `tsc --noEmit` or equivalent type check if available
+- **No broken imports** — grep for import statements pointing to moved/renamed files. Note: `tsc --noEmit` should be run by the lead (this agent has no Bash access)
 
 ### Step 3: File Size Verification
 
@@ -52,7 +51,7 @@ For each extraction in the CONTRACT:
 | EXTRACT_METHODS | Original file delegates (doesn't duplicate), extracted methods are self-contained |
 | MOVE | All references updated, no grep hits for old path |
 | RENAME_MOVE | All references updated, no grep hits for old name |
-| BREAK_CIRCULAR | Run `madge --circular` or equivalent — verify cycle broken. **Fallback:** if madge fails/empty on complex TS paths, use `eslint import/no-cycle` or grep that bidirectional imports between target files are removed. |
+| BREAK_CIRCULAR | Grep for bidirectional imports between target files — verify cycle broken. Note: `madge --circular` should be run by the lead (this agent has no Bash access). |
 | DELETE_DEAD | Grep confirms zero usage of deleted code |
 
 ### Step 6: Team Mode Verification (if applicable)

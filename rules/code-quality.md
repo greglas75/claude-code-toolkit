@@ -11,7 +11,7 @@ Agent runs this self-eval AFTER writing code, BEFORE writing tests.
 
 | # | Category | Question |
 |---|----------|----------|
-| CQ1 | Types | No `string`/`number` where union, enum, or branded type is appropriate? (status fields, action types, role values). No loose equality (`==`/`!=`) — use strict (`===`/`!==`) to prevent type coercion bugs? |
+| CQ1 | Types | No `string`/`number` where union, enum, or branded type is appropriate? (status fields, action types, role values). [JS/TS only] No loose equality (`==`/`!=`) — use strict (`===`/`!==`) to prevent type coercion bugs? |
 | CQ2 | Types | All public function return types explicitly declared? No implicit `any` from untyped dependencies? |
 | CQ3 | Validation | **CRITICAL** — Boundary validation complete? ALL three: (a) required fields checked, (b) format/range/allowlist enforced, (c) runtime schema (Zod/class-validator/pipe) at entry point? |
 | CQ4 | Security | **CRITICAL** — Guards (auth, ownership) reinforced by query-level filtering? Guard is NOT the only defense? |
@@ -20,7 +20,7 @@ Agent runs this self-eval AFTER writing code, BEFORE writing tests.
 | CQ7 | Resources | All DB queries bounded? (LIMIT, pagination cursor). List endpoints return slim payload (`select` fields), not full entity with all relations? |
 | CQ8 | Errors | **CRITICAL** — Infrastructure failures handled? (DB down, network timeout, transaction rollback, filesystem error, DB constraint violation). No empty `catch {}`. Timeouts set on all outbound calls. Error either handled locally with context (log + rethrow) OR explicitly propagated to global handler that logs with correlation ID. **Global filter credit:** only if the specific failure mode is handled gracefully — a race condition causing unhandled constraint violation that global filter turns into generic 500 ≠ "handled". |
 | CQ9 | Data | Multi-table mutations wrapped in transactions? FK order respected in delete/create sequences? |
-| CQ10 | Data | Nullable values handled explicitly? No silent `null` propagation, no unsafe `array[0]`/`.find()` without guard? No `as Type` cast on external/dynamic data without runtime validation? |
+| CQ10 | Data | Nullable values handled explicitly? No silent `null` propagation, no unsafe `array[0]`/`.find()` without guard? No `as Type` cast on nullable/unknown data without narrowing? (Note: `as Type` on external API data is primarily CQ3/CQ19 — CQ10 covers casts on nullable/unknown within already-validated code.) |
 | CQ11 | Structure | Functions ≤ 50 lines? Single responsibility? No god methods mixing concerns? |
 | CQ12 | Structure | No magic strings/numbers in logic? No index-based data mapping (`row[0]`, `row[46]`)? No duplicate key/id values in config arrays (route definitions, column configs, menu items)? Named constants, config values, or mapping objects used? |
 | CQ13 | Hygiene | No dead code? (commented-out blocks, unreachable code after return, unused functions/imports) |
@@ -38,7 +38,7 @@ Agent runs this self-eval AFTER writing code, BEFORE writing tests.
 
 **Conditional critical gate** (activated by code context):
 - **CQ16** → critical if code touches prices, costs, discounts, invoices, payouts, exchange rates
-- **CQ19** → critical if code receives or sends data across API/module boundary (request OR response). **Thin controller exception:** if controller only returns data constructed by typed service code (not forwarding external/unvalidated data), CQ19=0 severity = LOW, score impact = CONDITIONAL PASS (not FAIL). In `/code-audit` tier system: cap = B (not C).
+- **CQ19** → critical if code receives or sends data across API/module boundary (request OR response). **Thin controller exception:** if controller only returns data constructed by typed service code (not forwarding external/unvalidated data), the conditional gate does NOT activate — CQ19=0 counts as a normal score deduction (not a critical gate FAIL). In `/code-audit` tier system: cap = B (not C).
 - **CQ20** → critical if payload contains `*_id` + `*_name` pairs, or number + string-with-currency for same field
 
 When conditional gate activates: that CQ = 0 → FAIL, same as static gate.
@@ -67,8 +67,11 @@ N/A is scored as 1, but requires justification. Abuse of N/A = false PASS.
 
 | CQ | N/A when | NOT N/A (common mistake) |
 |----|----------|--------------------------|
+| CQ3 | Pure internal helper called only from already-validated entry points (no external input reaches it directly) | "It's simple" — if function accepts user/external input, CQ3 applies |
 | CQ4 | Pure utility with zero auth context | "It's an internal service" — if it has user-scoped data, CQ4 applies |
+| CQ5 | Pure computation with zero I/O, zero logging, zero error messages (no channel for PII to leak) | "We don't log PII" — if function has logger/response/error message, CQ5 applies |
 | CQ6/CQ7 | Function doesn't process collections at all | "Small dataset" — if external data, size is not guaranteed |
+| CQ8 | Pure synchronous computation with zero I/O (no DB, no network, no filesystem) | "Errors are rare" — if function calls any external system, CQ8 applies |
 | CQ9 | Read-only operations or single-table writes | "We don't use transactions" — multi-table = needs transaction |
 | CQ15 | Synchronous-only code (no async anywhere) | "Simple async" — if async exists, CQ15 applies |
 | CQ16 | Zero monetary/financial calculations | "It's just a display field" — if it's used in math, CQ16 applies |
@@ -207,11 +210,11 @@ async processOrder(id: string) {
 
 ```typescript
 // BAD — 150 lines copy-pasted between two export methods (B5)
-async exportToStream(ids: string[], res: Response) {
+async exportToStream(ids: string[], res: Response, writer: StreamWriter) {
   const sessions = await this.getSessions(ids);
   for (const s of sessions) { this.writeRow(writer, this.buildRow(s)); }
 }
-async exportLatestToStream(surveyId: string, res: Response) {
+async exportLatestToStream(surveyId: string, res: Response, writer: StreamWriter) {
   const sessions = await this.getLatestSessions(surveyId);
   for (const s of sessions) { this.writeRow(writer, this.buildRow(s)); }  // identical copy
 }
@@ -280,9 +283,9 @@ import Decimal from 'decimal.js';
 const cpiAfterDiscount = new Decimal(baseCpi).mul(new Decimal(1).minus(new Decimal(discount).div(100)));
 const total = new Decimal(quantity).mul(cpiAfterDiscount).mul(exchangeRate).toDecimalPlaces(2);
 
-// CLEAN — alternative: integer-cents (multiply by 100, work in integers)
+// CLEAN — alternative: integer-cents (multiply by 100, keep arithmetic in integers)
 const priceCents = Math.round(baseCpi * 100);
-const discountedCents = Math.round(priceCents * (1 - discount / 100));
+const discountedCents = Math.round(priceCents * (100 - discount) / 100);  // integer math, round once
 const totalCents = quantity * discountedCents;
 const totalDollars = totalCents / 100;  // convert back only for display
 ```
@@ -375,7 +378,9 @@ async deleteClause(id: string) {
     });
   });
   // Async cleanup job later removes vector from Qdrant
-  await this.vectorCleanupQueue.add({ clauseId: id });
+  // Note: if queue.add() fails, add retry/dead-letter handling
+  await this.vectorCleanupQueue.add({ clauseId: id })
+    .catch(err => this.logger.error(`Vector cleanup queue failed for ${id}`, err));
 }
 
 // CLEAN — single source of truth + derived view

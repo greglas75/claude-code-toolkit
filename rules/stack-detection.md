@@ -54,4 +54,7 @@ These are loaded ON-DEMAND (not in `~/.claude/rules/`):
 | Code audit | `/code-audit` invoked | `~/.claude/skills/code-audit/SKILL.md` — CQ1-CQ20 mass audit |
 | Test audit | `/test-audit` invoked | `~/.claude/skills/test-audit/SKILL.md` — Q1-Q17 mass audit |
 | API audit | `/api-audit` invoked | `~/.claude/skills/api-audit/SKILL.md` — endpoint integrity |
+| Backlog management | `/backlog` invoked | `~/.claude/skills/backlog/SKILL.md` — tech debt tracking |
+| Refactoring examples | `/refactor` invoked (stack-specific) | `~/.claude/refactoring-examples/{stack}.md` — test patterns per stack |
+| God class protocol | `/refactor` GOD_CLASS detected | `~/.claude/refactoring-god-class.md` — extended splitting protocol |
 | Skill management | Creating/editing skills | `~/.claude/conditional-rules/skill-management.md` — read on need |

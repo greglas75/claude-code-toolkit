@@ -656,6 +656,8 @@ Task(subagent_type="general-purpose", team_name="refactor-{id}", name="worker-{n
   "You are a refactoring agent on team refactor-{id}.
    Check TaskList for available tasks. Claim the lowest-ID unblocked task.
    Execute it following the task description exactly.
+   After modifying any production file, run CQ1-CQ20 self-eval (read ~/.claude/rules/code-quality.md).
+   Report CQ score in your completion message. If any critical gate fails, flag it.
    When done, mark completed and check for next available task.
    If no tasks available, notify team lead and go idle."
 ```
@@ -785,7 +787,30 @@ Re-run Step 4 self-eval on each NEW split test file. Compare scores with the pre
 | `context-button.test.tsx` | 12/17 (from monolith) | 15/17 | ✅ +3 |
 | `rendering-minimalistic.test.tsx` | 10/17 (from monolith) | 10/17 | ❌ No improvement |
 
-**HARD GATE:** Every split file MUST score HIGHER than the original monolith (pre-split + 1 minimum, capped at 17/17). If original scored 14/17 → split files must score ≥ 15/17. If original scored 17/17 → split files must maintain 17/17. If any file scores < pre-split → fix gaps before committing. A split that only moves code at the same quality level is a mechanical move, not a refactoring.
+**HARD GATE:** Every split file MUST score at least `min(original_score + 1, 17)` — i.e., improve by 1 point, capped at 17/17. Also must meet floor of 14/17. Formula: `max(min(original + 1, 17), 14)`. Examples: original 14 → need ≥15; original 12 → need ≥14 (floor); original 17 → maintain 17. If any file scores below this → fix gaps before committing.
+
+### SIMPLIFY Additional Checks
+
+**Goal:** Reduce complexity without changing behavior.
+
+**Targets (verify ALL improved):**
+- Cyclomatic complexity reduced (fewer branches/conditions)
+- Max nesting ≤ 3 levels (extract early returns, guard clauses)
+- All functions ≤ 50 lines (extract helpers if needed)
+- No duplicated logic remaining (if simplification revealed hidden duplication)
+
+**Techniques (in priority order):**
+1. **Guard clauses** — replace nested if/else with early returns
+2. **Extract method** — long functions → smaller named functions
+3. **Replace conditional with polymorphism** — if type-switching detected
+4. **Inline unnecessary abstractions** — remove wrappers that add no value
+5. **Simplify boolean expressions** — `!(!a && !b)` → `a || b`
+
+**Post-simplification verification:**
+- Run existing tests — all must pass (no behavior change)
+- File stays within 250-line limit
+- Functions stay within 50-line limit
+- Nesting ≤ 3 levels in all functions
 
 ---
 

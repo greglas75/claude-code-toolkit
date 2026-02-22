@@ -187,7 +187,7 @@ Lines: [count]
 Red flags: [CAP5/CAP6/CAP7/CAP8 = auto Tier-D; or "none"] → [AUTO TIER-D or "continue"]
 Score: CQ1=[0/1] CQ2=[0/1] CQ3=[0/1] CQ4=[0/1/N/A] CQ5=[0/1] CQ6=[0/1/N/A] CQ7=[0/1/N/A] CQ8=[0/1] CQ9=[0/1/N/A] CQ10=[0/1] CQ11=[0/1] CQ12=[0/1] CQ13=[0/1] CQ14=[0/1] CQ15=[0/1/N/A] CQ16=[0/1/N/A] CQ17=[0/1/N/A] CQ18=[0/1/N/A] CQ19=[0/1/N/A] CQ20=[0/1/N/A]
 Anti-patterns: [CAP IDs found, or "none"]
-Applicable: [N]/20 | Raw: [yes-count]/[applicable] | Normalized: [score]/20
+Total: [score]/20 (N/A counted as 1, no normalization)
 Static gate: CQ3=[0/1/N/A] CQ4=[0/1/N/A] CQ5=[0/1/N/A] CQ6=[0/1/N/A] CQ8=[0/1/N/A] CQ14=[0/1/N/A] → [PASS/FAIL] (N/A gates are skipped, not converted to 1)
 Conditional gate: [which activated] → [PASS/FAIL/none]
 Evidence (critical gates scored 1): [CQ=evidence pairs, file:line or schema name]

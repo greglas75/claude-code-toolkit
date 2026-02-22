@@ -82,6 +82,13 @@ Run this checklist IMMEDIATELY after writing tests. You already have full contex
 | Q16 | Isolation | Cross-cutting isolation verified? When changing A, assert B is NOT affected? (**N/A** if single-entity tests — score as 1) | |
 | Q17 | Computed | Assertions verify COMPUTED output, not input echo? **CRITICAL** — BAD: `expect(result.from).toEqual(18)` (18 was the input); BAD: `expect(result.id).toEqual(1)` (mock returns `{id:1}`); GOOD: `expect(result.cpi_after_discount).toBe(2.25)` (2.5 × 0.9 computed) | |
 
+**Q14/Q15/Q17 Disambiguation:**
+- **Q14** (behavior): Does the test verify a meaningful outcome, not just "mock was called"? Fail if ALL assertions are `toHaveBeenCalled` with zero output/state checks.
+- **Q15** (depth): Does the test check specific values, not just shape/count? Fail if `expect(result.length).toBe(2)` but never checks what the 2 items contain.
+- **Q17** (computed): Does the assertion verify a value the code CALCULATED, not one it received unchanged? Fail if `expect(result.name).toBe('test')` and `'test'` was the input/mock value.
+- A test can pass Q14 (checks behavior) but fail Q17 (the "behavior" is just echoing input back).
+- A test can pass Q17 (checks computed value) but fail Q15 (only checks one value, ignores others).
+
 **Anti-pattern deductions (each = -1 point):**
 
 | AP | Pattern | Fix |

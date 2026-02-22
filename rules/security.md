@@ -133,6 +133,24 @@ secrets/
 | File upload abuse | Size limit + MIME check | Upload 50MB / `.exe` → verify rejected |
 | Log leakage | PII masking | Trigger error with PII → verify logs are masked |
 
+## Cryptographic Randomness
+
+- **Never use `Math.random()` for tokens, secrets, or security-sensitive IDs** — use `crypto.randomUUID()`, `crypto.getRandomValues()`, or `crypto.randomBytes()`
+- **Never use predictable seeds** for session IDs or CSRF tokens
+- Python: use `secrets` module, not `random`
+
+## Deserialization Safety
+
+- **Never `eval()` or `new Function()` on untrusted input**
+- **Never `pickle.loads()` on untrusted data** (Python) — use JSON or schema-validated formats
+- **`JSON.parse()` on external input** must be followed by schema validation (Zod/etc.)
+
+## Security Event Logging
+
+- **Log all failed authentication attempts** with IP, timestamp, username (not password)
+- **Log authorization failures** (403s) with user ID, resource, action
+- **Rate limit + alert** on repeated auth failures from same IP/user
+
 ## Dependency Security
 
 - Run `npm audit` / `pip audit` regularly

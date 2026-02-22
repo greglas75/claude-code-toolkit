@@ -28,8 +28,9 @@ disable-model-invocation: true
 [markdown content with $ARGUMENTS placeholder]
 ```
 
-- `disable-model-invocation: true` for user-invoked workflows (/review, /refactor, /backlog)
-- Omit it for background knowledge skills the agent should auto-load
+- `user-invocable: true` for user-invoked workflows (/review, /refactor, /build, /code-audit, /test-audit, /api-audit, /backlog) — makes the skill appear in `/` menu, user triggers it explicitly
+- Omit `user-invocable` for background knowledge skills the agent should auto-load
+- Note: `disable-model-invocation: true` is the old key (deprecated) — use `user-invocable: true` instead
 
 ## Creating a New Skill
 

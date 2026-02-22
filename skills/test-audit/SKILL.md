@@ -290,6 +290,20 @@ After generating the report, persist ALL findings to `memory/backlog.md`:
 
 **THIS IS REQUIRED, NOT OPTIONAL.** Findings that aren't fixed must be tracked. Zero issues may be silently discarded.
 
+## Step 6: Post-Audit Fix Workflow
+
+After presenting the report, the user may request fixes. Follow this sequence:
+
+1. **Fix** — user says "napraw X" or "fix tier D files" → rewrite test files following `~/.claude/test-patterns.md`
+2. **Test** — run test suite (`npm run test:run` or equivalent) to confirm all tests pass
+3. **Auto-Commit + Tag** — after tests pass:
+   - `git add [specific test files]`
+   - `git commit -m "test-fix: [brief description]"`
+   - `git tag test-fix-[YYYY-MM-DD]-[short-slug]`
+4. **Re-audit** — optionally re-run `/test-audit` on fixed files to verify tier improvement
+
+**Do NOT push.** Push is a separate user decision.
+
 ## Execution Notes
 
 - Use Sonnet for `--quick` mode (binary checks — Haiku inflates scores on nuanced checks like Q11, Q15, AP10)

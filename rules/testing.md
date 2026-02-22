@@ -32,6 +32,7 @@ A plan without Test Strategy is incomplete — do not approve it.
 - Interaction tests (clicks, inputs, form submission)
 - Props/state variation tests
 - Error state test
+- Accessibility: interactive elements have ARIA labels, keyboard navigation works (see `react-nextjs.md` WCAG 2.1 AA)
 
 ### New API Endpoint/Handler
 - Success response (200/201)
@@ -145,7 +146,7 @@ Run this checklist IMMEDIATELY after writing tests. Score EACH question individu
 
 **Critical gate:** Q7, Q11, Q13, Q15, Q17 — any = 0 → auto-capped at FIX regardless of total.
 
-**Scoring:** ≥ 14 PASS, 9-13 FIX (fix worst dimension, re-score), < 9 BLOCK (rewrite).
+**Scoring:** Total = Q1-Q17 yes count (N/A=1) minus AP deductions (see `~/.claude/test-patterns.md`). ≥ 14 PASS, 9-13 FIX (fix worst dimension, re-score), < 9 BLOCK (rewrite).
 
 **Output format (individual scores required):**
 ```

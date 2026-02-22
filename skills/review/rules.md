@@ -90,7 +90,7 @@ For larger reviews, `/review` splits audit steps across 2 custom agents in paral
 
 ### Code Quality on Execute
 
-When applying fixes during Execute, run CQ1-CQ20 self-eval (`~/.claude/rules/code-quality.md`) on each modified production file. Static critical gate: CQ3, CQ4, CQ5, CQ6, CQ8, CQ14. Conditional gate: CQ16 (money), CQ19 (I/O), CQ20 (dual fields). Score < 14 → FAIL. Evidence required for critical CQs.
+When applying fixes during Execute, run CQ1-CQ20 self-eval (`~/.claude/rules/code-quality.md`) on each modified production file. Static critical gate: CQ3, CQ4, CQ5, CQ6, CQ8, CQ14. Conditional gate: CQ16 (money), CQ19 (I/O), CQ20 (dual fields). Thresholds: ≥16 PASS, 14-15 CONDITIONAL PASS (fix before merge encouraged), <14 FAIL. Any active critical gate = 0 → FAIL regardless of score. Evidence required for each critical CQ scored as 1.
 
 ### Parallel Execute Mode (3+ fixes on different files)
 

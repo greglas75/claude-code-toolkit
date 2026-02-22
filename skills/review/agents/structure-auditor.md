@@ -93,6 +93,14 @@ Execute these steps on the changed files provided to you:
 - Index used as key in dynamic lists
 - Large lists without virtualization (>100 items)
 
+**5.1b Next.js Performance [TECH: Next.js — skip if not Next.js]:**
+- Server Components used for static/data-fetching content (no client JS shipped)
+- `next/image` for images (not raw `<img>`)
+- `next/link` for internal navigation (not `<a>`)
+- `next/font` for fonts (not external CSS @font-face)
+- Dynamic imports (`next/dynamic`) for heavy client components
+- No `fetch()` in client components when server component could pre-fetch
+
 **5.2 Bundle & Memory:**
 - Large imports without tree-shaking
 - Missing dynamic imports for heavy client components
