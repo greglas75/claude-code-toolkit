@@ -8,12 +8,30 @@ user-invocable: true
 
 Triage + full audit in one step. No separate "Go" command needed.
 
-**IMPORTANT:** Before starting the audit, read BOTH files:
+## Mandatory File Reading (NON-NEGOTIABLE)
+
+Before starting ANY work, read ALL 6 files below. Confirm each with ✅ or ❌:
+
 ```
-Read ~/.claude/skills/review/rules.md        — Iron Rules, severity, confidence, backlog
-Read ~/.claude/review-protocol.md            — detailed checklists, red-flag patterns
+1. ✅/❌  ~/.claude/skills/review/rules.md        — Iron Rules, severity, confidence, backlog
+2. ✅/❌  ~/.claude/review-protocol.md            — detailed checklists, red-flag patterns, tier rules
+3. ✅/❌  ~/.claude/rules/testing.md              — Q1-Q17 test self-eval checklist
+4. ✅/❌  ~/.claude/rules/code-quality.md         — CQ1-CQ20 production code checklist
+5. ✅/❌  ~/.claude/test-patterns.md              — G-*/P-* patterns, AP anti-patterns, scoring formula
+6. ✅/❌  ~/.claude/rules/security.md             — SSRF, XSS, auth, path traversal patterns
 ```
-Follow all Iron Rules from rules.md.
+
+**If ANY file is ❌ → STOP. Do not proceed with a partial rule set.**
+
+After reading, print step name before executing each step:
+- `STEP: Triage` (tier + mode)
+- `STEP: Scope Fence`
+- `STEP: Audit` (which auditors, solo or team?)
+- `STEP: CQ1-CQ20` (or N/A with reason)
+- `STEP: Q1-Q17` on each test file (individual scores, critical gate)
+- `STEP: Confidence Gate` (re-scorer)
+- `STEP: 7.0 Compliance`
+- `STEP: Report`
 
 ## Path Resolution (non-Claude-Code environments)
 
@@ -405,13 +423,14 @@ Generate the full report following the format in review-protocol.md. Include:
 
 ### Backlog Update (after report)
 
-**MANDATORY** — After writing the report, persist ALL unfixed issues to backlog per the Backlog Persistence rules in rules.md:
-- **Dropped issues (confidence < 51)** → backlog with confidence score and "(dropped from report)" — THIS IS REQUIRED, NOT OPTIONAL
+**MANDATORY** — After writing the report, persist unfixed issues to backlog per the Backlog Persistence rules in rules.md:
+- **Dropped issues (confidence 26-50)** → backlog with confidence score and "(dropped from report)" — THIS IS REQUIRED, NOT OPTIONAL
+- **Discarded issues (confidence 0-25)** → NOT persisted (hallucinations/false positives don't pollute backlog)
 - Pre-existing issues (identified by Pre-Existing Checker) → backlog
 - Issues on unmodified lines → backlog
 - If MODE 1 (report only): all reported issues go to backlog too (they haven't been fixed yet)
 
-**Verify:** Every issue from the audit (kept OR dropped) must end up either in the report OR in the backlog. Zero issues may be silently discarded.
+**Verify:** Every issue with confidence 26+ must end up either in the report (51+) OR in the backlog (26-50). Issues scoring 0-25 are discarded as hallucinations — this is the only case where silent discard is correct.
 
 ### Questions Gate (after report, before Execute)
 

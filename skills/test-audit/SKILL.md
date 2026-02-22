@@ -9,10 +9,16 @@ user-invocable: true
 Mass audit of test files against the Q1-Q17 binary checklist + AP anti-patterns.
 Produces a tiered report: which files are fine, which need fixes, which need rewrites.
 
-**IMPORTANT:** Before starting, read:
+## Mandatory File Reading (NON-NEGOTIABLE)
+
+Before starting ANY work, read ALL files below. Confirm each with ✅ or ❌:
+
 ```
-Read ~/.claude/test-patterns.md    — Q1-Q17 checklist, anti-patterns AP1-AP18, stack adjustments, red flags
+1. ✅/❌  ~/.claude/test-patterns.md              — Q1-Q17 checklist, anti-patterns AP1-AP18, stack adjustments, red flags
+2. ✅/❌  ~/.claude/rules/testing.md              — iron rules, test requirements by code type, self-eval
 ```
+
+**If ANY file is ❌ → STOP. Do not proceed with a partial rule set.**
 
 ## Path Resolution (non-Claude-Code environments)
 

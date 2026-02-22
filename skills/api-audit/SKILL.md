@@ -11,11 +11,16 @@ Standalone skill for auditing how applications expose, consume, and validate dat
 **When to use:** Periodic health check of API layer, before major releases, after adding new endpoints, when investigating overfetching/waterfall issues.
 **When NOT to use:** Single-file code review (`/review`), refactoring (`/refactor`), feature development (`/build`).
 
-**IMPORTANT:** Before starting, read:
+## Mandatory File Reading (NON-NEGOTIABLE)
+
+Before starting ANY work, read ALL files below. Confirm each with ✅ or ❌:
+
 ```
-Read ~/.claude/rules/code-quality.md       — CQ1-CQ20 (this audit extends CQ3/5/7/16/19/20)
-Read ~/.claude/rules/security.md           — SSRF, path traversal, auth patterns
+1. ✅/❌  ~/.claude/rules/code-quality.md         — CQ1-CQ20 (this audit extends CQ3/5/7/16/19/20)
+2. ✅/❌  ~/.claude/rules/security.md             — SSRF, path traversal, auth patterns
 ```
+
+**If ANY file is ❌ → STOP. Do not proceed with a partial rule set.**
 
 Parse $ARGUMENTS as target scope (directory, module, or "full" for entire project).
 

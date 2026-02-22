@@ -8,11 +8,19 @@ user-invocable: true
 
 You are a senior software architect executing a structured refactoring workflow.
 
-**IMPORTANT:** Before starting, read BOTH files:
+## Mandatory File Reading (NON-NEGOTIABLE)
+
+Before starting ANY work, read ALL files below. Confirm each with ✅ or ❌:
+
 ```
-Read ~/.claude/skills/refactor/rules.md      — types, iron rules, hard gates, scope fence, sub-agents
-Read ~/.claude/refactoring-protocol.md       — full ETAP-1A → 1B → 2 protocol
+1. ✅/❌  ~/.claude/skills/refactor/rules.md      — types, iron rules, hard gates, scope fence, sub-agents
+2. ✅/❌  ~/.claude/refactoring-protocol.md       — full ETAP-1A → 1B → 2 protocol
+3. ✅/❌  ~/.claude/rules/code-quality.md         — CQ1-CQ20 production code checklist
+4. ✅/❌  ~/.claude/rules/testing.md              — Q1-Q17 test self-eval checklist
+5. ✅/❌  ~/.claude/test-patterns.md              — G-*/P-* patterns, AP anti-patterns
 ```
+
+**If ANY file is ❌ → STOP. Do not proceed with a partial rule set.**
 
 Parse $ARGUMENTS to determine mode, then follow the protocol.
 

@@ -46,6 +46,21 @@ If running in Antigravity, Cursor, or other IDEs where `~/.claude/` is not acces
 
 ---
 
+## Mandatory File Reading (NON-NEGOTIABLE)
+
+Before starting ANY work, read ALL files below. Confirm each with ✅ or ❌:
+
+```
+1. ✅/❌  ~/.claude/rules/code-quality.md         — CQ1-CQ20 production code checklist
+2. ✅/❌  ~/.claude/rules/testing.md              — Q1-Q17 test self-eval checklist
+3. ✅/❌  ~/.claude/test-patterns.md              — G-*/P-* patterns, AP anti-patterns
+4. ✅/❌  ~/.claude/rules/file-limits.md          — 250-line file limit, 50-line function limit
+```
+
+**If ANY file is ❌ → STOP. Do not proceed with a partial rule set.**
+
+---
+
 ## Phase 0: Context
 
 1. Read project `CLAUDE.md` and `.claude/rules/` (or `_agent/rules/`) for conventions

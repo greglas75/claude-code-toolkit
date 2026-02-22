@@ -9,10 +9,17 @@ user-invocable: true
 Mass audit of production files against the CQ1-CQ20 binary checklist + CAP anti-patterns.
 Produces a tiered report: which files are production-ready, which need fixes, which need rework.
 
-**IMPORTANT:** Before starting, read:
+## Mandatory File Reading (NON-NEGOTIABLE)
+
+Before starting ANY work, read ALL files below. Confirm each with ✅ or ❌:
+
 ```
-Read ~/.claude/rules/code-quality.md    — CQ1-CQ20 checklist, scoring, evidence requirement, N/A rules, detailed examples
+1. ✅/❌  ~/.claude/rules/code-quality.md         — CQ1-CQ20 checklist, scoring, evidence, N/A rules, examples
+2. ✅/❌  ~/.claude/rules/security.md             — SSRF, XSS, auth, path traversal patterns
+3. ✅/❌  ~/.claude/rules/file-limits.md          — 250-line file limit, 50-line function limit
 ```
+
+**If ANY file is ❌ → STOP. Do not proceed with a partial rule set.**
 
 ## Path Resolution (non-Claude-Code environments)
 
