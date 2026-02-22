@@ -78,7 +78,7 @@ ANTIGRAVITY_DIR="$HOME/.gemini/antigravity"
 mkdir -p "$ANTIGRAVITY_DIR/skills"
 for skill_dir in "$TOOLKIT_DIR"/skills/*/; do
   skill_name=$(basename "$skill_dir")
-  ln -sf "$CLAUDE_DIR/skills/$skill_name" "$ANTIGRAVITY_DIR/skills/$skill_name" 2>/dev/null || true
+  ln -sfn "$CLAUDE_DIR/skills/$skill_name" "$ANTIGRAVITY_DIR/skills/$skill_name" 2>/dev/null || true
 done
 echo "  + ~/.gemini/antigravity/skills/ (Antigravity global skills)"
 
@@ -91,7 +91,7 @@ CURSOR_SKILLS_DIR="$HOME/.cursor/skills"
 mkdir -p "$CURSOR_SKILLS_DIR"
 for skill_dir in "$TOOLKIT_DIR"/dist/cursor/skills/*/; do
   [ -d "$skill_dir" ] || continue
-  ln -sf "$skill_dir" "$CURSOR_SKILLS_DIR/$(basename "$skill_dir")" 2>/dev/null || true
+  ln -sfn "$skill_dir" "$CURSOR_SKILLS_DIR/$(basename "$skill_dir")" 2>/dev/null || true
 done
 
 # Install agents
