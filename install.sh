@@ -86,8 +86,23 @@ echo "  + ~/.gemini/antigravity/skills/ (Antigravity global skills)"
 # Build Cursor-adapted skills (overlays + agent adaptation)
 bash "$TOOLKIT_DIR/scripts/build-cursor-skills.sh" "$TOOLKIT_DIR"
 
+CURSOR_DIR="$HOME/.cursor"
+
+# Install rules (skills reference ~/.cursor/rules/)
+mkdir -p "$CURSOR_DIR/rules"
+for f in "$TOOLKIT_DIR"/rules/*.md; do
+  [ -f "$f" ] && ln -sf "$f" "$CURSOR_DIR/rules/$(basename "$f")"
+done
+
+# Install protocol files (skills reference ~/.cursor/test-patterns.md etc.)
+for f in "$TOOLKIT_DIR"/*.md; do
+  base=$(basename "$f")
+  [ "$base" = "README.md" ] && continue
+  ln -sf "$f" "$CURSOR_DIR/$base"
+done
+
 # Install skills
-CURSOR_SKILLS_DIR="$HOME/.cursor/skills"
+CURSOR_SKILLS_DIR="$CURSOR_DIR/skills"
 mkdir -p "$CURSOR_SKILLS_DIR"
 for skill_dir in "$TOOLKIT_DIR"/dist/cursor/skills/*/; do
   [ -d "$skill_dir" ] || continue
@@ -95,13 +110,13 @@ for skill_dir in "$TOOLKIT_DIR"/dist/cursor/skills/*/; do
 done
 
 # Install agents
-CURSOR_AGENTS_DIR="$HOME/.cursor/agents"
+CURSOR_AGENTS_DIR="$CURSOR_DIR/agents"
 mkdir -p "$CURSOR_AGENTS_DIR"
 for agent in "$TOOLKIT_DIR"/dist/cursor/agents/*.md; do
   [ -f "$agent" ] || continue
   ln -sf "$agent" "$CURSOR_AGENTS_DIR/$(basename "$agent")" 2>/dev/null || true
 done
-echo "  + ~/.cursor/skills/ + ~/.cursor/agents/ (Cursor native integration)"
+echo "  + ~/.cursor/ (rules, protocols, skills, agents)"
 
 # --- 7. Per-project setup script ---
 mkdir -p "$CLAUDE_DIR/scripts"
