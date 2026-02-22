@@ -1,6 +1,6 @@
 # Claude Code Toolkit
 
-Opinionated rules, skills, and protocols for [Claude Code](https://claude.ai/code) and [Google Antigravity](https://antigravity.google).
+Opinionated rules, skills, and protocols for [Claude Code](https://claude.ai/code), [Cursor](https://cursor.com), and [Google Antigravity](https://antigravity.google).
 
 Enforces code quality (CQ1-CQ20), test quality (Q1-Q17), file size limits, security practices, and provides multi-agent workflows for code review, refactoring, auditing, and feature development.
 
@@ -213,6 +213,39 @@ Antigravity reads `MEMORY.md` when it scans the project, giving Opus the same pr
 Since everything is symlinked, editing a skill in `skills/review/SKILL.md` immediately applies in all projects for both Claude Code and Antigravity — no sync needed.
 
 When adding a new skill, re-run the setup script to add it to all projects.
+
+## Cursor IDE Integration
+
+[Cursor](https://cursor.com) (v2.0+) supports SKILL.md format and multi-agent via worktrees.
+
+### Setup
+
+```bash
+# Symlink skills to Cursor's global directory
+mkdir -p ~/.cursor/skills
+for skill in build review refactor code-audit test-audit api-audit backlog; do
+  ln -sf ~/.claude/skills/$skill ~/.cursor/skills/$skill
+done
+```
+
+Or run the installer which does this automatically:
+```bash
+bash ~/claude-code-toolkit/install.sh
+```
+
+### How it works
+
+Cursor searches `~/.cursor/skills/<name>/SKILL.md` for global skills. Since we symlink to `~/.claude/skills/`, any updates to the toolkit automatically apply in both tools.
+
+### Multi-Agent Compatibility
+
+All 6 multi-step skills include a **Multi-Agent Compatibility** fallback section. When the `Task` tool is unavailable (Cursor, Antigravity, or other IDEs), the agent:
+- Skips "Spawn via Task tool" blocks
+- Executes the sub-agent's analysis inline, sequentially
+- Ignores model routing (uses whatever model is running)
+- Keeps all quality gates, checklists, and output formats identical
+
+This means skills produce the same quality results regardless of whether multi-agent is available — just slower (sequential instead of parallel).
 
 ## Requirements
 
