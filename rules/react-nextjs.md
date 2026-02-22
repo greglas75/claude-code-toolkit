@@ -19,6 +19,17 @@
 - Always include all dependencies in useEffect/useMemo/useCallback deps arrays
 - Prefer `useMemo`/`useCallback` only when there's a measurable perf benefit — don't premature-optimize
 
+### Common Anti-Patterns (flag these)
+
+- **N× useState for form** → use `useReducer` or form library (React Hook Form) when 5+ related fields
+- **useEffect to sync props→state** → use `key=` prop to force remount instead
+- **useCallback + debounce with deps that change often** → creates new debounce instance on each deps change, killing the debounce. Use `useRef` for the debounce function or `useMemo` with stable deps
+- **Multiple `setState` calls in a loop** → batch into single state update (build array/object first, set once)
+- **Raw fetch+setState when project uses React Query/SWR** → use the established data fetching pattern for consistency
+- **Optimistic state updates without rollback** → if API call fails, UI stays in wrong state
+- **`document.getElementById` / direct DOM manipulation** → breaks React's virtual DOM, causes hydration errors in SSR
+- **Native `confirm()`/`alert()`** → use custom modal component consistent with UI framework
+
 ## State Management Hierarchy
 
 ```

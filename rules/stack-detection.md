@@ -36,13 +36,16 @@ These rules in `~/.claude/rules/` ALWAYS apply regardless of stack:
 |-----------|-------|
 | `file-limits.md` | All projects |
 | `testing.md` | All projects |
+| `code-quality.md` | All projects — CQ1-CQ20 production code self-eval |
 | `security.md` | All projects |
+| `task-routing.md` | All projects — routes tasks to `/build`, `/refactor`, `/review` |
 
 These are loaded ON-DEMAND (not in `~/.claude/rules/`):
 
 | File | Loaded when | Location |
 |------|-------------|----------|
 | `python.md` | Python detected | `~/.claude/conditional-rules/python.md` — read if Python stack |
+| Build workflow | `/build` invoked | `~/.claude/skills/build/SKILL.md` — structured feature dev |
 | Review rules | `/review` invoked | `~/.claude/skills/review/rules.md` — read by skill |
 | Refactoring rules | `/refactor` invoked | `~/.claude/skills/refactor/rules.md` — read by skill |
 | Skill management | Creating/editing skills | `~/.claude/conditional-rules/skill-management.md` — read on need |

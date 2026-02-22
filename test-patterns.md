@@ -3,7 +3,7 @@
 > Global file — applies to ALL projects.
 > Agent reads this BEFORE writing tests during Execute phase.
 > Each pattern has a WHEN trigger — only apply matching patterns.
-> **Step 4 (Self-Evaluate) is MANDATORY after writing tests.**
+> **Step 4 (Self-Evaluate) is MANDATORY after writing tests. Now Q1-Q17 (was Q1-Q15).**
 > New patterns are added when user gives feedback about test gaps.
 
 ---
@@ -27,6 +27,9 @@ Look at the function/component and pick ALL matching types:
 | **ORCHESTRATOR** | Calls multiple sub-methods in sequence |
 | **EXPORT/FORMAT** | Generates output in standard format (CSV, JSON, XLSX, XML, PDF) |
 | **ADAPTER/TRANSFORM** | Maps between two formats/APIs (legacy↔modern, UUID↔int, snake↔camel) |
+| **CONTROLLER** | NestJS/Express controller with DI, route handlers, auth guards |
+| **STATIC-ANALYSIS** | Tests scanning source code without executing it (AST, regex, security) |
+| **INTEGRATION-PIPELINE** | End-to-end tests crossing multiple services with real data |
 
 ### Step 2: Load patterns from lookup table
 
@@ -34,45 +37,50 @@ Look at the function/component and pick ALL matching types:
 |-----------|--------------------------|----------------------|
 | **PURE** | G-2, G-3, G-5, G-20, G-22, G-30 | P-1, P-8, P-13, P-20, P-22, P-27 |
 | **REACT** | G-1, G-7, G-8, G-10, G-18, G-19, G-25, G-26, G-27, G-29 | P-1, P-9, P-10, P-12, P-17, P-18, P-19, P-21, P-25, P-28, P-30 |
-| **SERVICE** | G-2, G-4, G-9, G-11, G-23, G-24, G-25, G-28, G-30 | P-1, P-4, P-5, P-11, P-22, P-23, P-25, P-27, P-28, P-29, P-31, P-32 |
+| **SERVICE** | G-2, G-4, G-9, G-11, G-23, G-24, G-25, G-28, G-30, G-31, G-38, G-39 | P-1, P-4, P-5, P-11, P-22, P-23, P-25, P-27, P-28, P-29, P-31, P-32, P-37 |
 | **REDIS/CACHE** | G-2, G-4 | P-1, P-5, P-6, P-14, P-29 |
 | **ORM/DB** | G-9, G-28, G-30 | P-5, P-11, P-15, P-29, P-32 |
-| **API-CALL** | G-3, G-15, G-28, G-29 | P-1, P-2, P-6, P-16, P-25, P-27, P-28, P-31 |
-| **GUARD/AUTH** | G-6, G-8, G-11, G-20, G-28, G-29 | P-1, P-6, P-7, P-14, P-28 |
+| **API-CALL** | G-3, G-15, G-28, G-29, G-36 | P-1, P-2, P-6, P-16, P-25, P-27, P-28, P-31, P-35 |
+| **GUARD/AUTH** | G-6, G-8, G-11, G-20, G-28, G-29, G-32 | P-1, P-6, P-7, P-14, P-28 |
 | **STATE-MACHINE** | G-1, G-7, G-21, G-28 | P-7, P-13, P-18 |
-| **ORCHESTRATOR** | G-2, G-20, G-21, G-23, G-24, G-25 | P-5, P-14, P-20, P-21, P-22, P-23, P-24, P-25, P-28 |
-| **EXPORT/FORMAT** | G-2, G-4, G-11, G-12, G-13, G-16, G-17, G-23, G-24, G-28 | P-1, P-4, P-22, P-23 |
-| **ADAPTER/TRANSFORM** | G-2, G-14, G-15, G-22, G-30 | P-1, P-9, P-16 |
+| **ORCHESTRATOR** | G-2, G-20, G-21, G-23, G-24, G-25, G-31 | P-5, P-14, P-20, P-21, P-22, P-23, P-24, P-25, P-28 |
+| **EXPORT/FORMAT** | G-2, G-4, G-11, G-12, G-13, G-16, G-17, G-23, G-24, G-28, G-35 | P-1, P-4, P-22, P-23 |
+| **ADAPTER/TRANSFORM** | G-2, G-14, G-15, G-22, G-30, G-35 | P-1, P-9, P-16 |
+| **CONTROLLER** | G-2, G-4, G-6, G-9, G-28, G-32, G-33, G-34 | P-1, P-5, P-28, P-33, P-34, AP15, AP16 |
+| **STATIC-ANALYSIS** | G-37, G-28, G-30 | P-26, P-35 |
+| **INTEGRATION-PIPELINE** | G-35, G-36, G-38, G-22, G-13 | P-35, P-36, P-37 |
 
-**Always apply:** G-2 (behavior assertions), G-4 (factories), P-1 (null/undefined), P-3 (boolean returns if applicable), P-4 (DRY boilerplate), P-26 (test name = test behavior), P-28 (phantom mocks)
+**Always apply:** G-2 (behavior assertions), G-4 (factories), P-1 (null/undefined), P-3 (boolean returns if applicable), P-4 (DRY boilerplate), P-26 (test name = test behavior), P-28 (phantom mocks), G-31 (call order when sequence matters), G-32 (admin/non-admin symmetry for guarded endpoints)
 
 ### Step 3: Write tests applying ONLY loaded patterns
 
-Don't scan all 62 patterns. Only read the details of patterns from your lookup result.
+Don't scan all ~77 patterns. Only read the details of patterns from your lookup result.
 
 ### Step 4: Self-Evaluate (MANDATORY after writing tests)
 
 Run this checklist IMMEDIATELY after writing tests. You already have full context — no files to read, just answer honestly.
 
-**15 binary questions (1 point each):**
+**17 binary questions (1 point each):**
 
 | # | Dimension | Question | 1 = YES, 0 = NO |
 |---|-----------|----------|-----------------|
 | Q1 | Structure | Every test name describes the expected behavior (not "should work", "handles data")? | |
 | Q2 | Structure | Tests grouped in logical describe blocks (by feature/method, not flat list)? | |
-| Q3 | Assertions | Every mock has `CalledWith` for positive AND `not.toHaveBeenCalled` for negative side-effects? | |
+| Q3 | Assertions | Every mock has `CalledWith` for positive AND `not.toHaveBeenCalled` for negative side-effects? (**N/A** if no mocks — score as 1) | |
 | Q4 | Assertions | All assertions on known data are exact (`toEqual`/`toBe`, not `toBeTruthy`/`toBeGreaterThan(0)`)? | |
-| Q5 | Mocks | Mocks are typed (factory pattern or proper types, not `as any`/`as never` scattered)? | |
-| Q6 | Mocks | Mock state is fresh per test (no shared mutable `let` at module scope, proper `beforeEach`)? | |
+| Q5 | Mocks | Mocks are typed (factory pattern or proper types, not `as any`/`as never` scattered)? (**N/A** if no mocks — score as 1) | |
+| Q6 | Mocks | Mock state is fresh per test (no shared mutable `let` at module scope, proper `beforeEach`)? (**N/A** if no mocks — score as 1) | |
 | Q7 | Edges | At least one error path test (function throws / returns error / rejects)? **CRITICAL** | |
 | Q8 | Edges | Null/undefined/empty inputs tested where applicable? | |
 | Q9 | Readability | Repeated setup (3+ tests) extracted to helper/factory? | |
 | Q10 | Readability | No magic values — test data is self-documenting or uses named constants? | |
-| Q11 | Completeness | All code branches exercised (every if/else, switch case, early return)? **CRITICAL** | |
-| Q12 | Completeness | Symmetric coverage: every "does X when Y" has a "does NOT do X when not-Y"? | |
+| Q11 | Completeness | All code branches exercised (every if/else, switch case, early return)? **CRITICAL** — In deep mode: cite 2-3 specific branches and the tests covering them as evidence. | |
+| Q12 | Completeness | Symmetric coverage: every "does X when Y" has a "does NOT do X when not-Y"? **Procedure: list ALL methods → for each repeated pattern (auth guard, validation, error), verify EVERY method has it. One missing = 0.** | |
 | Q13 | Behavioral | Tests import and call actual production function (not a local copy/reimplementation)? **CRITICAL** | |
 | Q14 | Behavioral | Assertions verify output/behavior, not just that a mock was called? | |
 | Q15 | Depth | Assertions verify content/values, not just counts or shape? (`options[0].text === '18-24'` not just `options.length === 2`) **CRITICAL** | |
+| Q16 | Isolation | Cross-cutting isolation verified? When changing A, assert B is NOT affected? (**N/A** if single-entity tests — score as 1) | |
+| Q17 | Computed | Assertions verify COMPUTED output, not input echo? **CRITICAL** — BAD: `expect(result.from).toEqual(18)` (18 was the input); BAD: `expect(result.id).toEqual(1)` (mock returns `{id:1}`); GOOD: `expect(result.cpi_after_discount).toBe(2.25)` (2.5 × 0.9 computed) | |
 
 **Anti-pattern deductions (each = -1 point):**
 
@@ -90,6 +98,12 @@ Run this checklist IMMEDIATELY after writing tests. You already have full contex
 | AP10 | Tautological mock test: call mock directly → verify mock called, zero production code in between? | Import and call production function. Test proves vi.fn() works, not your code. Overlaps Q13 but more specific. |
 | AP11 | `vi.mocked(vi.fn())` — mock targeting a fresh fn instead of imported module? | Mock the actual import: `vi.mocked(useParams).mockReturnValue(...)`. Fresh fn mock does nothing. |
 | AP12 | `waitForTimeout(N)` hardcoded delay in async/E2E tests? | Use event-based waits: `waitForRequest`, `waitForSelector`, `waitFor(() => expect(...))`. |
+| AP13 | Test body has zero `expect()` calls — just calls code and exits | Add assertions or delete the test. A test without expect is not a test. **AUTO TIER-D.** **Exception:** In RTL, `getByRole`/`getByText`/`getByLabelText` are implicit assertions (throw if not found). A test with only `getBy*` queries and no `expect()` is NOT AP13. AP13 targets tests that call production code with zero verification. |
+| AP14 | `toBeTruthy()`/`toBeDefined()` as SOLE assertion on complex object/response | Replace with `toEqual`/`toMatchObject` verifying actual structure/values. **Exception:** RTL `getByRole`/`getByText` + `toBeInTheDocument()` is NOT AP14 — the query itself is the assertion. AP14 targets `expect(result).toBeTruthy()` on data objects. |
+| AP15 | Testing private/internal methods directly (`controller.__method()`, `service._internal()`) | Test through public API. Private methods are implementation details — tests coupled to them break on refactor. Metric: tests calling `__methods` averaged 3.0/10 (N=92). If you NEED to test a private method, extract it to a service. |
+| AP16 | Fixture:assertion ratio > 20:1 (e.g., 850 lines data, 5 lines assertions) | Extract fixtures to factory functions or JSON files. Add assertions proportional to data complexity. |
+| AP17 | Unused test data — `const updateRequest = {...}` declared but never used in any test | Write the test or delete the declaration. Signals incomplete coverage — someone planned a test and forgot. |
+| AP18 | Duplicate test numbers/names — two tests with `#1.1` or identical `it` descriptions | Indicates copy-paste without review. Renumber/rename to reflect distinct scenarios. |
 
 **Stack adjustments (each missed = -1 from total):**
 
@@ -101,6 +115,9 @@ Run this checklist IMMEDIATELY after writing tests. You already have full contex
 | Backend | Tests 4xx/5xx status codes, not just 200? | API endpoint handler |
 | Backend | CalledWith on DB mock verifies WHERE clause? | Prisma/DB query mock |
 | Backend/Service | Tests infrastructure failure (DB/API throws → fail-open or fail-closed)? | Code with try/catch around DB/API calls |
+| NestJS | No `spyOn(service, service.ownMethod)` self-mock? | Any NestJS service test |
+| NestJS | Uses `makeX()` factory, not inline 100+ LOC fixture? | 3+ tests with similar setup |
+| NestJS | Tests public controller methods, not `__private`? | Any controller test |
 | Python | Uses `conftest.py` fixtures, not copy-paste? | 3+ test files in same directory |
 | E2E | No vacuous conditionals? | Any `if` inside test body |
 | Any | Parameter combinations tested (`it.each` or explicit)? | Function with 2+ boolean flags or mode enum |
@@ -111,16 +128,25 @@ When scoring a file that's part of a modular test suite (orchestrator + suite fi
 
 **Critical gate:**
 
-If ANY of Q7, Q11, Q13, Q15 = 0 → result is **capped at FIX** regardless of total score. These dimensions cannot be compensated by high scores elsewhere. A test with perfect names and factories but zero error coverage is not PASS-worthy.
+If ANY of Q7, Q11, Q13, Q15, Q17 = 0 → result is **capped at FIX** regardless of total score. These dimensions cannot be compensated by high scores elsewhere. A test with perfect names and factories but zero error coverage or input-echo-only assertions is not PASS-worthy.
+
+**Auto Tier-D triggers** (bypass scoring entirely):
+- AP13 found (test without assertions) → file is Tier D
+- AP16 found (fixture:assertion ratio > 20:1) → file is Tier D
+- 50%+ of tests have AP14 (toBeTruthy as sole assertion) → file is Tier D
+
+**Q17 audit rule:** If ≥50% of assertions check values that are direct copies of input/request/mock-return without transformation → Q17=0. In deep mode, cite 1-2 examples: "assertion X is echo of input Y".
+
+**N/A normalization:** Questions marked N/A (Q3/Q5/Q6/Q16 when not applicable) score as 1 — don't penalize tests for not having mocks when no mocks are needed. This prevents PURE function tests from being unfairly scored lower than mock-heavy service tests.
 
 **Scoring:**
 
 ```
-Total = (Q1-Q15 yes count) - (AP deductions) - (stack deductions)
+Total = (Q1-Q17 yes count, with N/A=1) - (AP deductions) - (stack deductions)
 
-≥ 12  PASS — continue (unless critical gate triggers → FIX)
-8-11  FIX — identify worst dimension, improve it, re-score
-< 8   BLOCK — major gaps, rewrite before continuing
+≥ 14  PASS — continue (unless critical gate triggers → FIX)
+9-13  FIX — identify worst dimension, improve it, re-score
+< 9   BLOCK — major gaps, rewrite before continuing
 ```
 
 **Output format (append to your response after tests):**
@@ -128,14 +154,14 @@ Total = (Q1-Q15 yes count) - (AP deductions) - (stack deductions)
 Score EACH question individually — never group (e.g., "Q1-Q6: 5/6" is FORBIDDEN). Use this exact format:
 
 ```
-Self-eval: Q1=1 Q2=1 Q3=0 Q4=1 Q5=1 Q6=1 Q7=1 Q8=0 Q9=1 Q10=1 Q11=1 Q12=0 Q13=1 Q14=1 Q15=1
-  Score: 12/15 - 0 deductions = 12 → PASS
-  Critical gate: Q7=1 Q11=1 Q13=1 Q15=1 → PASS
+Self-eval: Q1=1 Q2=1 Q3=0 Q4=1 Q5=1 Q6=1 Q7=1 Q8=0 Q9=1 Q10=1 Q11=1 Q12=0 Q13=1 Q14=1 Q15=1 Q16=1 Q17=1
+  Score: 14/17 - 0 deductions = 14 → PASS
+  Critical gate: Q7=1 Q11=1 Q13=1 Q15=1 Q17=1 → PASS
 ```
 
 The individual scores are required so you (and the user) can see exactly which dimensions failed. Grouped scores hide the specific gaps and make fixes harder to target.
 
-Example: `Q1=1 Q2=1 Q3=1 Q4=1 Q5=0 Q6=1 Q7=1 Q8=1 Q9=1 Q10=1 Q11=1 Q12=1 Q13=1 Q14=1 Q15=0 = 13/15 → FIX [CRITICAL: Q15=0]`
+Example: `Q1=1 Q2=1 Q3=1 Q4=1 Q5=0 Q6=1 Q7=1 Q8=1 Q9=1 Q10=1 Q11=1 Q12=1 Q13=1 Q14=1 Q15=1 Q16=0 Q17=0 = 14/17 → FIX [CRITICAL: Q17=0]`
 
 If FIX or BLOCK: fix the issues, then re-run the checklist.
 
@@ -691,7 +717,21 @@ If FIX or BLOCK: fix the issues, then re-run the checklist.
   expect(error).toBeInstanceOf(Error);
   expect(error.message).toContain('1 translated segment');
   ```
-- **Source:** review 2026-02-16, project-services — try/catch assertions for singular/plural validation messages
+- **NestJS variant** (seen 3x in review):
+  ```typescript
+  // WRONG — passes if controller does NOT throw:
+  try {
+    await controller.findOne(id, reqHeader);
+  } catch (err) {
+    expect(err.response.statusCode).toEqual(400);
+  }
+
+  // CORRECT:
+  await expect(controller.findOne(id, reqHeader))
+    .rejects.toThrow(BadRequestException);
+  ```
+- **Metric:** Tests using try/catch pattern averaged 3.5/10 (N=92).
+- **Source:** review 2026-02-16, project-services + review 2026-02-21, LocalStrategy, OfferController #19
 
 ### P-28: Phantom Mocks (Untested Mock Setup)
 - **When:** `beforeEach` sets up a mock (e.g., `mockDemoLink.findUnique.mockResolvedValue(null)`) but no test in the suite exercises that code path
@@ -757,6 +797,217 @@ If FIX or BLOCK: fix the issues, then re-run the checklist.
   - Assert the exact value: `expect(result.confidence).toBe(0)` — not just "doesn't throw"
 - **Why:** `Math.round(0/0 * 100)` = `NaN`. `100/0` = `Infinity`. Both propagate silently through JSON serialization and UI, showing "NaN%" to users.
 - **Source:** review 2026-02-15, Translation utils — mergeEvalResults([], 0) → confidence = NaN, test didn't check the value
+
+### P-33: Input Echo Assertions (Asserting Input, Not Output)
+- **When:** Test assertion checks a value that was directly passed as input, not computed by the function
+- **Problem:**
+  ```typescript
+  const request = { from: 18, to: 65, gender: "both" };
+  const [result] = await controller.GetAutoGenerateQuota(request);
+  expect(result.from).toEqual(18);  // ← this is the INPUT, not computed
+  ```
+  Passes even if controller returns `{ from: request.from }` without any computation.
+- **Fix:** Assert COMPUTED values: `expect(result.population).toBe(expectedPop)`, `expect(result.brackets[0].quota).toBe(calculatedQuota)`
+- **Related:** Q17 (computed output check) — this is the specific anti-pattern Q17 catches
+- **Source:** review 2026-02-21, OfferQuotaController 2/10 — 4 tests, all asserting `result.from === 18` (input echo)
+
+### P-34: Fixture:Assertion Ratio Smell
+- **When:** Test file has >5x more lines of fixture data than assertion lines
+- **Problem:** 850 lines of inline data + 5 lines of assertions = the test is documentation, not verification. Massive data creates illusion of coverage.
+- **Thresholds (calibrated on N=92):**
+  - <3:1 — healthy (avg 7.8/10)
+  - 3:1 to 10:1 — warning, consider factory extraction (avg 5.5/10)
+  - 10:1 to 50:1 — critical, almost certainly undertested (avg 2.5/10)
+  - >50:1 — Auto Tier-D (avg 2.0/10)
+- **Fix:** Factory functions with overrides (G-4), programmatic generation, or JSON fixture files
+- **Source:** review 2026-02-21, OfferQuota 850:5 ratio (2/10), OfferController 500:50 ratio (3/10)
+
+### P-35: Self-Referential Contract Tests (Dict-in, Dict-out)
+- **When:** Test builds a response dict/object manually and asserts its structure
+- **Problem:**
+  ```python
+  response = {"status": "ok", "questions": []}
+  assert isinstance(response["questions"], list)  # always True
+  ```
+  Tests dict construction, not production code. If real endpoint returns None, test still passes.
+- **Fix:** Call actual production function: `question_list = build_question_list(real_meta)`
+- **When hardcoded IS OK:** Documenting expected contract shape (but label it `TestContractShape`)
+- **Source:** review 2026-02-21, Datalab Agent 3 — ~60% tests build dicts and assert structure
+
+### P-36: Overly Generous Performance Thresholds
+- **When:** Performance test threshold is 100x actual expected time
+- **Problem:** `assert t < 10000ms` for 50ms operation. 10x regression still passes.
+- **Fix:** Benchmark actual P95, set threshold at 3-5x P95. Always print actual time.
+- **Source:** review 2026-02-21, Datalab Agent 7 — 10s threshold for ~200ms operation
+
+### P-37: Module-Level Side Effects in Test Files
+- **When:** Test file has `open()`, `json.load()`, `sys.modules` at module level
+- **Problem:** Missing file → entire module fails to import → all tests skip with confusing error. Global mutable state leaks.
+- **Fix:** Move to `conftest.py` fixtures with `scope="session"`. Use `pytest.skip()` for optional fixtures.
+- **Source:** review 2026-02-21, Datalab Agent 2+7 — module-level `_meta = json.load(open(...))` and `sys.modules` stubs
+
+### P-38: Missing Public Method Coverage
+- **When:** Production file has N public methods/exported functions, test file covers fewer than N
+- **Problem:** Untested public methods have zero regression safety. Especially dangerous for CRUD endpoints where `create()` exists in production but test file only covers `update()` and `delete()`. Refactoring or adding validation to untested method breaks silently.
+- **Required tests:** At least 1 `it()` block per public method (happy path minimum). For CONTROLLER/SERVICE: list all route handlers / exported methods, verify each has a test.
+- **Detection:** Compare `export function`/`async method()` in production file vs `describe`/`it` blocks in test file. Any public method with zero matching test = P-38 gap.
+- **Source:** code-audit feedback 2026-02-21, offer.controller — `create()` endpoint had zero test coverage while `createVersion()` and `createOption()` were fully tested
+
+---
+
+## Good Patterns (continued) — Cross-Project Patterns
+
+### G-31: Call Order Verification
+- **When:** Code executes operations in a required sequence (collect before delete, auth before action, init before process)
+- **Do:**
+  - Track order via array: `const callOrder: string[] = []; mockFn.mockImplementation(async () => { callOrder.push('name'); })`
+  - Assert relative positions: `expect(callOrder.indexOf('collect')).toBeLessThan(callOrder.indexOf('delete'))`
+- **Why:** Race conditions where operations execute out of order are invisible to CalledWith/CalledTimes checks. Only order verification catches them.
+- **Source:** review 2026-02-21, risk-sync.service — reindexAllRisks verified findMany BEFORE deleteAll via callOrder array
+
+### G-32: Admin/Non-Admin Symmetry (Guard Pattern)
+- **When:** Endpoint/method has authorization check (role, ownership, permission)
+- **Do:** For EACH guarded operation, write 3 tests:
+  1. Authorized user → success + verify result
+  2. Unauthorized user → throws permission error (exact message)
+  3. Unauthorized user → service method `not.toHaveBeenCalled()` (proves guard is BEFORE logic)
+- **Owner check variant** (when auth = ownership, not role):
+  4. Non-owner user → throws "You are not creator of this offer!" (or equivalent)
+  5. Non-owner user → mutation service `not.toHaveBeenCalled()`
+- **Why:** Test #3/#5 is critical — without it, someone could move the auth check after the mutation and tests 1-2 still pass. Verifies guard ordering.
+- **Source:** review 2026-02-21, ProjectScopeController 8/10 — every CRUD endpoint × 3; OfferController #4.4, #18.2 — owner check variant
+
+### G-33: SmartMock / Proxy Factory for Mega-Controllers
+- **When:** Controller/class has 10+ injected dependencies
+- **Do:**
+  ```typescript
+  function createSmartMock<T extends object>(baseMocks: Partial<T> = {}): T {
+    const cache = new Map<string | symbol, jest.Mock>();
+    return new Proxy(baseMocks as T, {
+      get(target, prop) {
+        if (prop in target) return target[prop as keyof T];
+        if (!cache.has(prop)) cache.set(prop, jest.fn().mockResolvedValue(undefined));
+        return cache.get(prop);
+      },
+    });
+  }
+  ```
+  - Mock only what you test, Proxy auto-creates the rest
+  - Eliminates 500+ lines of `useValue: { method1: jest.fn(), method2: jest.fn() }`
+- **Why:** 18-provider manual mock setup is the #1 contributor to test bloat in NestJS projects. SmartMock reduces setup from 200 lines to 20 while maintaining type safety.
+- **Source:** review 2026-02-21, OfferController refactored test — SmartMock Proxy cut setup from 500 to ~80 lines
+
+### G-34: Direct Instantiation over TestingModule (NestJS)
+- **When:** NestJS controller/service has 10+ providers AND test doesn't need NestJS-specific features (pipes, guards, interceptors at module level)
+- **Do:** `controller = new Controller(dep1, dep2, dep3, ...)` instead of `Test.createTestingModule({...}).compile()`
+- **Combine with G-33:** SmartMock for each dependency
+- **Why:** TestingModule compilation with 20+ providers adds latency per test run and forces you to declare every mock upfront. Direct instantiation is faster and lets SmartMock handle unused methods.
+- **When NOT to use:** When testing guards, interceptors, pipes, or validation that requires the NestJS DI pipeline
+- **Source:** review 2026-02-21, OfferController refactored test — bypassed 47-provider TestingModule
+
+### G-35: Type Boundary Assertions (Framework Crossing)
+- **When:** Code passes data between two frameworks/libraries (Polars↔Pandas, NumPy↔Torch, ORM↔raw SQL)
+- **Do:**
+  - Assert `isinstance(result, pl.DataFrame)` AND `not isinstance(result, pd.DataFrame)` at every boundary
+  - Name tests after the boundary: `test_build_export_dataframe_returns_pandas`
+  - Test BOTH directions: `to_pandas()` produces Pandas, `from_pandas()` produces Polars
+  - Verify framework-specific attributes exist/don't exist: `.height` (Polars-only), `.loc` (Pandas-only)
+- **Why:** Framework confusion is the #1 runtime error in dual-framework codebases. `df.fillna()` on Polars silently fails. `df.height` on Pandas → AttributeError.
+- **Source:** review 2026-02-21, Datalab Agent 2 — systematic `isinstance` + `not isinstance` at every service boundary
+
+### G-36: Contract Tests Tracing Client Crash Points
+- **When:** Backend API serves frontend that accesses response with `.forEach()`, `Object.entries()`, `.map()`
+- **Do:**
+  - Create `assert_array_not_null(value, path)` and `assert_dict_not_none(value, path)` helpers
+  - Document each client access pattern in docstring with file:line reference
+  - Test that every collection field is NEVER null (always `[]` or `{}`)
+  - Test JSON serializability of every response
+  - **CRITICAL:** Call actual production function, not just build dict and assert
+- **Anti-pattern:** Building a dict literal and asserting its fields are lists — tests dict construction, not production code (see P-35).
+- **Source:** review 2026-02-21, Datalab Agent 3 — `assert_array_not_null` + JS line references
+
+### G-37: Static Analysis as Tests (AST/Regex Scanning)
+- **When:** Codebase has recurring bug patterns detectable by scanning source files
+- **Do:**
+  - `ast.parse()` all source files → catch SyntaxError
+  - Regex scan with context: check if match is in comment, string, or active code
+  - Build safe-lists for known-good patterns (`PANDAS_SAFE_FILES`, parameterized SQL)
+  - Backward trace to determine variable type (scan 50 lines back for assignment)
+  - **Zero false positives** — better to miss a bug than cry wolf
+- **Categories:** Framework confusion (Polars/Pandas), SQL injection, security config, path traversal, dangerous imports
+- **Source:** review 2026-02-21, Datalab Agent 5 — Polars/Pandas confusion detector, SQL injection audit, security config
+
+### G-38: Preserve Semantics Testing
+- **When:** Operation conditionally modifies data — should NOT clear existing values where condition is False
+- **Do:**
+  - First operation: set value A where condition X
+  - Second operation: set value A where condition Y (disjoint from X)
+  - Assert BOTH X and Y rows have value A after both operations
+  - Name: `test_multiple_preserve_existing`
+- **Why:** "Last write wins" bugs are silent — second set_value clears first, test passes if you only check the second.
+- **Source:** review 2026-02-21, Datalab RecodeService — `TestSetValuePreserve` verified two set_value calls don't interfere
+
+### G-39: Deprecated Method Regression Test
+- **When:** Method is deprecated but still callable (backward compatibility)
+- **Do:**
+  - Call deprecated method → assert it returns deprecation warning
+  - Assert data is NOT modified (method is no-op)
+  - Assert no errors produced (graceful degradation)
+- **Source:** review 2026-02-21, Datalab RecodeService — `recode()` deprecated, returns warning, doesn't modify data
+
+### G-40: Author/Era Mapping Heuristic (Audit Pattern)
+- **When:** Auditing a large module (50+ test files) across multiple directories
+- **Do:**
+  - Map test quality to directory/file naming convention, not to module complexity
+  - Identify distinct "generations" by shared patterns:
+    - **Generation A signs:** `makeX()` factories, `CalledWith`, error propagation, `not.toHaveBeenCalled()`
+    - **Generation B signs:** `spyOn(self)`, `toBeTruthy()`, `__privateMethod()`, 200+ LOC inline fixture
+  - Score generations separately — averaging across them hides the bimodal distribution
+  - Prioritize Generation B for rewrite, use Generation A as reference implementation
+- **Why:** Module-level averages (e.g., "Offer module: 6/10") are misleading when the module has 42 files at 8.4/10 and 8 files at 2.6/10. The 8 bad files create false security.
+- **Evidence:**
+  ```
+  offer/services/*.spec.ts      → 4 files, avg 8.6/10  (modern)
+  offer/unit-test/*.spec.ts     → 5 files, avg 2.8/10  (legacy)
+  Same module. Same domain. 3x quality difference.
+  ```
+- **Source:** review 2026-02-21, Offer Module 92-file audit — clear two-author pattern
+
+---
+
+## Red Flags — Quick Heuristics (for audit/review)
+
+Empirical correlations from 92-file cross-project analysis (N=20 initial, N=92 confirmed). Use as fast pre-screening before full Q1-Q17 evaluation.
+
+| Indicator | Avg Score (N=92) | Action |
+|-----------|-----------------|--------|
+| 0 CalledWith in entire file | 2.6/10 | Almost certainly Tier C/D — prioritize for review |
+| 4+ CalledWith assertions | 8.4/10 | Likely Tier A/B — lower priority |
+| 10+ DI providers in setup | 2.8/10 | Signals monolithic controller — test quality suffers |
+| 1-2 DI providers in setup | 7.8/10 | Focused test — likely good quality |
+| >200 lines of inline fixture data | 2.0/10 | Needs factory extraction — Tier C/D |
+| <50 lines of fixture data | 8.0/10 | Proportional setup — likely good |
+| Tests calling `__privateMethod()` | 3.0/10 | Coupled to implementation — Tier C/D |
+| Factory functions with overrides (`makeX()`) | 8.4/10 | **Strongest single quality predictor** |
+| `spyOn(service, service.ownMethod)` — self-mock | 3.0/10 | Test proves mock works, not code. AP10 |
+| `toBeTruthy()` as sole assertion | 2.5/10 | No real verification — Tier D |
+| Fixture:assertion ratio > 20:1 | 2.3/10 | Auto Tier-D confirmed at scale (AP16) |
+| Assertions only on `.id` or input values | 2.8/10 | Input echo — see Q17 |
+| `try/catch` wrapping expect (not `rejects.toThrow`) | 3.5/10 | Silent false-positive — P-27 |
+| `isinstance` + `not isinstance` at boundaries (Python) | 8.7/10 | Strong dual-framework testing |
+| Real data fixtures (>50 rows, Python) | 8.5/10 | Strong integration quality |
+| Test builds dict literal and asserts structure (Python) | 7.0/10 | Self-referential — check P-35 |
+
+**Fixture:Assertion Ratio thresholds (calibrated on N=92):**
+
+| Ratio | Avg Score | Example |
+|-------|-----------|---------|
+| < 3:1 | 7.8/10 | offer-clone.service (makeOffer factory, 8.5/10) |
+| 3:1 – 10:1 | 5.5/10 | offer-client-brief.controller (4/10) |
+| 10:1 – 50:1 | 2.5/10 | offer-public.controller (748 LOC, ~15 assertions) |
+| > 50:1 | 2.0/10 | offer-quota.controller (1634 LOC, 5 assertions) — Auto Tier-D |
+
+These are HEURISTICS, not rules. A file with 0 CalledWith could still be Tier A if testing pure functions. Always run full Q1-Q17 for definitive scoring.
 
 ---
 

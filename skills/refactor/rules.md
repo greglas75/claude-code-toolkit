@@ -6,13 +6,14 @@ Stack-specific examples are at `~/.claude/refactoring-examples/{stack}.md` — l
 
 ---
 
-## Refactoring Types (9)
+## Refactoring Types (10)
 
 | Type | Description | Test Mode | Verification |
 |------|-------------|-----------|--------------|
 | `EXTRACT_METHODS` | Extract methods to service/helper | WRITE_NEW | tests |
 | `SPLIT_FILE` | Split god class into N files by concern | WRITE_NEW | tests + no file > limit + encoding + setup dedup + backlog |
-| `BREAK_CIRCULAR` | Fix circular dependencies | RUN_EXISTING | madge + tsc |
+| `GOD_CLASS` | Iterative decomposition of massive file (>500 lines AND >15 deps) | WRITE_FUNCTIONAL | functional tests → iterative extract + unit test loop |
+| `BREAK_CIRCULAR` | Fix circular dependencies | RUN_EXISTING | madge + tsc (fallback: eslint import/no-cycle if madge fails) |
 | `MOVE` | Move files/modules/types | RUN_EXISTING | tsc + grep old imports = 0 |
 | `RENAME_MOVE` | Rename + update all references | RUN_EXISTING | tsc + grep old_name = 0 |
 | `INTRODUCE_INTERFACE` | Add interfaces for DIP | RUN_EXISTING | tsc |
@@ -20,11 +21,41 @@ Stack-specific examples are at `~/.claude/refactoring-examples/{stack}.md` — l
 | `DELETE_DEAD` | Remove dead/unused code | RUN_EXISTING | grep usage = 0 + tsc |
 | `SIMPLIFY` | Simplify logic in-place | RUN_EXISTING + NEW_EDGES | tests + complexity down |
 
+### GOD_CLASS Auto-Detection
+
+GOD_CLASS is detected automatically during Stage 1 Audit when ANY of these are true:
+
+| Condition | How to check |
+|-----------|-------------|
+| File > 500 lines AND > 15 injected dependencies | `wc -l` + dependency count (see stack table below) |
+| File > 1000 lines (regardless of deps) | `wc -l` |
+| Constructor / `__init__` has > 15 parameters | Count constructor params |
+
+**Dependency counting by stack:**
+
+| Stack | Command | Notes |
+|-------|---------|-------|
+| TypeScript (NestJS) | `grep -c '@Inject\|private readonly'` in constructor | |
+| React (hooks) | Count `useQuery`, `useMutation`, `useStore`, `useContext` hooks | `useState`/`useRef`/`useMemo`/`useCallback` are local state — do NOT count as dependencies |
+| Python (class-based) | Count `self.xxx =` assignments in `__init__` | |
+| Python (FastAPI + Depends) | `grep -c 'Depends('` in function/class | |
+| Python (Django) | Count class-level field definitions + `__init__` params | |
+
+When detected, show:
+```
+GOD_CLASS DETECTED: [file] ([N] lines, [M] dependencies)
+Standard EXTRACT_METHODS/SPLIT_FILE won't work — switching to iterative mode.
+  - ETAP-1B: functional tests for ALL public endpoints (SmartMock Proxy)
+  - ETAP-2: iterative extract → unit test → verify → commit loop
+OK?
+```
+
 ### Test Mode Summary
 
 | Mode | Types | What to do |
 |------|-------|------------|
 | WRITE_NEW | EXTRACT_METHODS, SPLIT_FILE | Write new behavioral tests BEFORE refactoring |
+| WRITE_FUNCTIONAL | GOD_CLASS | Write functional tests for ALL public endpoints using SmartMock Proxy, then unit tests per extraction |
 | RUN_EXISTING | BREAK_CIRCULAR, MOVE, RENAME_MOVE, INTRODUCE_INTERFACE, DELETE_DEAD | Run existing tests; compiler is primary check |
 | RUN_IF_EXISTS | FIX_ERROR_HANDLING | Run tests if they exist; lint + compile otherwise |
 | RUN_EXISTING + NEW_EDGES | SIMPLIFY | Run existing + write new edge case tests |
@@ -39,8 +70,8 @@ Only do what's in the CONTRACT from ETAP-1A. No additions, no "improvements", no
 ### 2. TESTS FIRST
 Verify pre-extraction tests pass BEFORE making changes. Same tests must pass AFTER changes. If tests fail after refactoring — fix the code, not the tests.
 Before writing tests: read `~/.claude/test-patterns.md` (global). Classify code type, load matching patterns from lookup table, apply them.
-After writing tests: run Step 4 self-eval checklist (15 yes/no questions, scored individually). Score < 12 = fix before proceeding to ETAP-2.
-For SPLIT_FILE/EXTRACT_METHODS: (a) run Step 4 on EACH existing test file during Stage 1 audit — files < 12 → gaps into CONTRACT; (b) resolve ALL gaps in ETAP-1B — unresolved gaps block ETAP-2; (c) re-run Step 4 on each NEW split file — must score ≥ 12 and not lower than pre-split. A split that only moves code without improving test quality is a failed split.
+After writing tests: run Step 4 self-eval checklist (17 yes/no questions, scored individually). Score < 14 = fix before proceeding to ETAP-2. Critical gate: Q7, Q11, Q13, Q15, Q17 — any = 0 → auto-capped at FIX.
+For SPLIT_FILE/EXTRACT_METHODS: (a) run Step 4 on EACH existing test file during Stage 1 audit — files < 14 → gaps into CONTRACT; (b) resolve ALL gaps in ETAP-1B — unresolved gaps block ETAP-2; (c) re-run Step 4 on each NEW split file — must score ≥ 14 and not lower than pre-split. A split that only moves code without improving test quality is a failed split.
 
 ### 3. VERIFY APPROPRIATELY
 After each TASK: run relevant spec. After each PHASE: full test suite + tsc + lint. Use commands from project CLAUDE.md/package.json if present; else use defaults.
@@ -82,28 +113,24 @@ A CONTRACT is invalid if ANY of these are true:
 
 ---
 
-## Backup (Simplified)
+## Backup
 
-Use git-based backup only:
-
-```bash
-# Before starting
-git stash -u -m "pre-refactor-$(date +%Y%m%d-%H%M%S)"
-git checkout -b backup/refactor-[name]-$(date +%Y%m%d-%H%M%S) && git checkout -
-```
-
-Rollback: `git checkout backup/refactor-[name]-* -- [files]`
+Git-based backup commands are in `refactoring-protocol.md` Stage 0. Rollback: `git checkout backup/refactor-[name]-* -- [files]`
 
 ---
 
 ## Sub-Agents (spawned by /refactor)
 
-| Agent | When | Purpose |
-|-------|------|---------|
-| Dependency Mapper | Phase 2 (parallel) | Trace importers/callers of target files |
-| Existing Code Scanner | Phase 2 (parallel) | Find similar services, check for existing helpers |
-| Test Quality Auditor | After ETAP-1B | Verify test quality against hard gates |
-| Post-Extraction Verifier | After ETAP-2 | Verify delegation applied, no duplicated code, encoding preserved (SPLIT_FILE), shared test setup extracted, backlog items resolved |
+| Agent | Model | subagent_type | When | Purpose |
+|-------|-------|---------------|------|---------|
+| Dependency Mapper | Sonnet | Explore | Phase 2 (parallel) | Trace importers/callers of target files |
+| Existing Code Scanner | Haiku | Explore | Phase 2 (parallel) | Find similar services, check for existing helpers |
+| Test Quality Auditor | Sonnet | Explore | After ETAP-1B | Verify test quality against hard gates + self-eval |
+| Post-Extraction Verifier | Sonnet | Explore | After ETAP-2 | Verify delegation, imports, file sizes, orphans |
+
+Agent definition files: `~/.claude/skills/refactor/agents/*.md`
+
+**Backlog persistence:** Both Agent 3 and Agent 4 may output a `BACKLOG ITEMS` section. The lead MUST persist these to `memory/backlog.md` (see SKILL.md Phase 4.5).
 
 ---
 
@@ -199,10 +226,7 @@ If team mode fails mid-execution: dissolve team → revert to solo → resume fr
 
 ## File Size Limits
 
-Read project CLAUDE.md for overrides. Global defaults are in `~/.claude/rules/file-limits.md`:
-- **250 lines per file** (source code)
-- **400 lines per test file**
-- **50 lines per function/method**
+Read project CLAUDE.md for overrides. Defaults: `~/.claude/rules/file-limits.md`.
 
 ---
 

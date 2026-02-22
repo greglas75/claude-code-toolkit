@@ -16,7 +16,7 @@ When using EnterPlanMode / ExitPlanMode, the plan MUST include a **Test Strategy
 2. **Key patterns** to apply (G-/P- IDs from Step 2 lookup)
 3. **Test files** to create/modify (paths + scope)
 4. **Critical scenarios** (error paths, edge cases, infra failures)
-5. **Self-eval target**: minimum 12/15
+5. **Self-eval target**: minimum 14/17
 
 A plan without Test Strategy is incomplete — do not approve it.
 
@@ -43,6 +43,22 @@ A plan without Test Strategy is incomplete — do not approve it.
 - Behavior test (returns expected values)
 - State change test (updates correctly)
 - Side effect test (API calls, timers)
+
+### New API Endpoint — Mandatory Security Tests
+
+Every backend endpoint MUST include these tests (in addition to functional tests above):
+
+| # | Test | Expected |
+|---|------|----------|
+| S1 | Invalid schema (missing/bad fields) | 400 + Zod/validation error |
+| S2 | Auth missing (no token/cookie) | 401 |
+| S3 | Auth forbidden (wrong role) | 403 + `service.not.toHaveBeenCalled()` |
+| S4 | Tenant isolation (different orgId/ownerId) | 403 + `service.not.toHaveBeenCalled()` + no data leak |
+| S5 | Rate limit on auth endpoints | 429 after threshold |
+| S6 | XSS in HTML render paths (if applicable) | Sanitized output |
+| S7 | Path/ID traversal (if file/resource access) | 400 or 403 |
+
+Skip S5-S7 if not applicable to the endpoint. S1-S4 are always required.
 
 ## Test Requirements by Change Intent
 
@@ -103,7 +119,7 @@ feature-name.spec.ts           # Playwright E2E
 
 Run this checklist IMMEDIATELY after writing tests. Score EACH question individually — never group.
 
-**15 binary questions (1 = YES, 0 = NO):**
+**17 binary questions (1 = YES, 0 = NO):**
 
 | # | Question |
 |---|----------|
@@ -118,19 +134,23 @@ Run this checklist IMMEDIATELY after writing tests. Score EACH question individu
 | Q9 | Repeated setup (3+ tests) extracted to helper/factory? |
 | Q10 | No magic values — test data is self-documenting? |
 | Q11 | **CRITICAL** — All code branches exercised (if/else, switch, early return)? |
-| Q12 | Symmetric: every "does X when Y" has "does NOT do X when not-Y"? |
+| Q12 | Symmetric: every "does X when Y" has "does NOT do X when not-Y"? **Procedure: list ALL methods → for each repeated pattern (auth guard, validation, error), verify EVERY method has it. One missing = 0.** |
 | Q13 | **CRITICAL** — Tests import actual production function (not local copy)? |
 | Q14 | Assertions verify behavior, not just that a mock was called? |
 | Q15 | **CRITICAL** — Assertions verify content/values, not just counts/shape? |
+| Q16 | Cross-cutting isolation: change to A verified not to affect B? |
+| Q17 | **CRITICAL** — Assertions verify COMPUTED output, not input echo? |
 
-**Critical gate:** Q7, Q11, Q13, Q15 — any = 0 → auto-capped at FIX regardless of total.
+**N/A handling:** Q3/Q5/Q6 score as 1 (N/A) for pure functions with zero mocks. Q16 = 1 (N/A) for simple single-responsibility units.
 
-**Scoring:** ≥ 12 PASS, 8-11 FIX (fix worst dimension, re-score), < 8 BLOCK (rewrite).
+**Critical gate:** Q7, Q11, Q13, Q15, Q17 — any = 0 → auto-capped at FIX regardless of total.
+
+**Scoring:** ≥ 14 PASS, 9-13 FIX (fix worst dimension, re-score), < 9 BLOCK (rewrite).
 
 **Output format (individual scores required):**
 ```
-Self-eval: Q1=1 Q2=1 Q3=0 Q4=1 Q5=1 Q6=1 Q7=1 Q8=0 Q9=1 Q10=1 Q11=1 Q12=0 Q13=1 Q14=1 Q15=1
-  Score: 12/15 → PASS | Critical gate: Q7=1 Q11=1 Q13=1 Q15=1 → PASS
+Self-eval: Q1=1 Q2=1 Q3=0 Q4=1 Q5=1 Q6=1 Q7=1 Q8=0 Q9=1 Q10=1 Q11=1 Q12=0 Q13=1 Q14=1 Q15=1 Q16=1 Q17=1
+  Score: 14/17 → PASS | Critical gate: Q7=1 Q11=1 Q13=1 Q15=1 Q17=1 → PASS
 ```
 
 Full patterns (good patterns G-*, gap patterns P-*, stack adjustments): `~/.claude/test-patterns.md`
@@ -139,6 +159,6 @@ Full patterns (good patterns G-*, gap patterns P-*, stack adjustments): `~/.clau
 
 - [ ] New code has tests
 - [ ] Tests pass locally
-- [ ] Self-eval score ≥ 12 (all Q scored individually, critical gate passed)
+- [ ] Self-eval score ≥ 14/17 (all Q scored individually, critical gate Q7+Q11+Q13+Q15+Q17 passed)
 - [ ] Coverage didn't drop
 - [ ] No skipped/todo tests for new code

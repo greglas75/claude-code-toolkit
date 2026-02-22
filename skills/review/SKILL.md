@@ -15,6 +15,10 @@ Read ~/.claude/review-protocol.md            — detailed checklists, red-flag p
 ```
 Follow all Iron Rules from rules.md.
 
+## Progress Tracking
+
+Use `TaskCreate` at the start to create a todo list from the steps below. Update task status (`in_progress` → `completed`) as you progress. This gives the user visibility into multi-step execution.
+
 ## Step 0: Parse $ARGUMENTS
 
 $ARGUMENTS controls WHAT gets reviewed AND which mode to use.
@@ -153,11 +157,26 @@ CHANGE INTENT: [BUGFIX/REFACTOR/FEATURE/INFRA]
 
 ### Sub-Agent Preparation (launch in parallel at start)
 
-Before starting the audit steps, spawn 2 Haiku sub-agents in parallel (use Task tool, run_in_background=true). They gather context while you audit.
+Before starting the audit steps, spawn 2 support agents in parallel (use Task tool, run_in_background=true). They gather context while you audit.
 
-**Agent 1: Blast Radius Mapper** (Haiku, background)
+**IMPORTANT — Model Routing:**
+The Task tool does NOT read `.claude/agents/*.md` files automatically. You MUST specify the `model` parameter explicitly on every Task call. Agent definition files are referenced in prompts so agents can read their own instructions, but the model is set by YOU.
+
+| Agent | Model | subagent_type |
+|-------|-------|---------------|
+| Blast Radius Mapper | **sonnet** | Explore |
+| Pre-Existing Checker | **haiku** | Explore |
+| Structure Auditor | **sonnet** | Explore |
+| Behavior Auditor | **opus** | Explore |
+| Confidence Re-Scorer | **haiku** | Explore |
+
+**Agent 1: Blast Radius Mapper** (Sonnet, background)
 ```
-Prompt: "Analyze the blast radius of these changed files: [list from triage].
+Spawn via Task tool with:
+  subagent_type: Explore
+  model: "sonnet"
+  run_in_background: true
+  prompt: "Analyze the blast radius of these changed files: [list from triage].
 For each file:
 1. Run: grep -r 'import.*[filename]' or grep -r 'from.*[module]' to find all importers
 2. List direct callers (files that import this)
@@ -168,7 +187,11 @@ Return a dependency map showing blast radius per file."
 
 **Agent 2: Pre-Existing Checker** (Haiku, background)
 ```
-Prompt: "For each changed file in this diff, run git blame on the changed line ranges.
+Spawn via Task tool with:
+  subagent_type: Explore
+  model: "haiku"
+  run_in_background: true
+  prompt: "For each changed file in this diff, run git blame on the changed line ranges.
 Categorize each changed hunk as:
 - NEW: line didn't exist before (added by this change)
 - MODIFIED: line existed but was changed
@@ -209,70 +232,52 @@ Lead executes all steps sequentially. Current behavior, no changes.
 
 After Steps 0-1 (lead, sequential — these set context for everything), spawn 2 audit agents in parallel. Each is read-only — they analyze the same diff through different "lenses."
 
-**Structure Auditor** (general-purpose, background):
+**Structure Auditor** — `~/.claude/skills/review/agents/structure-auditor.md` (Sonnet, read-only):
 ```
-Prompt: "You are a code review auditor focusing on STRUCTURE, INTEGRATION, and PERFORMANCE.
-Read the review protocol at ~/.claude/review-protocol.md for detailed checklists.
+Spawn via Task tool with:
+  subagent_type: Explore          ← enforces read-only (no Edit/Write)
+  model: "sonnet"                 ← MUST set explicitly, Task tool ignores agent .md
+  run_in_background: true
+  prompt: "Read your full instructions at ~/.claude/skills/review/agents/structure-auditor.md, then audit these changed files.
 
 CHANGED FILES: [list from Step 1]
 DIFF: [full diff or file paths]
 TECH STACK: [detected stack]
 CHANGE INTENT: [from triage]
+TIER: [1/2/3]
 CONDITIONAL SECTIONS: [list from triage]
 BLAST RADIUS: [from Agent 1 if ready]
 
-Execute these review steps:
-- Step 2 (Static & Architecture): types, imports, naming, SRP, file/function sizes
-- Step 4 (Integration): component props, API calls, DB queries, env vars, backward compat
-- Step 5 (Performance): re-renders, bundle size, memoization, heavy computations
-[IF TIER 3]: - Step 10 (Rollback): rollback plan, migration reversibility
-[IF TIER 3]: - Step 11 (Documentation): README, API docs, TODOs
+SCOPE RULES by TIER + INTENT:
+- TIER 2 REFACTOR: focus on import correctness, barrel exports, file limits. Skip deep performance analysis unless obvious regression.
+- TIER 2 FEATURE: full Steps 2, 4, 5.
+- TIER 3: Include Steps 10 (Rollback) and 11 (Documentation).
 
-For EACH issue found, output:
-  ID: [STRUCT-N]
-  Severity: CRITICAL/HIGH/MEDIUM/LOW
-  Step: [which step found it]
-  File: [path]
-  Location: [function/line]
-  Code: [exact quote, max 20 lines]
-  Problem: [why it's wrong]
-  Impact: [what breaks]
-  Fix: [complete replacement code for MEDIUM+]
-
-Follow ALL Iron Rules from rules.md. Evidence required. No vague claims."
+Output STRUCT-N issues per the format in your instructions."
 ```
 
-**Behavior Auditor** (general-purpose, background):
+**Behavior Auditor** — `~/.claude/skills/review/agents/behavior-auditor.md` (Opus, read-only):
 ```
-Prompt: "You are a code review auditor focusing on LOGIC, SIDE EFFECTS, and SAFETY.
-Read the review protocol at ~/.claude/review-protocol.md for detailed checklists.
+Spawn via Task tool with:
+  subagent_type: Explore          ← enforces read-only (no Edit/Write)
+  model: "opus"                   ← MUST set explicitly, Task tool ignores agent .md
+  run_in_background: true
+  prompt: "Read your full instructions at ~/.claude/skills/review/agents/behavior-auditor.md, then audit these changed files.
 
 CHANGED FILES: [list from Step 1]
 DIFF: [full diff or file paths]
 TECH STACK: [detected stack]
 CHANGE INTENT: [from triage]
+TIER: [1/2/3]
 CONDITIONAL SECTIONS: [list from triage]
 PRE-EXISTING DATA: [from Agent 2 if ready]
 
-Execute these review steps:
-- Step 3 (Logic & Side Effects): business logic, error handling, silent failures, hooks, race conditions, state, feature completeness
-- Step 6 (Regressions): test impact, system impact, test quality
-- Step 9 (Observability): logging, error tracking, debug support
-[IF TIER 3]: - Step 7 (Security): XSS, injection, secrets, auth, CSRF, PII
-[IF TIER 3]: - Step 8 (i18n): hardcoded strings, locale, RTL
+SCOPE RULES by TIER + INTENT:
+- TIER 2 REFACTOR: verify behavioral equivalence (before=after). Run ONLY affected tests, NOT full suite. Skip feature completeness (Step 3.7).
+- TIER 2 FEATURE: full Steps 3, 6, 9. Run affected + related tests.
+- TIER 3: Include Steps 7 (Security) and 8 (i18n). Full test suite allowed.
 
-For EACH issue found, output:
-  ID: [BEHAV-N]
-  Severity: CRITICAL/HIGH/MEDIUM/LOW
-  Step: [which step found it]
-  File: [path]
-  Location: [function/line]
-  Code: [exact quote, max 20 lines]
-  Problem: [why it's wrong]
-  Impact: [what breaks]
-  Fix: [complete replacement code for MEDIUM+]
-
-Follow ALL Iron Rules from rules.md. Evidence required. No vague claims."
+Output BEHAV-N issues per the format in your instructions."
 ```
 
 **Lead collects results:**
@@ -340,35 +345,29 @@ After completing all audit steps, DO NOT write the report yet. Instead:
 
 1. Collect all candidate issues found during audit
 2. Cross-reference with Pre-Existing Checker results — mark any issue on pre-existing lines
-3. Spawn **Agent 3: Confidence Re-Scorer** (Haiku):
+3. Spawn **Confidence Re-Scorer** — `~/.claude/skills/review/agents/confidence-rescorer.md` (Haiku):
 
 ```
-Prompt: "You are an independent code review skeptic. Your job is to challenge
-each issue and filter out false positives. The reviewing agent found these issues:
+Spawn via Task tool with:
+  subagent_type: Explore          ← read-only
+  model: "haiku"                  ← MUST set explicitly
+  prompt: "Read your full instructions at ~/.claude/skills/review/agents/confidence-rescorer.md, then re-score these issues.
 
+ISSUES:
 [paste issue list with: ID, severity, file, code quote, problem description]
 
-For EACH issue, score confidence 0-100:
-- 0-25: False positive. Pre-existing, linter-catchable, stylistic preference, speculative.
-- 26-50: Minor nitpick. Not backed by project conventions. Low impact.
-- 51-74: Valid but low-impact. Edge case unlikely in practice.
-- 75-89: Important. Verified real, affects functionality or matches project rules.
-- 90-100: Critical. Confirmed, will happen in production, direct user impact.
+CHANGE INTENT: [from triage]
+BACKLOG: [path to memory/backlog.md if it exists]
+PRE-EXISTING DATA: [from Agent 2 — which lines are new vs old]
 
-Apply these filters — automatic score 0 (DROP):
-- Issue is on a line that was NOT modified in this change (pre-existing)
-- Issue would be caught by linter/compiler/CI
-- Issue is stylistic without explicit project convention
-- Issue is speculative ('might cause') without concrete scenario
-- Issue is on code the author didn't write (just moved/reformatted)
-
-Return: list of [ID, original_severity, confidence_score, keep/drop, reason]"
+Return the confidence table and summary per your instructions."
 ```
 
 4. Wait for Agent 3 result
-5. DROP from report any issue scoring < 51 (still goes to backlog — nothing is lost)
+5. DROP from report any issue scoring < 51 — but **PERSIST ALL DROPPED ISSUES TO BACKLOG** (nothing is lost)
 6. Adjust severity if re-scorer disagrees (e.g., reviewer said HIGH but scorer says 55 = downgrade to MEDIUM)
 7. Write final report with issues scoring 51+
+8. **MANDATORY: Write dropped issues to `memory/backlog.md`** with their confidence score and "(dropped from report)" note — do this BEFORE showing the report to the user
 
 ### Report Output
 
@@ -390,10 +389,30 @@ Generate the full report following the format in review-protocol.md. Include:
 
 ### Backlog Update (after report)
 
-After writing the report, persist issues to backlog per the Backlog Persistence rules in rules.md:
-- Pre-existing issues (dropped by confidence gate as pre-existing) → backlog
+**MANDATORY** — After writing the report, persist ALL unfixed issues to backlog per the Backlog Persistence rules in rules.md:
+- **Dropped issues (confidence < 51)** → backlog with confidence score and "(dropped from report)" — THIS IS REQUIRED, NOT OPTIONAL
+- Pre-existing issues (identified by Pre-Existing Checker) → backlog
 - Issues on unmodified lines → backlog
 - If MODE 1 (report only): all reported issues go to backlog too (they haven't been fixed yet)
+
+**Verify:** Every issue from the audit (kept OR dropped) must end up either in the report OR in the backlog. Zero issues may be silently discarded.
+
+### Questions Gate (after report, before Execute)
+
+If the report contains **QUESTIONS FOR AUTHOR** (section 10 is non-empty):
+
+1. Do NOT proceed to Execute yet
+2. Use `AskUserQuestion` to surface each question — max 4 at a time (tool limit):
+   - Header: "Author input needed"
+   - Each question becomes one `AskUserQuestion` question with options relevant to the question
+   - If more than 4 questions: ask the first 4, wait, then ask remaining
+3. Wait for user answers
+4. Incorporate answers before proceeding:
+   - Update affected issue severities if answers change the picture (e.g., "billing = display only" → R-6 drops from CRITICAL to LOW)
+   - Mark answered questions with the user's response inline in the report
+5. Then proceed to Execute prompt
+
+If QUESTIONS FOR AUTHOR is empty → skip this gate, go directly to Execute prompt.
 
 ---
 
@@ -463,7 +482,14 @@ FIXES TO APPLY:
 5. If RED → check FLAKY (per rules.md), then fix and repeat step 4
 6. If GREEN → re-audit changed code
 7. If NEW ISSUES → go back to step 2
-8. If ALL GREEN → show completion + update backlog:
+8. If ALL GREEN → auto-commit + tag + show completion + update backlog:
+
+**Auto-Commit + Tag:**
+1. `git add [list of modified/created files — specific names, not -A]`
+2. `git commit -m "review-fix: [brief description of fixes applied]"`
+3. `git tag review-[YYYY-MM-DD]-[short-slug]` (e.g., `review-2026-02-22-fix-auth-cq4`)
+
+This creates a clean rollback point. User can `git reset --hard <tag>` if needed.
 
 ```
 ═══════════════════════════════════════════════════════════════
@@ -482,6 +508,8 @@ VERIFIED:
   - Tests: PASS
   - Types: PASS
 
+Commit: [hash] — [message]
+Tag: [tag name] (rollback: git reset --hard [tag])
 ═══════════════════════════════════════════════════════════════
 ```
 
@@ -496,13 +524,13 @@ After Execute completes, persist unfixed issues to backlog:
 
 ## Phase C: Post-Execute
 
-After execution complete banner, use `AskUserQuestion` to prompt:
+Changes are already committed and tagged (auto-commit in Phase B). Use `AskUserQuestion` to prompt:
 
 ```
 Question: "Next step?"
 Header: "Post-fix"
 Options:
-  - "Push" (Recommended) → commit + push + tag reviewed
+  - "Push" (Recommended) → push + tag reviewed
   - "Re-audit" → run full audit again on current state
   - "Done" → stop here, don't push
 ```
@@ -515,15 +543,12 @@ Options:
 3. If clean → show "RE-AUDIT PASSED", prompt Push
 
 **"Push":**
-1. Verify tests pass (warn if not verified)
-2. `git add` relevant files (not -A)
-3. `git commit -m "[conventional commit message]"`
-4. `git push origin [branch]`
-5. Move the `reviewed` tag to HEAD: `git tag -f reviewed HEAD`
-6. Show pushed confirmation: "Tag `reviewed` updated — use `/review new` next time to see only unreviewed commits"
+1. `git push origin [branch]`
+2. Move the `reviewed` tag to HEAD: `git tag -f reviewed HEAD`
+3. Show pushed confirmation: "Tag `reviewed` updated — use `/review new` next time to see only unreviewed commits"
 
 **"Done":**
 1. Show summary of what was fixed
-2. Stop — no commit, no push
+2. Stop — don't push (commit already done)
 
 $ARGUMENTS

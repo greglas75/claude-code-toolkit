@@ -73,8 +73,42 @@ for f in "$TOOLKIT_DIR"/*.md; do
 done
 echo "  + protocol files (test-patterns, refactoring-protocol, review-protocol)"
 
+# --- 5. Google Antigravity global integration ---
+ANTIGRAVITY_DIR="$HOME/.gemini/antigravity"
+mkdir -p "$ANTIGRAVITY_DIR/skills"
+for skill_dir in "$TOOLKIT_DIR"/skills/*/; do
+  skill_name=$(basename "$skill_dir")
+  ln -sf "$CLAUDE_DIR/skills/$skill_name" "$ANTIGRAVITY_DIR/skills/$skill_name" 2>/dev/null || true
+done
+echo "  + ~/.gemini/antigravity/skills/ (Antigravity global skills)"
+
+# --- 6. Cursor IDE global integration ---
+CURSOR_DIR="$HOME/.cursor/skills"
+mkdir -p "$CURSOR_DIR"
+for skill_dir in "$TOOLKIT_DIR"/skills/*/; do
+  skill_name=$(basename "$skill_dir")
+  ln -sf "$CLAUDE_DIR/skills/$skill_name" "$CURSOR_DIR/$skill_name" 2>/dev/null || true
+done
+echo "  + ~/.cursor/skills/ (Cursor global skills)"
+
+# --- 7. Per-project setup script ---
+mkdir -p "$CLAUDE_DIR/scripts"
+cp "$TOOLKIT_DIR/scripts/setup-antigravity-all.sh" "$CLAUDE_DIR/scripts/setup-antigravity-all.sh"
+chmod +x "$CLAUDE_DIR/scripts/setup-antigravity-all.sh"
+echo "  + ~/.claude/scripts/setup-antigravity-all.sh"
+
 echo ""
 echo "Done. Installed to $CLAUDE_DIR"
 echo ""
 echo "Verify with: ls ~/.claude/skills/"
-echo "Use skills: /test-audit all, /review, /refactor, /backlog"
+SKILL_LIST=$(ls -d "$TOOLKIT_DIR"/skills/*/ 2>/dev/null | xargs -I{} basename {} | tr '\n' ', ' | sed 's/,$//')
+echo "Skills: $SKILL_LIST"
+echo ""
+echo "Symlinked to:"
+echo "  ~/.claude/skills/       (Claude Code)"
+echo "  ~/.cursor/skills/       (Cursor)"
+echo "  ~/.gemini/antigravity/  (Google Antigravity)"
+echo ""
+echo "All tools auto-update when you edit skills in this repo."
+echo ""
+echo "Per-project Antigravity setup: bash ~/.claude/scripts/setup-antigravity-all.sh"

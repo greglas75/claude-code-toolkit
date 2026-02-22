@@ -34,12 +34,13 @@ After backup, before analysis — collect baseline metrics for the detected REFA
 
 | Type | Baseline Action |
 |------|----------------|
-| BREAK_CIRCULAR | `npx madge --circular --extensions ts,js src/` → record cycle count |
+| BREAK_CIRCULAR | `npx madge --circular --extensions ts,js src/` → record cycle count. **Fallback:** if madge fails or returns empty on complex TS paths (path aliases, monorepos), use `npx eslint --rule '{"import/no-cycle": "error"}' src/` or manual grep for bidirectional imports between target files. |
 | MOVE, RENAME_MOVE | `npx tsc --noEmit` → must PASS before changes |
 | INTRODUCE_INTERFACE | `npx tsc --noEmit` → record PASS/FAIL |
 | FIX_ERROR_HANDLING | `npm run lint` → record error/warning count |
 | DELETE_DEAD | `npx tsc --noEmit` → must PASS |
 | EXTRACT_METHODS, SPLIT_FILE | No additional baseline needed |
+| GOD_CLASS | Count public methods, list injected deps, record line count |
 | SIMPLIFY | Record current complexity metrics if available |
 
 ### Backlog Check (all types)
@@ -66,7 +67,7 @@ For EACH file/project, check ALL categories:
 |----------|-------|--------|
 | CRITICAL | God class (> file limit) | `wc -l` |
 | CRITICAL | God methods (> function limit) | grep + count |
-| CRITICAL | Circular dependencies | `madge --circular` (JS/TS) |
+| CRITICAL | Circular dependencies | `madge --circular` (JS/TS) — if madge fails, fallback to `eslint import/no-cycle` or manual bidirectional import grep |
 | HIGH | Deprecated methods | `grep "@deprecated"` |
 | HIGH | Unused code | grep + usage check |
 | HIGH | Missing delegation | methods copied but not delegated |
@@ -117,12 +118,12 @@ find . -name "*.test.ts" -o -name "*.spec.ts" | xargs grep -l "[FileName]"
 
 **Step 2: Run Step 4 self-eval on EACH existing test file**
 
-Read `~/.claude/test-patterns.md`. For each existing test file, run the Step 4 self-eval checklist (15 binary questions). Score EACH question individually — never group questions (e.g., "Q1-Q6: 5/6" is FORBIDDEN).
+Read `~/.claude/test-patterns.md`. For each existing test file, run the Step 4 self-eval checklist (17 binary questions). Score EACH question individually — never group questions (e.g., "Q1-Q6: 5/6" is FORBIDDEN).
 
-| Test File | Q1 | Q2 | Q3 | Q4 | Q5 | Q6 | Q7 | Q8 | Q9 | Q10 | Q11 | Q12 | Q13 | Q14 | Q15 | Total | Critical Gate | Verdict |
-|-----------|----|----|----|----|----|----|----|----|----|----|-----|-----|-----|-----|-----|-------|--------------|---------|
-| `helpers.test.ts` | 1 | 1 | 0 | 1 | 0 | 1 | 0 | 1 | 1 | 0 | 0 | 1 | 1 | 0 | 0 | 8/15 | Q7=0 Q15=0 | FIX |
-| `utils.test.ts` | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 0 | 1 | 1 | 1 | 1 | 1 | 13/15 | all pass | PASS |
+| Test File | Q1 | Q2 | Q3 | Q4 | Q5 | Q6 | Q7 | Q8 | Q9 | Q10 | Q11 | Q12 | Q13 | Q14 | Q15 | Q16 | Q17 | Total | Critical Gate | Verdict |
+|-----------|----|----|----|----|----|----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-------|--------------|---------|
+| `helpers.test.ts` | 1 | 1 | 0 | 1 | 0 | 1 | 0 | 1 | 1 | 0 | 0 | 1 | 1 | 0 | 0 | 1 | 0 | 8/17 | Q7=0 Q15=0 Q17=0 | FIX |
+| `utils.test.ts` | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 0 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 15/17 | all pass | PASS |
 
 Individual scores are required so the CONTRACT shows exactly which dimensions need fixing. Grouped scores (e.g., "Q1-Q6: 5/6") are forbidden — they hide which specific question failed.
 
@@ -151,7 +152,7 @@ For EACH question scoring 0, run a targeted grep/search to count ALL instances i
 - **Fix Strategy must address ALL instances** or explicitly justify partial scope (e.g., "6 of 12 — remaining 6 are in unmodified read-only mocks")
 - If instances > 10 for a single Q: a point-fix won't work — propose a systematic approach (helper function, factory, type wrapper)
 
-For files scoring < 12 (FIX/BLOCK), also drill into each function being extracted. Classify code type, check against gap patterns (P-*):
+For files scoring < 14 (FIX/BLOCK), also drill into each function being extracted. Classify code type, check against gap patterns (P-*):
 
 | Check | Method | Score |
 |-------|--------|-------|
@@ -166,9 +167,9 @@ For files scoring < 12 (FIX/BLOCK), also drill into each function being extracte
 
 | # | Function | Existing Tests | Self-eval | Gaps Found | Gap Patterns |
 |---|----------|---------------|-----------|------------|--------------|
-| 1 | `foo()` | 3 tests (weak) | 6/15 BLOCK | No edge cases, no error path, shallow asserts | P-3, P-18 |
+| 1 | `foo()` | 3 tests (weak) | 6/17 BLOCK | No edge cases, no error path, shallow asserts | P-3, P-18 |
 | 2 | `bar()` | 0 tests | N/A | No coverage at all | — |
-| 3 | `baz()` | 5 tests | 13/15 PASS | Minor: no boundary test | P-7 |
+| 3 | `baz()` | 5 tests | 15/17 PASS | Minor: no boundary test | P-7 |
 
 This table goes into the CONTRACT alongside the extraction list. In ETAP-1B, new tests MUST cover both the extracted behavior AND ALL identified gaps — regardless of the file's overall score. If gaps were identified, they MUST be fixed. A split that moves code without fixing identified gaps is a wasted opportunity — tests are being rewritten from scratch, so fixing gaps costs zero extra effort.
 
@@ -213,6 +214,7 @@ Test quality rules:
 - PREFER exact match (toBe/toEqual/==) as PRIMARY assertion
 - FORBIDDEN as sole assertion: toBeDefined, toBeTruthy, toContain for URLs, toHaveBeenCalled without output check
 - Mock budget: max 3 ACTIVE mocks per file (passive DI stubs unlimited)
+- **LEGACY_MOCK_EXEMPTION:** When splitting legacy monolith test files and extracted functions inherit >3 mocks from the original module's DI tree, the mock budget is relaxed for that split. Use a MockFactory helper or `__test_utils__/` sidecar to centralize shared mocks. Document the exemption with `// LEGACY_MOCK_EXEMPTION: {reason}` in the test file.
 - Breaker test: at least 1 per function
 
 ### 2.4 Legacy Test File Handling
@@ -252,24 +254,7 @@ Build a graph and assign parallel groups:
 
 ### Mode Decision
 
-```
-parallel_tasks = count of tasks with NO dependencies AND unique write targets
-team_eligible_types = EXTRACT_METHODS, SPLIT_FILE, SIMPLIFY, MOVE, DELETE_DEAD
-
-IF parallel_tasks >= 2 AND type IN team_eligible_types:
-  → TEAM_MODE = true
-  → Show: "[N] independent tasks detected → team mode (est. [N]x faster)"
-
-ELSE:
-  → TEAM_MODE = false
-  → Show: "Tasks are sequential or single-target → solo execution"
-```
-
-Team mode is NEVER used for:
-- Tasks that modify the SAME file (write conflict)
-- RENAME_MOVE (global search-replace, not splittable)
-- BREAK_CIRCULAR (requires holistic graph reasoning)
-- < 2 independent tasks (overhead > benefit)
+Apply Team Mode activation/forbidden rules from `rules.md` → Team Mode section.
 
 Include `TEAM_MODE: true/false` and the dependency graph in the CONTRACT output.
 
@@ -340,6 +325,7 @@ Commands:
 Type from CONTRACT_ID → Test Mode:
 
 EXTRACT_METHODS, SPLIT_FILE     → WRITE_NEW_TESTS (full test writing flow below)
+GOD_CLASS                       → WRITE_FUNCTIONAL_TESTS (read ~/.claude/refactoring-god-class.md)
 BREAK_CIRCULAR, MOVE, RENAME_MOVE,
 INTRODUCE_INTERFACE, DELETE_DEAD → VERIFY_COMPILATION (compiler is primary check)
 FIX_ERROR_HANDLING              → RUN_IF_EXISTS (tests if they exist, else lint + compile)
@@ -395,9 +381,9 @@ If the CONTRACT includes a TEST GAP TABLE (from Stage 1 Test Quality Audit), gap
 
 **HARD GATE:** Every gap row must be ✅ FIXED (or ✅ PARTIAL with justification fixing ≥50%). Unresolved gaps = ETAP-1B is INCOMPLETE — cannot proceed to ETAP-2.
 
-Since tests are being rewritten from scratch anyway, fixing gaps costs zero extra effort. The goal is: **after split, each new test file must score HIGHER than the original monolith's score on Step 4 self-eval.** If the original scored 12/15, split files must score ≥ 13/15. A split that produces the same score is a mechanical move, not an improvement.
+Since tests are being rewritten from scratch anyway, fixing gaps costs zero extra effort. The goal is: **after split, each new test file must score HIGHER than the original monolith's score on Step 4 self-eval.** If the original scored 14/17, split files must score ≥ 15/17. A split that produces the same score is a mechanical move, not an improvement.
 
-**No "migrate as-is" exception:** If the CONTRACT identifies gaps (any Q=0), those gaps MUST be resolved — even if the file scored ≥ 12. The whole point of splitting is to improve quality, not just reduce file size.
+**No "migrate as-is" exception:** If the CONTRACT identifies gaps (any Q=0), those gaps MUST be resolved — even if the file scored ≥ 14. The whole point of splitting is to improve quality, not just reduce file size.
 
 **Anti-patterns to catch during gap resolution:**
 - Testing CSS classes (`toContain('bg-green-100')`) instead of behavior — use `getByRole`, check disabled/enabled state, verify accessibility
@@ -508,12 +494,12 @@ Use AST parsing for structure verification — FORBIDDEN to use string matching.
 
 After writing/migrating ALL test files, run Step 4 self-eval on EACH new file. Score individually (Q1=1 Q2=0 ... format). This catches quality issues BEFORE ETAP-2 execution.
 
-| New Test File | Q1-Q15 scores | Total | Critical Gate | Verdict |
+| New Test File | Q1-Q17 scores | Total | Critical Gate | Verdict |
 |---------------|---------------|-------|--------------|---------|
-| `context-button.test.tsx` | Q1=1 Q2=1 ... Q15=1 | 13/15 | all pass | PASS |
-| `rendering-minimalistic.test.tsx` | Q1=1 Q2=1 ... Q15=0 | 9/15 | Q15=0 | FIX |
+| `context-button.test.tsx` | Q1=1 Q2=1 ... Q16=1 Q17=1 | 15/17 | all pass | PASS |
+| `rendering-minimalistic.test.tsx` | Q1=1 Q2=1 ... Q16=1 Q17=0 | 11/17 | Q17=0 | FIX |
 
-**HARD GATE:** Every new file must score ≥ 12/15 with critical gate passed. Files scoring < 12 → fix before proceeding to ETAP-2. A split that produces 12 files all scoring 9/15 has failed — you just moved bad tests into more files.
+**HARD GATE:** Every new file must score ≥ 14/17 with critical gate passed (Q7, Q11, Q13, Q15, Q17). Files scoring < 14 → fix before proceeding to ETAP-2. A split that produces 12 files all scoring 9/17 has failed — you just moved bad tests into more files.
 
 ### Completion Output
 
@@ -527,8 +513,8 @@ GAP RESOLUTION:
   All gaps: X/Y resolved (must be Y/Y to proceed)
 
 SELF-EVAL (per new file):
-  [table: File | Q1-Q15 individual scores | Total | Verdict]
-  All files ≥ 12/15: YES/NO (must be YES to proceed)
+  [table: File | Q1-Q17 individual scores | Total | Verdict]
+  All files ≥ 14/17: YES/NO (must be YES to proceed)
 
 QUALITY VALIDATION:
   [OK] No todo/skip (except post-extraction)
@@ -536,7 +522,7 @@ QUALITY VALIDATION:
   [OK] Mock budget respected
   [OK] All tests passing
   [OK] All CONTRACT gaps resolved
-  [OK] All new files score ≥ 12/15 on Step 4
+  [OK] All new files score ≥ 14/17 on Step 4
 
 NEXT: ETAP 2 with "Execute Phase 1"
 RULES FOR ETAP 2:
@@ -581,7 +567,7 @@ If cascading changes exceed DI fix: STOP → report → user decides.
 
 ## Pre-Execution Checklist
 
-- [ ] CONTRACT loaded (find contract file or user provides)
+- [ ] CONTRACT loaded (read `refactoring-session/contracts/CONTRACT.json`)
 - [ ] Backup exists and verified
 - [ ] Not on main/master branch
 - [ ] Clean working directory (`git status`)
@@ -708,18 +694,32 @@ DO NOT make changes outside CONTRACT without approval.
 
 After extraction, before Stage 4C — verify delegation was applied:
 
-```bash
-LINES_BEFORE=[from CONTRACT]
-LINES_AFTER=$(wc -l < [original_file])
-REDUCTION=$((LINES_BEFORE - LINES_AFTER))
-EXPECTED_REDUCTION=$((EXTRACTED_LINES * 80 / 100))
-```
+**Delegation math** (evaluate in reasoning, NOT raw bash — variables are CONTRACT values, not shell exports):
+- `LINES_BEFORE` = original file line count from CONTRACT
+- `LINES_AFTER` = `wc -l < [original_file]` (run this one command)
+- `REDUCTION` = LINES_BEFORE - LINES_AFTER
+- `EXPECTED_REDUCTION` = EXTRACTED_LINES × 0.8 (where EXTRACTED_LINES = total lines moved to new files)
 
 | Condition | Status | Action |
 |-----------|--------|--------|
 | reduction >= expected | FULL DELEGATION | Proceed |
 | 0 < reduction < expected * 0.5 | PARTIAL DELEGATION | List un-delegated methods |
 | reduction ≤ 0 | NO DELEGATION | STOP — code was copied, not delegated |
+
+---
+
+## Stage 4B.6: Code Quality Self-Eval (all types)
+
+After extraction/refactoring, before Stage 4C — run CQ1-CQ20 self-eval (from `~/.claude/rules/code-quality.md`) on each NEW or MODIFIED production file.
+
+- Score each CQ individually (1/0)
+- Static critical gate: CQ3, CQ4, CQ5, CQ6, CQ8, CQ14 — any = 0 → fix before proceeding
+- Conditional critical gate: CQ16 (if money code), CQ19 (if I/O boundary), CQ20 (if dual fields) — any = 0 → fix
+- Score < 14 → FAIL, 14-15 → CONDITIONAL PASS (fix encouraged), ≥ 16 → PASS
+- Evidence required for each critical gate CQ scored as 1 (file:line or schema name)
+- Check code-type patterns table for high-risk CQs specific to your code type
+
+**Refactored code must meet CQ standards.** Extraction that preserves bad patterns is a missed opportunity.
 
 ---
 
@@ -737,7 +737,7 @@ EXPECTED_REDUCTION=$((EXTRACTED_LINES * 80 / 100))
 
 | Type | Additional Check |
 |------|-----------------|
-| BREAK_CIRCULAR | `madge --circular` → fewer cycles than baseline |
+| BREAK_CIRCULAR | `madge --circular` → fewer cycles than baseline. **Fallback:** if madge fails, verify with `eslint import/no-cycle` or grep that bidirectional imports between target files are removed. |
 | MOVE, RENAME_MOVE | `grep old imports` → 0 remaining |
 | FIX_ERROR_HANDLING | `grep empty catches` → 0 remaining; lint errors ≤ baseline |
 | INTRODUCE_INTERFACE | `grep "implements I{Name}"` → interface is used |
@@ -780,10 +780,10 @@ Re-run Step 4 self-eval on each NEW split test file. Compare scores with the pre
 
 | File | Pre-split score | Post-split score | Improved? |
 |------|----------------|-----------------|-----------|
-| `context-button.test.tsx` | 10/15 (from monolith) | 13/15 | ✅ +3 |
-| `rendering-minimalistic.test.tsx` | 8/15 (from monolith) | 8/15 | ❌ No improvement |
+| `context-button.test.tsx` | 12/17 (from monolith) | 15/17 | ✅ +3 |
+| `rendering-minimalistic.test.tsx` | 10/17 (from monolith) | 10/17 | ❌ No improvement |
 
-**HARD GATE:** Every split file MUST score HIGHER than the original monolith (pre-split + 1 minimum). If original scored 12/15 → split files must score ≥ 13/15. If any file scores ≤ pre-split → fix gaps before committing. A split that only moves code at the same quality level is a mechanical move, not a refactoring.
+**HARD GATE:** Every split file MUST score HIGHER than the original monolith (pre-split + 1 minimum). If original scored 14/17 → split files must score ≥ 15/17. If any file scores ≤ pre-split → fix gaps before committing. A split that only moves code at the same quality level is a mechanical move, not a refactoring.
 
 ---
 
@@ -814,6 +814,13 @@ CONTRACT: [reference]
 ```
 
 One commit per phase. Never push mid-phases.
+
+---
+
+# GOD_CLASS Flow — Lazy Loaded
+
+> **LOAD ON DEMAND:** When detected type = GOD_CLASS, read `~/.claude/refactoring-god-class.md` for the full iterative decomposition protocol (ETAP-1A → 1B → 2 → 3).
+> **Do NOT read this file for other refactoring types** — it adds ~220 lines of context that only applies to GOD_CLASS.
 
 ---
 

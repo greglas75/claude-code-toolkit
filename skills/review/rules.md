@@ -47,45 +47,50 @@ The sub-agent acts as a skeptic defending the code author. See `/review` for ful
 
 | Score | Meaning | Action |
 |-------|---------|--------|
-| 0-25 | False positive — doesn't survive scrutiny, or pre-existing | Backlog only |
-| 26-50 | Minor nitpick, not in project conventions, low impact | Backlog only |
+| 0-25 | Hallucination or 100% false positive — doesn't survive scrutiny | **DISCARD** (do not persist) |
+| 26-50 | Minor nitpick, pre-existing debt, low impact | Backlog only |
 | 51-74 | Valid, low-impact but real — worth fixing | **In report** |
 | 75-89 | Important — verified real, affects functionality | **In report** |
 | 90-100 | Critical — confirmed, will happen in production | **In report** |
 
-**Threshold: 51+** goes into the report with fix code. Everything below → backlog only.
-**ALL issues** (any score) are persisted to backlog — nothing gets lost.
+**Threshold: 51+** goes into the report with fix code. 26-50 → backlog only. 0-25 → DISCARD (hallucinations and total false positives don't pollute backlog).
 For each reported issue, show the confidence score: `Confidence: [X]/100`
 
 Sub-agents used during review (spawned by `/review`):
-- **Blast Radius Mapper** (Haiku, parallel at start) — traces importers/callers of changed files
-- **Pre-Existing Checker** (Haiku, parallel at start) — git blame to classify new vs old lines
-- **Confidence Re-Scorer** (Haiku, after audit) — independent skeptic filtering false positives
+- **Blast Radius Mapper** (Sonnet, inline prompt, parallel at start) — traces importers/callers of changed files
+- **Pre-Existing Checker** (Haiku, inline prompt, parallel at start) — git blame to classify new vs old lines
+- **Structure Auditor** (custom agent: `~/.claude/skills/review/agents/structure-auditor.md`, Sonnet, read-only) — architecture, types, integration, performance
+- **Behavior Auditor** (custom agent: `~/.claude/skills/review/agents/behavior-auditor.md`, Opus, read-only) — logic, side effects, regressions, security, observability
+- **Confidence Re-Scorer** (custom agent: `~/.claude/skills/review/agents/confidence-rescorer.md`, Haiku) — independent skeptic filtering false positives
 
 ### Team Audit Mode (TIER 2 with 5+ files OR TIER 3)
 
-For larger reviews, `/review` splits audit steps across 2 parallel agents to reduce review time. This is **read-only parallelism** — agents analyze the same diff, no write conflicts possible.
+For larger reviews, `/review` splits audit steps across 2 custom agents in parallel. Agents are defined in `~/.claude/skills/review/agents/` with enforced read-only tool access (no Write/Edit) and optimized model routing.
 
 **Activation:** `(TIER 2 AND files_changed >= 5) OR TIER 3`
 
 **Structure:**
-| Role | Steps | Focus |
-|------|-------|-------|
-| Lead | 0, 1 (sequential, first) | Context setting, change inventory |
-| Structure Auditor | 2, 4, 5 (+10, 11 for T3) | Types, imports, architecture, integration, performance, rollback, docs |
-| Behavior Auditor | 3, 6, 9 (+7, 8 for T3) | Logic, side effects, regressions, observability, security, i18n |
+| Role | Agent | Model | Steps | Focus |
+|------|-------|-------|-------|-------|
+| Lead | (orchestrator) | inherited | 0, 1 (sequential, first) | Context setting, change inventory |
+| Structure Auditor | `structure-auditor` | Sonnet | 2, 4, 5 (+10, 11 for T3) | Types, imports, architecture, integration, performance |
+| Behavior Auditor | `behavior-auditor` | Opus | 3, 6, 9 (+7, 8 for T3) | Logic, side effects, regressions, security, observability |
 
 **Merge protocol:**
 1. Wait for both auditors to complete
 2. Collect issue lists (STRUCT-* + BEHAV-*)
 3. Deduplicate — if both found same issue, keep more detailed one
 4. Renumber: R-1, R-2, R-3...
-5. Feed merged list to Confidence Re-Scorer
+5. Feed merged list to Confidence Re-Scorer (`confidence-rescorer` agent)
 
 **When NOT to use team audit:**
 - TIER 1 (too few steps)
 - TIER 2 with < 5 files (overhead > benefit)
 - User says "solo" or "no team" (explicit override)
+
+### Code Quality on Execute
+
+When applying fixes during Execute, run CQ1-CQ20 self-eval (`~/.claude/rules/code-quality.md`) on each modified production file. Static critical gate: CQ3, CQ4, CQ5, CQ6, CQ8, CQ14. Conditional gate: CQ16 (money), CQ19 (I/O), CQ20 (dual fields). Score < 14 → FAIL. Evidence required for critical CQs.
 
 ### Parallel Execute Mode (3+ fixes on different files)
 
@@ -95,14 +100,18 @@ During Execute (Phase B), if 3+ fixes target different files with no interaction
 - Writes tests for its fixes (separate spec files)
 - Reports back to lead for verification
 
-Do NOT parallelize fixes on the same file or interdependent fixes.
+**Dependency check before parallelizing:** Do NOT parallelize if ANY of these apply:
+- Fixes target the same file
+- File A imports from File B (or vice versa) — check with grep before splitting
+- Fixes share a common type/interface/DTO that both modify
+- Controller + Service pair for the same endpoint (execute sequentially: Service first → Controller second)
 
 ## Tier Selection
 
 | Tier | When | Audit Steps | Mode 2 OK? |
 |------|------|-------------|------------|
 | TIER 1 (LIGHT) | <50 lines, no risk signals | 0 → 1 → 2.1 → 6.1 → Report | YES |
-| TIER 2 (STANDARD) | 50-500 lines, max 1 risk signal | 0 → 1-6 → 9 → Report | YES (if no risky changes) |
+| TIER 2 (STANDARD) | 50-500 lines, max 1 risk signal | 0 → 1-6 → **7.0** → 9 → Report | YES (if no risky changes) |
 | TIER 3 (DEEP) | >500 lines OR 2+ risk signals | ALL 0-11 → Report | NO |
 
 ## Mode 2 Blocker
@@ -138,7 +147,7 @@ If blocked → run `/review` (report only) + `Execute BLOCKING` instead.
 - No merge without test coverage
 - Requirements depend on CHANGE INTENT (see table above)
 - **Before writing tests:** read `~/.claude/test-patterns.md` (global, all projects). Apply all matching patterns (check WHEN triggers against code under test).
-- **After writing tests:** run Step 4 self-eval checklist (14 yes/no questions). Score < 11 = fix before continuing.
+- **After writing tests:** run Q1-Q17 self-eval checklist (17 yes/no questions, per `~/.claude/rules/testing.md`). Score < 14 = fix before continuing. Critical gate: Q7, Q11, Q13, Q15, Q17.
 - **When user gives feedback about test gaps:** append new pattern to `~/.claude/test-patterns.md` with WHEN trigger, required tests, and source.
 
 ## Scope Fence (Mandatory on Execute)
@@ -148,6 +157,8 @@ Before applying ANY fix, show:
 - **FORBIDDEN:** files outside scope, new public APIs/DTOs, new dependencies, "while we're here" improvements, style/naming outside fix scope
 
 If fix requires touching other file → STOP → ask: "Fix requires [file]. Add to allowed list?" → wait for approval.
+
+**Auto-expanded scope:** CQ16 corrections (Float→Decimal) automatically expand Scope Fence to include dependent DTOs, Type Definitions, and ORM schemas that reference the corrected field — because changing a field's type without updating its consumers creates type errors. No approval needed for these cascading type changes.
 
 ## Flaky Test Detection
 
@@ -247,15 +258,15 @@ _None yet._
 |--------|------|---------|
 | Pre-existing issues | Found during review but pre-date this PR | `catch(err: any)` on unmodified line |
 | Issues on unmodified lines | Real problem but not author's responsibility | Missing validation in adjacent function |
-| ALL dropped issues (any confidence) | Every issue found but filtered from report | Missing tooltip, speculative race condition |
+| Dropped issues (confidence 26-50) | Filtered from report but real enough to track | Missing tooltip, minor tech debt |
 | Reported but not fixed | User chose `Execute BLOCKING` (skips MEDIUM/LOW) | Tech debt items from report |
 | Deferred by user | User explicitly says "not now" / "later" | Any severity |
 
-**Rule: NOTHING gets lost.** Every issue found during review goes to backlog. Use `/backlog` to periodically review and clean up (wontfix, delete false positives).
+**Rule: Real issues don't get lost.** Issues with confidence 26+ go to backlog. Issues 0-25 (hallucinations, total false positives) are DISCARDED — they pollute the backlog and degrade signal-to-noise. Use `/backlog` to periodically review and clean up.
 
 ### When to persist
 
-- **After confidence gate:** immediately persist ALL dropped issues (any confidence) to backlog (don't wait for Execute)
+- **After confidence gate:** persist dropped issues with confidence 26+ to backlog (0-25 = DISCARD, don't wait for Execute)
 - **After `/review` (report only):** persist all reported issues + all pre-existing/unmodified-line issues to backlog
 - **After `/review fix`:** persist any issues that couldn't be auto-fixed
 - **After `/review blocking`:** persist all MEDIUM + LOW issues (not fixed)
