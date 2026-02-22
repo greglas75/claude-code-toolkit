@@ -36,7 +36,7 @@ Look at the function/component and pick ALL matching types:
 | Code Type | Good patterns (replicate) | Gap patterns (check) |
 |-----------|--------------------------|----------------------|
 | **PURE** | G-2, G-3, G-5, G-20, G-22, G-30 | P-1, P-8, P-13, P-20, P-22, P-27 |
-| **REACT** | G-1, G-7, G-8, G-10, G-18, G-19, G-25, G-26, G-27, G-29 | P-1, P-9, P-10, P-12, P-17, P-18, P-19, P-21, P-25, P-28, P-30 |
+| **REACT** | G-1, G-7, G-8, G-10, G-18, G-19, G-25, G-26, G-27, G-29 | P-1, P-9, P-10, P-12, P-17, P-18, P-19, P-21, P-25, P-28, P-30, P-39 |
 | **SERVICE** | G-2, G-4, G-9, G-11, G-23, G-24, G-25, G-28, G-30, G-31, G-38, G-39 | P-1, P-4, P-5, P-11, P-22, P-23, P-25, P-27, P-28, P-29, P-31, P-32, P-37 |
 | **REDIS/CACHE** | G-2, G-4 | P-1, P-5, P-6, P-14, P-29 |
 | **ORM/DB** | G-9, G-28, G-30 | P-5, P-11, P-15, P-29, P-32 |
@@ -859,6 +859,32 @@ If FIX or BLOCK: fix the issues, then re-run the checklist.
 - **Required tests:** At least 1 `it()` block per public method (happy path minimum). For CONTROLLER/SERVICE: list all route handlers / exported methods, verify each has a test.
 - **Detection:** Compare `export function`/`async method()` in production file vs `describe`/`it` blocks in test file. Any public method with zero matching test = P-38 gap.
 - **Source:** code-audit feedback 2026-02-21, offer.controller -- `create()` endpoint had zero test coverage while `createVersion()` and `createOption()` were fully tested
+
+### P-39: Rendering-Only Tests as Pre-Refactoring Safety Net (AI Agent Trap)
+- **When:** Writing pre-refactoring tests for React components (ETAP-1B or any test-first workflow)
+- **Problem:** AI agents (and developers) default to rendering/visibility tests: `getByText('Submit')`, `getByRole('button')`, `toBeInTheDocument()`. These prove the component renders but NOT that user flows work. A refactoring that breaks the submit handler, search logic, or calendar interaction passes all rendering tests. **Contract test that doesn't cover core user flows = false safety net.**
+- **Detection (mechanical check):** Count `it()` blocks by type:
+  - **Rendering tests:** assertions are `toBeInTheDocument`, `toBeVisible`, `getByText` without subsequent interaction
+  - **Flow tests:** assertions follow a user interaction chain: click/type -> state change -> callback/API called with args -> success/error feedback
+  - If rendering > 60% and flow < 30% -> P-39 triggered
+- **Minimum User Flow Coverage by Component Type:**
+
+  | Component Type | Minimum Flows to Test |
+  |----------------|----------------------|
+  | **Form** | submit with valid data -> callback args, submit with invalid -> error shown, clear/reset, field validation feedback |
+  | **Search/Filter** | type query -> results filtered, clear query -> results reset, empty results state, debounce (if applicable) |
+  | **Modal/Dialog** | open -> fill -> submit -> callback + close, open -> cancel -> no callback, validation errors inside modal |
+  | **List/Table** | sort -> order changes, paginate -> correct page data, select item -> detail/callback, empty state |
+  | **Date/Calendar** | select date -> callback with date value, range selection, invalid date handling, clear date |
+  | **Rating/Slider** | select value -> callback with value, boundary values (min/max), change value -> UI reflects new state |
+  | **Tabs/Navigation** | switch tab -> correct content shown, tab state persisted (if applicable), deep link to tab |
+  | **CRUD** | create -> success + list updates, edit -> save + values persisted, delete -> confirm -> removed |
+  | **Toast/Notification** | trigger action -> toast appears with correct message, toast auto-dismiss or manual close |
+  | **Dropdown/Select** | open -> select option -> callback with value, search within dropdown (if applicable), multi-select |
+
+- **Fix:** For each component being tested, identify its type(s) from the table above. Write at least 1 test per minimum flow. A rendering test (`getByText('Submit').toBeInTheDocument()`) does NOT count as a submit flow test.
+- **Rule of thumb:** If removing the event handler wouldn't fail any test -> the test suite is rendering-only.
+- **Source:** review 2026-02-22, Cursor refactoring -- 10 components tested, all had rendering coverage but 0 submit flows, 0 search flows, 0 calendar interaction. Tests scored 7/10 visually but provided zero regression safety for the actual refactoring.
 
 ---
 

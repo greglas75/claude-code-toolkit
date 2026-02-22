@@ -407,6 +407,26 @@ After split, verify the split added REAL new test coverage — not just file bou
 
 **Gate check:** Missing behavioral → HARD FAIL. Missing integration → HARD FAIL. Only contract tests → HARD FAIL. Unaddressed test gap → HARD FAIL.
 
+### Rendering vs Behavior Gate (React — MANDATORY)
+
+**AI agents default to rendering-only tests.** This is the #1 pre-refactoring test quality failure. A test suite where every `it()` block checks `toBeInTheDocument()` / `toBeVisible()` / `getByText()` without testing user interaction flows provides ZERO regression safety for refactoring.
+
+**Mechanical check (run after writing all React component tests):**
+
+1. Count `it()` blocks in the test file
+2. Classify each as RENDERING (assertion = presence/visibility only) or FLOW (assertion follows user interaction → state change → callback/result)
+3. Calculate ratio: `flow_tests / total_tests`
+4. **HARD FAIL if flow ratio < 30%** — rewrite tests before proceeding
+
+**Minimum flows per component type** — see P-39 in `test-patterns.md` for the full lookup table. At minimum:
+- **Form**: submit valid → callback args verified
+- **Search/Filter**: type → results change
+- **Modal**: open → submit → callback + close
+- **List/Table**: sort or paginate → output changes
+- **CRUD**: create/edit/delete → side effect verified
+
+**Rule of thumb:** If you could delete every event handler from the component and ALL tests still pass → the tests are rendering-only and FAIL this gate.
+
 ### Behavioral Test Requirement (Golden Rule)
 
 "If I change the function's logic, will this test fail?" If NO → test is too weak.

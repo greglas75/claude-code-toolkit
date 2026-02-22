@@ -29,10 +29,11 @@ A plan without Test Strategy is incomplete — do not approve it.
 
 ### New React Component
 - Render test (mounts without error)
-- Interaction tests (clicks, inputs, form submission)
+- **User flow tests (NOT just rendering)** — for each interactive element, test the FULL flow: user action → state change → callback/API called with correct args → success/error feedback. "Button visible" is NOT a flow test. See P-39 in `~/.claude/test-patterns.md` for per-component-type minimum flows (form submit, search filter, modal confirm, etc.)
 - Props/state variation tests
 - Error state test
 - Accessibility: interactive elements have ARIA labels, keyboard navigation works (see `react-nextjs.md` WCAG 2.1 AA)
+- **Gate: flow tests must be ≥ 30% of total tests.** If all tests are `toBeInTheDocument()` checks → FAIL. A rendering-only test suite provides zero regression safety.
 
 ### New API Endpoint/Handler
 - Success response (200/201)
