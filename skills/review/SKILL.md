@@ -19,6 +19,14 @@ Follow all Iron Rules from rules.md.
 
 Use `TaskCreate` at the start to create a todo list from the steps below. Update task status (`in_progress` → `completed`) as you progress. This gives the user visibility into multi-step execution.
 
+## Multi-Agent Compatibility
+
+This skill uses `Task` tool to spawn parallel sub-agents. **If `Task` tool is not available** (Cursor, Antigravity, other IDEs):
+- **Skip all "Spawn via Task tool" blocks** — do NOT attempt to call tools that don't exist
+- **Execute the agent's work inline yourself**, sequentially — read the agent's prompt/instructions and perform that analysis directly
+- **Model routing is ignored** — use whatever model you are running on
+- The quality gates, checklists, and output format remain identical
+
 ## Step 0: Parse $ARGUMENTS
 
 $ARGUMENTS controls WHAT gets reviewed AND which mode to use.

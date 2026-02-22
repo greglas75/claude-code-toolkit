@@ -18,6 +18,14 @@ Read ~/.claude/rules/code-quality.md    — CQ1-CQ20 checklist, scoring, evidenc
 
 Use `TaskCreate` at the start to create a todo list from the steps below. Update task status (`in_progress` → `completed`) as you progress. This gives the user visibility into multi-step execution.
 
+## Multi-Agent Compatibility
+
+This skill uses `Task` tool to spawn parallel sub-agents for batch evaluation. **If `Task` tool is not available** (Cursor, Antigravity, other IDEs):
+- **Skip all "Spawn via Task tool" blocks** — do NOT attempt to call tools that don't exist
+- **Evaluate files sequentially yourself** instead of spawning batch agents — read each file, apply the CQ1-CQ20 checklist, output per-file scores
+- **Model routing is ignored** — use whatever model you are running on
+- The quality gates, checklists, and output format remain identical
+
 ## Step 0: Parse $ARGUMENTS
 
 | Argument | Behavior |
