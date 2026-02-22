@@ -1,7 +1,7 @@
 ---
 name: refactor
 description: "Smart refactoring runner with structured workflow (ETAP-1A/1B/2). Use when refactoring code, extracting methods, splitting files, or restructuring."
-disable-model-invocation: true
+user-invocable: true
 ---
 
 # /refactor — Smart Refactoring Runner
@@ -288,13 +288,16 @@ Append to `refactoring-session/metrics.jsonl`:
 }
 ```
 
-### Auto-Commit + Tag
+### Tag (commits already done per-phase in Stage 4E)
 
-After all verifications pass, automatically commit and tag:
+Stage 4E creates one commit per phase during ETAP-2. Phase 5 only adds a tag on the final commit:
 
-1. `git add [list of modified/created files — specific names, not -A]`
-2. `git commit -m "refactor: [type] [source file] — [brief description]"`
-3. `git tag refactor-[YYYY-MM-DD]-[short-slug]` (e.g., `refactor-2026-02-22-split-offer-service`)
+1. `git tag refactor-[YYYY-MM-DD]-[short-slug]` (e.g., `refactor-2026-02-22-split-offer-service`)
+
+If `refactoring-session/` files (metrics, contracts) need committing:
+1. `git add refactoring-session/`
+2. `git commit -m "refactor: session metadata for [contractId]"`
+3. Then tag.
 
 This creates a clean rollback point. User can `git reset --hard <tag>` if needed.
 

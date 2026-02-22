@@ -47,5 +47,11 @@ These are loaded ON-DEMAND (not in `~/.claude/rules/`):
 | `python.md` | Python detected | `~/.claude/conditional-rules/python.md` — read if Python stack |
 | Build workflow | `/build` invoked | `~/.claude/skills/build/SKILL.md` — structured feature dev |
 | Review rules | `/review` invoked | `~/.claude/skills/review/rules.md` — read by skill |
+| Review protocol | `/review` invoked | `~/.claude/review-protocol.md` — detailed checklists, report templates |
 | Refactoring rules | `/refactor` invoked | `~/.claude/skills/refactor/rules.md` — read by skill |
+| Refactoring protocol | `/refactor` invoked | `~/.claude/refactoring-protocol.md` — CONTRACT + ETAP stages |
+| Test patterns | `/test-audit`, `/review`, `/refactor` | `~/.claude/test-patterns.md` — G-*/P-* pattern library |
+| Code audit | `/code-audit` invoked | `~/.claude/skills/code-audit/SKILL.md` — CQ1-CQ20 mass audit |
+| Test audit | `/test-audit` invoked | `~/.claude/skills/test-audit/SKILL.md` — Q1-Q17 mass audit |
+| API audit | `/api-audit` invoked | `~/.claude/skills/api-audit/SKILL.md` — endpoint integrity |
 | Skill management | Creating/editing skills | `~/.claude/conditional-rules/skill-management.md` — read on need |

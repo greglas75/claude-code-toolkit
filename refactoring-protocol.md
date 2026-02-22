@@ -309,6 +309,8 @@ Commands:
   "Restart"     → Start over
 ```
 
+**Save CONTRACT.json NOW:** Write to `refactoring-session/contracts/CONTRACT.json` (schema at end of this file). This is required for `/refactor continue` to work. Do NOT wait until end of protocol — save at HARD STOP so the contract persists even if the session is interrupted.
+
 ---
 
 # ETAP 1B: TESTS
@@ -783,7 +785,7 @@ Re-run Step 4 self-eval on each NEW split test file. Compare scores with the pre
 | `context-button.test.tsx` | 12/17 (from monolith) | 15/17 | ✅ +3 |
 | `rendering-minimalistic.test.tsx` | 10/17 (from monolith) | 10/17 | ❌ No improvement |
 
-**HARD GATE:** Every split file MUST score HIGHER than the original monolith (pre-split + 1 minimum). If original scored 14/17 → split files must score ≥ 15/17. If any file scores ≤ pre-split → fix gaps before committing. A split that only moves code at the same quality level is a mechanical move, not a refactoring.
+**HARD GATE:** Every split file MUST score HIGHER than the original monolith (pre-split + 1 minimum, capped at 17/17). If original scored 14/17 → split files must score ≥ 15/17. If original scored 17/17 → split files must maintain 17/17. If any file scores < pre-split → fix gaps before committing. A split that only moves code at the same quality level is a mechanical move, not a refactoring.
 
 ---
 

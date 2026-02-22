@@ -787,7 +787,7 @@ Files: [X], Lines: +[Y]/-[Z]
 ### Step 5: Commit
 
 Suggested Commit Message:
-[conventional commit format]
+review-fix: [brief description of fixes applied]
 
 ## TESTS TO IMPLEMENT
 | ID | File | Scenario | Notes |

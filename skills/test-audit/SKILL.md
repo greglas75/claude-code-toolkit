@@ -1,7 +1,7 @@
 ---
 name: test-audit
 description: "Audit all test files against Q1-Q17 checklist + AP1-AP18 anti-patterns. Produces tiered report with scores, gaps, and fix recommendations. Use: /test-audit [path] or /test-audit all"
-disable-model-invocation: true
+user-invocable: true
 ---
 
 # /test-audit — Test Quality Triage
@@ -267,6 +267,23 @@ Files where Q7/Q11/Q13/Q15/Q17 = 0 (highest priority):
 Save to: `audits/test-quality-audit-[date].md`
 
 If `--deep` mode: also save per-file reports to `audits/test-audit-details/[filename].md`
+
+## Step 5.5: Backlog Persistence (MANDATORY)
+
+After generating the report, persist ALL findings to `memory/backlog.md`:
+
+1. **Read** the project's `memory/backlog.md` (from the auto memory directory shown in system prompt)
+2. **If file doesn't exist**: create it from the template in `~/.claude/skills/review/rules.md`
+3. For each Tier C/D file:
+   - Search backlog for same test file
+   - **Duplicate**: increment `Seen` count, add date
+   - **New**: append with next `B-{N}` ID, source: `test-audit/{date}`, status: OPEN
+   - Include: top 3 gaps, critical gate failures, untested methods
+4. For Tier B files with critical gate failures (Q7/Q11/Q13/Q15/Q17=0):
+   - Persist each critical gate failure as separate backlog item
+5. **Auto Tier-D red flags** (AP13/AP14/AP16): always persist as HIGH
+
+**THIS IS REQUIRED, NOT OPTIONAL.** Findings that aren't fixed must be tracked. Zero issues may be silently discarded.
 
 ## Execution Notes
 

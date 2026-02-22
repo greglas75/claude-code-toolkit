@@ -1,7 +1,7 @@
 ---
 name: review
 description: "Code review with triage, audit, confidence scoring, and auto-fix. Use when reviewing code changes, PRs, or diffs."
-disable-model-invocation: true
+user-invocable: true
 ---
 
 # /review — Code Review
@@ -134,13 +134,13 @@ If blocked and user requested `fix` → warn, downgrade to MODE 1 (report only),
 ### Step 6: Conditional Sections
 
 Flag which extra audit sections are needed:
-- New feature? → Feature Completeness (Step 3.5)
+- New feature? → Feature Completeness (Step 3.7)
 - DB changes? → Database review (Step 4.3)
 - i18n/strings? → Internationalization (Step 8)
 - New dependencies? → Dependency Security (Step 7.2)
 - External API? → External Services (Step 4.4)
-- API/interface changes? → Backward Compatibility (Step 4.5)
-- AI-generated code? → AI Code Smell Check (Step 3.6)
+- API/interface changes? → Backward Compatibility (Step 4.6)
+- AI-generated code? → AI Code Smell Check (Step 3.8)
 
 ### Step 6.5: Read Backlog
 
@@ -229,7 +229,7 @@ ELSE:
 ### Audit Steps by Tier
 
 **TIER 1 (LIGHT):** Steps 0 → 1 → 2.1 → 6.1 → Confidence Gate → Report (always SOLO)
-**TIER 2 (STANDARD):** Steps 0 → 1 → 2 → 3 → 4 → 5 → 6 → 9 → Confidence Gate → Report
+**TIER 2 (STANDARD):** Steps 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7.0 → 9 → Confidence Gate → Report
 **TIER 3 (DEEP):** ALL steps 0-11 → Confidence Gate → Report
 
 ### Solo Audit (default)

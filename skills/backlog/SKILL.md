@@ -1,7 +1,7 @@
 ---
 name: backlog
 description: "Manage tech debt backlog — add, list, fix, wontfix, delete items. Use when managing or viewing the project's tech debt."
-disable-model-invocation: true
+user-invocable: true
 ---
 
 # /backlog — Manage Tech Debt Backlog

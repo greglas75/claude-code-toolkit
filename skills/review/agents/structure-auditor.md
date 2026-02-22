@@ -69,6 +69,12 @@ Execute these steps on the changed files provided to you:
 - Missing indexes on columns used in WHERE/ORDER BY
 - If MCP postgres is available: verify indexes exist, run EXPLAIN on query patterns
 
+**4.4 External Services** (if external API calls):
+- Timeouts set on all outbound HTTP calls
+- Circuit breaker or retry with backoff for unreliable services
+- Fallback behavior when external service is down
+- Credentials not hardcoded (injected via config/env)
+
 **4.5 Environment Variables:**
 - New env vars documented in `.env.example` or equivalent
 - Secrets not exposed to client bundles

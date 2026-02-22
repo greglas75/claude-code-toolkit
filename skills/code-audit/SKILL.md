@@ -1,7 +1,7 @@
 ---
 name: code-audit
-description: "Audit production code files against CQ1-CQ20 checklist + CAP1-CAP12 anti-patterns. Produces tiered report with scores, evidence gaps, and fix priorities. Use: /code-audit [path] or /code-audit all"
-disable-model-invocation: true
+description: "Audit production code files against CQ1-CQ20 checklist + CAP1-CAP13 anti-patterns. Produces tiered report with scores, evidence gaps, and fix priorities. Use: /code-audit [path] or /code-audit all"
+user-invocable: true
 ---
 
 # /code-audit — Production Code Quality Triage
@@ -340,6 +340,21 @@ The report must end with a concrete action plan:
 - [N] files using float for money (CQ16) — adopt Decimal.js project-wide
 - [N] services with N+1 queries (CQ17) — batch query refactoring sprint
 ```
+
+## Step 7.5: Backlog Persistence (MANDATORY)
+
+After generating the report, persist ALL findings (confidence 26+) to `memory/backlog.md`:
+
+1. **Read** the project's `memory/backlog.md` (from the auto memory directory shown in system prompt)
+2. **If file doesn't exist**: create it from the template in `~/.claude/skills/review/rules.md`
+3. For each finding (Tier B/C/D):
+   - Search backlog for same file + same CQ/issue
+   - **Duplicate**: increment `Seen` count, add date, keep highest severity
+   - **New**: append with next `B-{N}` ID, source: `code-audit/{date}`, status: OPEN
+4. **Tier A files**: if any OPEN backlog items exist for Tier A files, mark as FIXED
+5. **Tier D red flags** (CAP5-CAP8): always persist as CRITICAL regardless of confidence
+
+**THIS IS REQUIRED, NOT OPTIONAL.** Every finding from the audit must end up either fixed (Step 8) or in the backlog. Zero issues may be silently discarded.
 
 ## Step 8: Post-Audit Fix Workflow
 

@@ -38,7 +38,7 @@ Agent runs this self-eval AFTER writing code, BEFORE writing tests.
 
 **Conditional critical gate** (activated by code context):
 - **CQ16** → critical if code touches prices, costs, discounts, invoices, payouts, exchange rates
-- **CQ19** → critical if code receives or sends data across API/module boundary (request OR response). **Thin controller exception:** if controller only returns data constructed by typed service code (not forwarding external/unvalidated data), CQ19=0 severity = LOW, tier cap = B (not C).
+- **CQ19** → critical if code receives or sends data across API/module boundary (request OR response). **Thin controller exception:** if controller only returns data constructed by typed service code (not forwarding external/unvalidated data), CQ19=0 severity = LOW, score impact = CONDITIONAL PASS (not FAIL). In `/code-audit` tier system: cap = B (not C).
 - **CQ20** → critical if payload contains `*_id` + `*_name` pairs, or number + string-with-currency for same field
 
 When conditional gate activates: that CQ = 0 → FAIL, same as static gate.
