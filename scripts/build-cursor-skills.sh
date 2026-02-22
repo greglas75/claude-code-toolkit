@@ -51,6 +51,14 @@ adapt_agent() {
     -e 's|~/.claude/skills/|~/.cursor/skills/|g' \
     -e 's|~/.claude/rules/|~/.cursor/rules/|g' \
     -e 's|~/.claude/|~/.cursor/|g' \
+    -e 's/—/--/g' \
+    -e 's/→/->/g' \
+    -e 's/✅/[x]/g' \
+    -e 's/❌/[ ]/g' \
+    -e 's/━/-/g' \
+    -e 's/═/=/g' \
+    -e 's/≤/<=/g' \
+    -e 's/≥/>=/g' \
     > "$dst"
 }
 
@@ -82,7 +90,16 @@ transform_skill() {
     /^[[:space:]]*run_in_background:/ { next }
 
     { print }
-  ' "$src" > "$dst"
+  ' "$src" | sed \
+    -e 's/—/--/g' \
+    -e 's/→/->/g' \
+    -e 's/✅/[x]/g' \
+    -e 's/❌/[ ]/g' \
+    -e 's/━/-/g' \
+    -e 's/═/=/g' \
+    -e 's/≤/<=/g' \
+    -e 's/≥/>=/g' \
+    > "$dst"
 }
 
 # ============================================================
@@ -135,6 +152,14 @@ for skill_dir in "$TOOLKIT_DIR"/skills/*/; do
           -e 's|~/.claude/|~/.cursor/|g' \
           -e '/^[[:space:]]*subagent_type:/d' \
           -e '/^[[:space:]]*run_in_background:/d' \
+          -e 's/—/--/g' \
+          -e 's/→/->/g' \
+          -e 's/✅/[x]/g' \
+          -e 's/❌/[ ]/g' \
+          -e 's/━/-/g' \
+          -e 's/═/=/g' \
+          -e 's/≤/<=/g' \
+          -e 's/≥/>=/g' \
           > "$DIST/skills/$skill/$f"
     fi
   done

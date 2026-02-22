@@ -1,4 +1,4 @@
-# Code Audit Orchestrator — Multi-Agent Prompt
+# Code Audit Orchestrator -- Multi-Agent Prompt
 
 Use this prompt with Claude Code to audit all production files in parallel.
 
@@ -25,8 +25,8 @@ You are the orchestrator for a production code quality audit. Your job:
 ### Step 1: Read Project Rules
 
 ```
-Read CLAUDE.md (if exists) — look for Tech Stack, file limits, conventions
-Read ~/.cursor/rules/code-quality.md — CQ1-CQ20 full checklist with evidence + N/A rules
+Read CLAUDE.md (if exists) -- look for Tech Stack, file limits, conventions
+Read ~/.cursor/rules/code-quality.md -- CQ1-CQ20 full checklist with evidence + N/A rules
 ```
 
 ### Step 2: Discovery
@@ -85,20 +85,20 @@ Parse each agent's output. Extract per-file:
 
 After per-file aggregation, check for project-wide patterns:
 
-1. **Cross-file duplication:** Multiple Tier-C files in same directory with CQ14=0 → likely shared duplication between files
-2. **Validation chain gaps:** Controller CQ3=1 but service CQ3=N/A → verify service isn't called from other entry points
-3. **Money handling inconsistency:** Some files Decimal, others float → project-wide CQ16 issue
-4. **Error handling inconsistency:** Some services with CQ8=1, others CQ8=0 for same patterns → project convention missing
-5. **N+1 hotspots:** Multiple CQ17=0 → candidate for batch query refactoring sprint
+1. **Cross-file duplication:** Multiple Tier-C files in same directory with CQ14=0 -> likely shared duplication between files
+2. **Validation chain gaps:** Controller CQ3=1 but service CQ3=N/A -> verify service isn't called from other entry points
+3. **Money handling inconsistency:** Some files Decimal, others float -> project-wide CQ16 issue
+4. **Error handling inconsistency:** Some services with CQ8=1, others CQ8=0 for same patterns -> project convention missing
+5. **N+1 hotspots:** Multiple CQ17=0 -> candidate for batch query refactoring sprint
 
 ### Step 7: Build Report
 
 Use the report template from SKILL.md Step 4. Sort files by score (worst first). Calculate:
 - Total files per tier
-- **Average score by code type** — identifies which layer has worst quality
-- **Top failed CQs** — which CQ questions fail most often (project-wide weakness)
-- **Critical gate failure rate** — % of files failing gates
-- **Conditional gate activation rate** — how many files triggered CQ16/19/20
+- **Average score by code type** -- identifies which layer has worst quality
+- **Top failed CQs** -- which CQ questions fail most often (project-wide weakness)
+- **Critical gate failure rate** -- % of files failing gates
+- **Conditional gate activation rate** -- how many files triggered CQ16/19/20
 - Most common anti-patterns
 
 ### Step 8: Actionable Output
@@ -106,16 +106,16 @@ Use the report template from SKILL.md Step 4. Sort files by score (worst first).
 End with concrete action plan grouped by effort (S/M/L) and priority.
 
 Include **project-wide recommendations** when patterns emerge:
-- "15/30 services missing CQ8 → add global exception filter + per-service infra error handling"
-- "8/12 controllers missing CQ19 → adopt response DTO pattern project-wide"
-- "All money calculations use float → adopt Decimal.js, start with [highest-risk file]"
+- "15/30 services missing CQ8 -> add global exception filter + per-service infra error handling"
+- "8/12 controllers missing CQ19 -> adopt response DTO pattern project-wide"
+- "All money calculations use float -> adopt Decimal.js, start with [highest-risk file]"
 
 ### Important Rules
 
-- **NEVER modify files during audit** — read only
+- **NEVER modify files during audit** -- read only
 - Each agent MUST read the **full file** before scoring (no skimming headers)
-- Files with only type declarations / interfaces → skip (not production logic)
-- Setup/bootstrap files (main.ts, app.module.ts) → audit for CQ5 (secrets), CQ8 (startup errors) only
+- Files with only type declarations / interfaces -> skip (not production logic)
+- Setup/bootstrap files (main.ts, app.module.ts) -> audit for CQ5 (secrets), CQ8 (startup errors) only
 - **Evidence is required** for critical gate CQs in `--deep` mode
 - For `--quick` mode: binary scores are sufficient, but critical gate FAILs still need a one-line explanation
 - **Suite-aware:** If file A imports from file B and both are in the batch, note the dependency (helps CQ4/CQ14 analysis)

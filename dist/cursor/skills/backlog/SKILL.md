@@ -1,10 +1,10 @@
 ---
 name: backlog
-description: "Manage tech debt backlog — add, list, fix, wontfix, delete items. Use when managing or viewing the project's tech debt."
+description: "Manage tech debt backlog -- add, list, fix, wontfix, delete items. Use when managing or viewing the project's tech debt."
 user-invocable: true
 ---
 
-# /backlog — Manage Tech Debt Backlog
+# /backlog -- Manage Tech Debt Backlog
 
 Add, list, or manage backlog items manually. Works independently of `/review`.
 
@@ -33,7 +33,7 @@ When adding (either interactive or from description):
    - **Severity** (infer from description, confirm if unsure)
    - **Problem** (from user's description)
    - **Fix** (suggest one if obvious, otherwise "TBD")
-4. Check for duplicates (same file + same function/location) — if found, increment `Seen` count instead
+4. Check for duplicates (same file + same function/location) -- if found, increment `Seen` count instead
 5. Append under `## OPEN Issues`
 6. Confirm what was added
 
@@ -53,13 +53,13 @@ Example: `/backlog add` then user pastes:
 Default view (no args or `list`):
 
 ```
-TECH DEBT BACKLOG — {project name}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TECH DEBT BACKLOG -- {project name}
+---------------------------------------------
 | ID   | Severity | File                    | Problem (short)          | Seen |
 |------|----------|-------------------------|--------------------------|------|
 | B-1  | MEDIUM   | auth.service.ts         | catch(err: any)          | 3x   |
 | B-2  | HIGH     | payout.service.ts       | Race condition in claim  | 1x   |
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+----------------------------------------------
 OPEN: X items (C: _, H: _, M: _, L: _)
 ```
 
@@ -67,7 +67,7 @@ OPEN: X items (C: _, H: _, M: _, L: _)
 
 ```
 BACKLOG STATS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+----------------------------
 OPEN:      X items
   CRITICAL:  _
   HIGH:      _
@@ -80,7 +80,7 @@ WONT_FIX:  Z items
 Top files:
   1. services/payout.service.ts (3 items)
   2. handlers/webhook.ts (2 items)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+----------------------------
 ```
 
 $ARGUMENTS

@@ -166,15 +166,15 @@ Read `memory/backlog.md` from the project's auto memory directory (path shown in
 
 Show header:
 ```
-===============================================================
+---------------------------------------------------------------
 CODE REVIEW [+ AUTO-FIX if Mode 2/3]
-===============================================================
+---------------------------------------------------------------
 REVIEWING: [1-2 sentence summary]
 FILES: [X files, +Y/-Z lines]
 TIER: [1/2/3] - [LIGHT/STANDARD/DEEP]
 AUDIT: [SOLO / TEAM (2 auditors)]
 CHANGE INTENT: [BUGFIX/REFACTOR/FEATURE/INFRA]
-===============================================================
+---------------------------------------------------------------
 ```
 
 ### Pre-Audit Context Gathering
@@ -338,9 +338,19 @@ After completing all audit steps, DO NOT write the report yet. Instead:
 7. Write final report with issues scoring 51+
 8. **MANDATORY: Write dropped issues (confidence 26-50) to `memory/backlog.md`** with their confidence score and "(dropped from report)" note -- do this BEFORE showing the report to the user. Issues scoring 0-25 are DISCARDED (do not persist).
 
+### Cursor Rendering Rules (applies to ALL output)
+
+Cursor renders markdown headers (`##`, `###`) as large text. To keep reports readable:
+- **NEVER use `###` or `##` inside report content.** Use `**bold text**` for section headers within the report.
+- Use `---` (ASCII) for visual separators, NOT `═══` or `━━━` unicode.
+- Wrap structured data (triage matrix, issue details, execution header) in ` ``` ` code blocks.
+- Issue format: use `**R-N: Title**` (bold), NOT `### R-N: Title` (header).
+- Field labels inside issues: use `**Severity:** MEDIUM` on separate lines (not concatenated).
+- Keep `###` only for top-level workflow step names (Phase 0, Phase A) that you print once -- NOT inside report content that Cursor will render.
+
 ### Report Output
 
-Generate the full report following the format in review-protocol.md. Include:
+Generate the full report following the format in review-protocol.md, but with Cursor Rendering Rules above applied. Include:
 1. META (date, intent, tier, audit mode [SOLO/TEAM], confidence, agents used)
 2. SCOPE FENCE (allowed files)
 3. FINAL VERDICT + score
@@ -399,9 +409,9 @@ If MODE 1 (report only): after report + backlog update, ask the user:
 
 1. Show SCOPE FENCE + EXECUTION HEADER:
 ```
-===============================================================
+---------------------------------------------------------------
 EXECUTING FIXES
-===============================================================
+---------------------------------------------------------------
 ORIGINAL ISSUE: [summary]
 CHANGE INTENT: [intent]
 SCOPE FENCE:
@@ -409,7 +419,7 @@ SCOPE FENCE:
   FORBIDDEN: files outside scope, new APIs, "while we're here" fixes
 FIXES TO APPLY:
   [ ] [ID] [description]
-===============================================================
+---------------------------------------------------------------
 ```
 
 2. Apply fixes -- choose execution mode:
@@ -476,9 +486,9 @@ EXECUTE VERIFICATION
 This creates a clean rollback point. User can `git reset --hard <tag>` if needed.
 
 ```
-===============================================================
+---------------------------------------------------------------
 EXECUTION COMPLETE
-===============================================================
+---------------------------------------------------------------
 ORIGINAL ISSUE: [summary]
 FILES MODIFIED: [list]
 
@@ -494,7 +504,7 @@ VERIFIED:
 
 Commit: [hash] -- [message]
 Tag: [tag name] (rollback: git reset --hard [tag])
-===============================================================
+---------------------------------------------------------------
 ```
 
 ### Post-Execute Backlog Update

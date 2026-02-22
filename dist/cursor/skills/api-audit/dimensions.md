@@ -1,10 +1,10 @@
-# API Audit Dimensions — Detailed Scoring Criteria
+# API Audit Dimensions -- Detailed Scoring Criteria
 
 Reference file for `/api-audit` agents. Contains per-dimension checks, scoring rubrics, discovery scripts, and stack-specific patterns.
 
 ---
 
-## D1 — Input Validation & Type Safety (Weight: 15/100)
+## D1 -- Input Validation & Type Safety (Weight: 15/100)
 
 For EACH endpoint/handler, verify:
 
@@ -13,7 +13,7 @@ For EACH endpoint/handler, verify:
 | Schema validation at edge | Zod/ClassValidator/Pydantic on route handler | Manual `if (!body.name)` checks | HIGH |
 | Param validation | `@Param('id', ParseUUIDPipe)` or Zod coerce | `req.params.id` used as-is (string treated as number) | MEDIUM |
 | Body completeness | All fields in schema, no extra fields allowed | Partial schema (some fields unchecked) | HIGH |
-| Query param validation | Validated + coerced (string→number, enum check) | Raw `req.query.page` used directly | MEDIUM |
+| Query param validation | Validated + coerced (string->number, enum check) | Raw `req.query.page` used directly | MEDIUM |
 | File upload validation | MIME type + size limit + extension allowlist | Accept anything | CRITICAL |
 
 **Stack-specific patterns:**
@@ -34,7 +34,7 @@ For EACH endpoint/handler, verify:
 
 ---
 
-## D2 — Payload Efficiency & Data Contracts (Weight: 15/100)
+## D2 -- Payload Efficiency & Data Contracts (Weight: 15/100)
 
 | Check | Good | Bad | Severity |
 |-------|------|-----|----------|
@@ -50,20 +50,20 @@ For EACH endpoint/handler, verify:
 # Find endpoints returning raw ORM entities (no DTO/serializer)
 grep -rn "return.*findMany\|return.*findOne\|return.*find(" "$SRC" --include="*.service.ts" | head -20
 
-# Find select/exclude patterns (good — slim payload)
+# Find select/exclude patterns (good -- slim payload)
 grep -rn "select:\|exclude:\|@Exclude()\|@Expose()" "$SRC" --include="*.ts" | head -20
 ```
 
 **Scoring:**
 - 15: Explicit DTOs, no leakage, consistent money format, no dual fields
 - 12: DTOs exist but some endpoints expose raw entities
-- 8: Mixed — some endpoints slim, others return full ORM objects
+- 8: Mixed -- some endpoints slim, others return full ORM objects
 - 4: Most endpoints return raw entities, some internal fields leak
 - 0: `SELECT *` returned directly, sensitive fields exposed
 
 ---
 
-## D3 — Pagination & Unbounded Queries (Weight: 12/100)
+## D3 -- Pagination & Unbounded Queries (Weight: 12/100)
 
 | Check | Good | Bad | Severity |
 |-------|------|-----|----------|
@@ -90,7 +90,7 @@ grep -rn "\.all()" "$SRC" --include="*.py" | head -20
 
 ---
 
-## D4 — Error Handling & Standardization (Weight: 12/100)
+## D4 -- Error Handling & Standardization (Weight: 12/100)
 
 | Check | Good | Bad | Severity |
 |-------|------|-----|----------|
@@ -121,7 +121,7 @@ grep -rn "status(200).*error\|success.*false" "$SRC" --include="*.ts" | head -10
 
 ---
 
-## D5 — Caching & HTTP Headers (Weight: 8/100)
+## D5 -- Caching & HTTP Headers (Weight: 8/100)
 
 | Check | Good | Bad | Severity |
 |-------|------|-----|----------|
@@ -145,7 +145,7 @@ grep -rn "status(200).*error\|success.*false" "$SRC" --include="*.ts" | head -10
 
 ---
 
-## D6 — HTTP Semantics Correctness (Weight: 8/100)
+## D6 -- HTTP Semantics Correctness (Weight: 8/100)
 
 | Check | Good | Bad | Severity |
 |-------|------|-----|----------|
@@ -164,18 +164,18 @@ grep -rn "status(200).*error\|success.*false" "$SRC" --include="*.ts" | head -10
 
 ---
 
-## D7 — N+1 API Waterfall (Client-Side) (Weight: 5/100)
+## D7 -- N+1 API Waterfall (Client-Side) (Weight: 5/100)
 
 Analyze frontend code for sequential API calls where aggregation endpoint would be better.
 
 ```typescript
-// BAD — client waterfall (N+1)
+// BAD -- client waterfall (N+1)
 const offers = await api.get('/offers');
 for (const offer of offers.data) {
   const markets = await api.get(`/offers/${offer.id}/markets`);  // N calls!
 }
 
-// GOOD — aggregated endpoint or include param
+// GOOD -- aggregated endpoint or include param
 const offers = await api.get('/offers?include=markets,services');
 ```
 
@@ -201,7 +201,7 @@ grep -rn "for.*of\|\.forEach\|\.map" "$SRC" --include="*.tsx" -A5 | \
 
 ---
 
-## D8 — Rate Limiting & Throttling (Weight: 5/100)
+## D8 -- Rate Limiting & Throttling (Weight: 5/100)
 
 | Check | Good | Bad | Severity |
 |-------|------|-----|----------|
@@ -227,7 +227,7 @@ grep -rn "chatgpt\|openai\|export\|download\|bulk\|import\|migrate" "$SRC" --inc
 
 ---
 
-## D9 — Authentication & Authorization Integrity (Weight: 15/100)
+## D9 -- Authentication & Authorization Integrity (Weight: 15/100)
 
 API-level security audit. Covers CQ4 (defense in depth) and CQ5 (secret exposure) from API surface perspective.
 
@@ -264,7 +264,7 @@ grep -rn "@router\.\(post\|put\|patch\|delete\)" "$SRC" --include="*.py" -A5 | \
 
 ---
 
-## D10 — API Documentation & Contracts (Weight: 5/100, DEEP tier only)
+## D10 -- API Documentation & Contracts (Weight: 5/100, DEEP tier only)
 
 | Check | Good | Bad | Severity |
 |-------|------|-----|----------|

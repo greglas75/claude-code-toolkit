@@ -1,8 +1,8 @@
 # Refactoring Rules (Always Active)
 
 These rules govern all refactoring work via `/refactor` and manual refactoring sessions.
-Full protocol (ETAP-1A → 1B → 2) is at `~/.cursor/refactoring-protocol.md` — read on-demand when `/refactor` starts.
-Stack-specific examples are at `~/.cursor/refactoring-examples/{stack}.md` — loaded after auto-detection.
+Full protocol (ETAP-1A -> 1B -> 2) is at `~/.cursor/refactoring-protocol.md` -- read on-demand when `/refactor` starts.
+Stack-specific examples are at `~/.cursor/refactoring-examples/{stack}.md` -- loaded after auto-detection.
 
 ---
 
@@ -12,7 +12,7 @@ Stack-specific examples are at `~/.cursor/refactoring-examples/{stack}.md` — l
 |------|-------------|-----------|--------------|
 | `EXTRACT_METHODS` | Extract methods to service/helper | WRITE_NEW | tests |
 | `SPLIT_FILE` | Split god class into N files by concern | WRITE_NEW | tests + no file > limit + encoding + setup dedup + backlog |
-| `GOD_CLASS` | Iterative decomposition of massive file (>500 lines AND >15 deps) | WRITE_FUNCTIONAL | functional tests → iterative extract + unit test loop |
+| `GOD_CLASS` | Iterative decomposition of massive file (>500 lines AND >15 deps) | WRITE_FUNCTIONAL | functional tests -> iterative extract + unit test loop |
 | `BREAK_CIRCULAR` | Fix circular dependencies | RUN_EXISTING | madge + tsc (fallback: eslint import/no-cycle if madge fails) |
 | `MOVE` | Move files/modules/types | RUN_EXISTING | tsc + grep old imports = 0 |
 | `RENAME_MOVE` | Rename + update all references | RUN_EXISTING | tsc + grep old_name = 0 |
@@ -36,7 +36,7 @@ GOD_CLASS is detected automatically during Stage 1 Audit when ANY of these are t
 | Stack | Command | Notes |
 |-------|---------|-------|
 | TypeScript (NestJS) | `grep -c '@Inject\|private readonly'` in constructor | |
-| React (hooks) | Count `useQuery`, `useMutation`, `useStore`, `useContext` hooks | `useState`/`useRef`/`useMemo`/`useCallback` are local state — do NOT count as dependencies |
+| React (hooks) | Count `useQuery`, `useMutation`, `useStore`, `useContext` hooks | `useState`/`useRef`/`useMemo`/`useCallback` are local state -- do NOT count as dependencies |
 | Python (class-based) | Count `self.xxx =` assignments in `__init__` | |
 | Python (FastAPI + Depends) | `grep -c 'Depends('` in function/class | |
 | Python (Django) | Count class-level field definitions + `__init__` params | |
@@ -44,9 +44,9 @@ GOD_CLASS is detected automatically during Stage 1 Audit when ANY of these are t
 When detected, show:
 ```
 GOD_CLASS DETECTED: [file] ([N] lines, [M] dependencies)
-Standard EXTRACT_METHODS/SPLIT_FILE won't work — switching to iterative mode.
+Standard EXTRACT_METHODS/SPLIT_FILE won't work -- switching to iterative mode.
   - ETAP-1B: functional tests for ALL public endpoints (SmartMock Proxy)
-  - ETAP-2: iterative extract → unit test → verify → commit loop
+  - ETAP-2: iterative extract -> unit test -> verify -> commit loop
 OK?
 ```
 
@@ -68,10 +68,10 @@ OK?
 Only do what's in the CONTRACT from ETAP-1A. No additions, no "improvements", no scope creep. If you discover something not in CONTRACT: STOP, report, ask "Add?" or "Ignore?".
 
 ### 2. TESTS FIRST
-Verify pre-extraction tests pass BEFORE making changes. Same tests must pass AFTER changes. If tests fail after refactoring — fix the code, not the tests.
+Verify pre-extraction tests pass BEFORE making changes. Same tests must pass AFTER changes. If tests fail after refactoring -- fix the code, not the tests.
 Before writing tests: read `~/.cursor/test-patterns.md` (global). Classify code type, load matching patterns from lookup table, apply them.
-After writing tests: run Step 4 self-eval checklist (17 yes/no questions, scored individually). Score < 14 = fix before proceeding to ETAP-2. Critical gate: Q7, Q11, Q13, Q15, Q17 — any = 0 → auto-capped at FIX.
-For SPLIT_FILE/EXTRACT_METHODS: (a) run Step 4 on EACH existing test file during Stage 1 audit — files < 14 → gaps into CONTRACT; (b) resolve ALL gaps in ETAP-1B — unresolved gaps block ETAP-2; (c) re-run Step 4 on each NEW split file — must score ≥ 14 and not lower than pre-split. A split that only moves code without improving test quality is a failed split.
+After writing tests: run Step 4 self-eval checklist (17 yes/no questions, scored individually). Score < 14 = fix before proceeding to ETAP-2. Critical gate: Q7, Q11, Q13, Q15, Q17 -- any = 0 -> auto-capped at FIX.
+For SPLIT_FILE/EXTRACT_METHODS: (a) run Step 4 on EACH existing test file during Stage 1 audit -- files < 14 -> gaps into CONTRACT; (b) resolve ALL gaps in ETAP-1B -- unresolved gaps block ETAP-2; (c) re-run Step 4 on each NEW split file -- must score >= 14 and not lower than pre-split. A split that only moves code without improving test quality is a failed split.
 
 ### 3. VERIFY APPROPRIATELY
 After each TASK: run relevant spec. After each PHASE: full test suite + tsc + lint. Use commands from project CLAUDE.md/package.json if present; else use defaults.
@@ -99,17 +99,17 @@ If a fix requires touching a file not in ALLOWED: STOP, ask user to expand scope
 
 A CONTRACT is invalid if ANY of these are true:
 
-1. **TODO/SKIP present** — no `it.todo`, `it.skip`, `pytest.mark.skip` (except post-extraction markers)
-2. **Only contract tests** — every function MUST have behavioral tests (not just `toBeDefined`)
-3. **Mocking unit under test** — never mock the function being tested
-4. **Min test count not met** — Low: 3+, Medium: 5+, High: 8+ (per complexity)
-5. **Tests not passing** — all tests must PASS or be marked NOT VERIFIED
-6. **Structure violation** — one function = one spec file (no monolith spec files)
-7. **Mixed test runners** — cannot mix Jest/Vitest or pytest/unittest in same file
-8. **Mock budget violation** — max 3 ACTIVE mocks per spec (passive DI stubs unlimited)
-9. **No integration test** — at least 1 test must call original entry point
-10. **Weak assertions only** — must have at least 1 STRONG assertion per test
-11. **String matching for structure** — must use AST parsing, not string matching
+1. **TODO/SKIP present** -- no `it.todo`, `it.skip`, `pytest.mark.skip` (except post-extraction markers)
+2. **Only contract tests** -- every function MUST have behavioral tests (not just `toBeDefined`)
+3. **Mocking unit under test** -- never mock the function being tested
+4. **Min test count not met** -- Low: 3+, Medium: 5+, High: 8+ (per complexity)
+5. **Tests not passing** -- all tests must PASS or be marked NOT VERIFIED
+6. **Structure violation** -- one function = one spec file (no monolith spec files)
+7. **Mixed test runners** -- cannot mix Jest/Vitest or pytest/unittest in same file
+8. **Mock budget violation** -- max 3 ACTIVE mocks per spec (passive DI stubs unlimited)
+9. **No integration test** -- at least 1 test must call original entry point
+10. **Weak assertions only** -- must have at least 1 STRONG assertion per test
+11. **String matching for structure** -- must use AST parsing, not string matching
 
 ---
 
@@ -140,7 +140,7 @@ Agent definition files: `~/.cursor/skills/refactor/agents/*.md`
 |---------|----------|
 | `/refactor` | Full flow with STOPs (plan approval + test approval) |
 | `/refactor auto` | Minimal STOPs (only plan approval) |
-| `/refactor plan-only` | ETAP-1A only — analyze and plan, no execution |
+| `/refactor plan-only` | ETAP-1A only -- analyze and plan, no execution |
 | `/refactor continue` | Resume from existing CONTRACT.json |
 
 ---

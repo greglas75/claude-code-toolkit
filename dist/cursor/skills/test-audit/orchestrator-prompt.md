@@ -1,4 +1,4 @@
-# Test Audit Orchestrator — Multi-Agent Prompt
+# Test Audit Orchestrator -- Multi-Agent Prompt
 
 Use this prompt with Claude Code to audit all test files in parallel.
 
@@ -14,7 +14,7 @@ You are the orchestrator for a test quality audit. Your job:
 
 1. **Discover** all test files in the project
 2. **Pair** each with its production file
-3. **Calibrate** (first audit only) — run 2-3 golden files to verify agent scoring consistency
+3. **Calibrate** (first audit only) -- run 2-3 golden files to verify agent scoring consistency
 4. **Split** into batches of 8-10 files
 5. **Spawn** parallel Task agents (one per batch)
 6. **Aggregate** results into a tiered report
@@ -31,11 +31,11 @@ Exclude E2E tests (different evaluation criteria). Count total.
 
 ### Step 2: Pair with Production Files
 
-For each test file, identify the production file. If not found → flag as ORPHAN.
+For each test file, identify the production file. If not found -> flag as ORPHAN.
 
 ### Step 3: Calibrate (first audit only)
 
-See SKILL.md Step 2.5 — run 2-3 golden files to verify agent scoring consistency before full batch.
+See SKILL.md Step 2.5 -- run 2-3 golden files to verify agent scoring consistency before full batch.
 
 ### Step 4: Batch + Spawn
 
@@ -43,7 +43,7 @@ Split files into batches of 8-10. For each batch, spawn a Task agent:
 
 ```
 Task(
-  model: "sonnet",  // Haiku inflates scores on Q11/Q15/Q17/AP10 — Sonnet required for reliable triage
+  model: "sonnet",  // Haiku inflates scores on Q11/Q15/Q17/AP10 -- Sonnet required for reliable triage
   prompt: [AGENT PROMPT from SKILL.md with file list]
 )
 ```
@@ -66,8 +66,8 @@ Parse each agent's output. Extract per-file:
 
 Sort files by score (worst first). Group by tier. Calculate:
 - Total files per tier
-- **Top failed Qs** — which Q questions fail most often across all files
-- **Top critical gate failures** — Q7/Q11/Q13/Q15/Q17 failure counts with file lists
+- **Top failed Qs** -- which Q questions fail most often across all files
+- **Top critical gate failures** -- Q7/Q11/Q13/Q15/Q17 failure counts with file lists
 - Most common anti-patterns
 - Critical gate failure rate
 
@@ -78,25 +78,25 @@ The report must end with a concrete action plan:
 ```markdown
 ## Recommended Action Plan
 
-### Immediate (Tier D — rewrite)
-1. [file] — [reason] — estimated effort: [S/M/L]
+### Immediate (Tier D -- rewrite)
+1. [file] -- [reason] -- estimated effort: [S/M/L]
 
 ### Short-term (Critical gate failures)
-1. [file] — add error path test (Q7)
-2. [file] — import production code (Q13)
+1. [file] -- add error path test (Q7)
+2. [file] -- import production code (Q13)
 
 ### Medium-term (Tier C)
-1. [file] — [top 3 fixes]
+1. [file] -- [top 3 fixes]
 
 ### Low priority (Tier B)
-1. [file] — [targeted fix]
+1. [file] -- [targeted fix]
 ```
 
 ### Important Rules
 
-- NEVER modify test files during audit — read only
+- NEVER modify test files during audit -- read only
 - Each agent MUST read the production file too (for Q11, Q13, AP10 detection)
-- If a test file has no identifiable production file → mark as ORPHAN
-- Setup/helper files (*.setup.ts, *.fixtures.ts) are NOT test files — skip them
-- Files with only `it.todo()` or `it.skip()` → auto Tier D
+- If a test file has no identifiable production file -> mark as ORPHAN
+- Setup/helper files (*.setup.ts, *.fixtures.ts) are NOT test files -- skip them
+- Files with only `it.todo()` or `it.skip()` -> auto Tier D
 - **Suite-aware grouping**: if multiple test files target the same production file (e.g., `foo.test.ts` + `foo.errors.test.ts`), batch them together and evaluate Q7/Q11 at suite level

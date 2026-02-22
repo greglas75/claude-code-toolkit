@@ -1,7 +1,7 @@
 # Code Review Rules (Always Active)
 
 These rules govern all code reviews via `/review`.
-Full protocol with detailed checklists, red-flag patterns, and report templates is at `~/.cursor/review-protocol.md` — read it on-demand when `/review` starts.
+Full protocol with detailed checklists, red-flag patterns, and report templates is at `~/.cursor/review-protocol.md` -- read it on-demand when `/review` starts.
 
 ---
 
@@ -27,18 +27,18 @@ Don't inflate severity. Be honest. "I would do it differently" is not HIGH.
 
 ## False Positive Filter (Apply Before Reporting)
 
-DO NOT report these as PR issues — but DO persist them to backlog (see Backlog Persistence below):
-- **Pre-existing:** Issue existed before this change (check `git blame` — if line is old, skip from PR report but add to backlog)
+DO NOT report these as PR issues -- but DO persist them to backlog (see Backlog Persistence below):
+- **Pre-existing:** Issue existed before this change (check `git blame` -- if line is old, skip from PR report but add to backlog)
 - **Unmodified lines:** Real issue but on code the author didn't touch in this change (skip from PR report but add to backlog)
 
 DO NOT report AND do NOT add to backlog:
-- **Linter/compiler-catchable:** Import errors, type errors, formatting — CI catches these
+- **Linter/compiler-catchable:** Import errors, type errors, formatting -- CI catches these
 - **Stylistic without CLAUDE.md rule:** Personal preference not backed by project conventions
 - **Intentional changes:** Functionality changes directly related to the PR's purpose
 - **Pedantic nitpicks:** Things a senior engineer would wave through
 - **Speculative:** "This might cause issues" without concrete evidence or scenario
 
-When in doubt: does this issue actually impact users or maintainability? If no → skip it.
+When in doubt: does this issue actually impact users or maintainability? If no -> skip it.
 
 ## Confidence Re-Scoring
 
@@ -47,21 +47,21 @@ The sub-agent acts as a skeptic defending the code author. See `/review` for ful
 
 | Score | Meaning | Action |
 |-------|---------|--------|
-| 0-25 | Hallucination or 100% false positive — doesn't survive scrutiny | **DISCARD** (do not persist) |
+| 0-25 | Hallucination or 100% false positive -- doesn't survive scrutiny | **DISCARD** (do not persist) |
 | 26-50 | Minor nitpick, pre-existing debt, low impact | Backlog only |
-| 51-74 | Valid, low-impact but real — worth fixing | **In report** |
-| 75-89 | Important — verified real, affects functionality | **In report** |
-| 90-100 | Critical — confirmed, will happen in production | **In report** |
+| 51-74 | Valid, low-impact but real -- worth fixing | **In report** |
+| 75-89 | Important -- verified real, affects functionality | **In report** |
+| 90-100 | Critical -- confirmed, will happen in production | **In report** |
 
-**Threshold: 51+** goes into the report with fix code. 26-50 → backlog only. 0-25 → DISCARD (hallucinations and total false positives don't pollute backlog).
+**Threshold: 51+** goes into the report with fix code. 26-50 -> backlog only. 0-25 -> DISCARD (hallucinations and total false positives don't pollute backlog).
 For each reported issue, show the confidence score: `Confidence: [X]/100`
 
 Sub-agents used during review (spawned by `/review`):
-- **Blast Radius Mapper** (Sonnet, inline prompt, parallel at start) — traces importers/callers of changed files
-- **Pre-Existing Checker** (Haiku, inline prompt, parallel at start) — git blame to classify new vs old lines
-- **Structure Auditor** (custom agent: `~/.cursor/skills/review/agents/structure-auditor.md`, Sonnet, read-only) — architecture, types, integration, performance
-- **Behavior Auditor** (custom agent: `~/.cursor/skills/review/agents/behavior-auditor.md`, Opus, read-only) — logic, side effects, regressions, security, observability
-- **Confidence Re-Scorer** (custom agent: `~/.cursor/skills/review/agents/confidence-rescorer.md`, Haiku) — independent skeptic filtering false positives
+- **Blast Radius Mapper** (Sonnet, inline prompt, parallel at start) -- traces importers/callers of changed files
+- **Pre-Existing Checker** (Haiku, inline prompt, parallel at start) -- git blame to classify new vs old lines
+- **Structure Auditor** (custom agent: `~/.cursor/skills/review/agents/structure-auditor.md`, Sonnet, read-only) -- architecture, types, integration, performance
+- **Behavior Auditor** (custom agent: `~/.cursor/skills/review/agents/behavior-auditor.md`, Opus, read-only) -- logic, side effects, regressions, security, observability
+- **Confidence Re-Scorer** (custom agent: `~/.cursor/skills/review/agents/confidence-rescorer.md`, Haiku) -- independent skeptic filtering false positives
 
 ### Team Audit Mode (TIER 2 with 5+ files OR TIER 3)
 
@@ -79,7 +79,7 @@ For larger reviews, `/review` splits audit steps across 2 custom agents in paral
 **Merge protocol:**
 1. Wait for both auditors to complete
 2. Collect issue lists (STRUCT-* + BEHAV-*)
-3. Deduplicate — if both found same issue, keep more detailed one
+3. Deduplicate -- if both found same issue, keep more detailed one
 4. Renumber: R-1, R-2, R-3...
 5. Feed merged list to Confidence Re-Scorer (`confidence-rescorer` agent)
 
@@ -90,7 +90,7 @@ For larger reviews, `/review` splits audit steps across 2 custom agents in paral
 
 ### Code Quality on Execute
 
-When applying fixes during Execute, run CQ1-CQ20 self-eval (`~/.cursor/rules/code-quality.md`) on each modified production file. Static critical gate: CQ3, CQ4, CQ5, CQ6, CQ8, CQ14. Conditional gate: CQ16 (money), CQ19 (I/O), CQ20 (dual fields). Thresholds: ≥16 PASS, 14-15 CONDITIONAL PASS (fix before merge encouraged), <14 FAIL. Any active critical gate = 0 → FAIL regardless of score. Evidence required for each critical CQ scored as 1.
+When applying fixes during Execute, run CQ1-CQ20 self-eval (`~/.cursor/rules/code-quality.md`) on each modified production file. Static critical gate: CQ3, CQ4, CQ5, CQ6, CQ8, CQ14. Conditional gate: CQ16 (money), CQ19 (I/O), CQ20 (dual fields). Thresholds: >=16 PASS, 14-15 CONDITIONAL PASS (fix before merge encouraged), <14 FAIL. Any active critical gate = 0 -> FAIL regardless of score. Evidence required for each critical CQ scored as 1.
 
 ### Parallel Execute Mode (3+ fixes on different files)
 
@@ -102,22 +102,22 @@ During Execute (Phase B), if 3+ fixes target different files with no interaction
 
 **Dependency check before parallelizing:** Do NOT parallelize if ANY of these apply:
 - Fixes target the same file
-- File A imports from File B (or vice versa) — check with grep before splitting
+- File A imports from File B (or vice versa) -- check with grep before splitting
 - Fixes share a common type/interface/DTO that both modify
-- Controller + Service pair for the same endpoint (execute sequentially: Service first → Controller second)
+- Controller + Service pair for the same endpoint (execute sequentially: Service first -> Controller second)
 
 ## Tier Selection
 
 | Tier | When | Audit Steps | Mode 2 OK? |
 |------|------|-------------|------------|
-| TIER 1 (LIGHT) | <50 lines, no risk signals | 0 → 1 → 2.1 → 6.1 → Report | YES |
-| TIER 2 (STANDARD) | 50-500 lines, max 1 risk signal | 0 → 1-6 → **7.0** → 9 → Report | YES (if no risky changes) |
-| TIER 3 (DEEP) | >500 lines OR 2+ risk signals | ALL 0-11 → Report | NO |
+| TIER 1 (LIGHT) | <50 lines, no risk signals | 0 -> 1 -> 2.1 -> 6.1 -> Report | YES |
+| TIER 2 (STANDARD) | 50-500 lines, max 1 risk signal | 0 -> 1-6 -> **7.0** -> 9 -> Report | YES (if no risky changes) |
+| TIER 3 (DEEP) | >500 lines OR 2+ risk signals | ALL 0-11 -> Report | NO |
 
 ## Mode 2 Blocker
 
 `/review fix` is FORBIDDEN if ANY: TIER 3, DB/migration changes, security/auth changes, API contract changes, payment/money flow.
-If blocked → run `/review` (report only) + `Execute BLOCKING` instead.
+If blocked -> run `/review` (report only) + `Execute BLOCKING` instead.
 
 ## 6 Iron Rules
 
@@ -128,10 +128,10 @@ If blocked → run `/review` (report only) + `Execute BLOCKING` instead.
 - "Code Executed Locally" = YES only if terminal output was provided; otherwise "NOT VERIFIED" + confidence downgrade
 
 ### 2. FIX CODE MANDATORY
-- MEDIUM+ issues: complete, working replacement code — full replacement, not snippets
+- MEDIUM+ issues: complete, working replacement code -- full replacement, not snippets
 
 ### 3. ZERO HALLUCINATION
-- Don't invent imports/APIs. If unsure → prefix with "VERIFY:"
+- Don't invent imports/APIs. If unsure -> prefix with "VERIFY:"
 
 ### 4. HOLISTIC THINKING
 - View file as part of SYSTEM. What depends on this? What breaks if it changes?
@@ -156,9 +156,9 @@ Before applying ANY fix, show:
 - **ALLOWED FILES** from the report
 - **FORBIDDEN:** files outside scope, new public APIs/DTOs, new dependencies, "while we're here" improvements, style/naming outside fix scope
 
-If fix requires touching other file → STOP → ask: "Fix requires [file]. Add to allowed list?" → wait for approval.
+If fix requires touching other file -> STOP -> ask: "Fix requires [file]. Add to allowed list?" -> wait for approval.
 
-**Auto-expanded scope:** CQ16 corrections (Float→Decimal) automatically expand Scope Fence to include dependent DTOs, Type Definitions, and ORM schemas that reference the corrected field — because changing a field's type without updating its consumers creates type errors. No approval needed for these cascading type changes.
+**Auto-expanded scope:** CQ16 corrections (Float->Decimal) automatically expand Scope Fence to include dependent DTOs, Type Definitions, and ORM schemas that reference the corrected field -- because changing a field's type without updating its consumers creates type errors. No approval needed for these cascading type changes.
 
 ## Flaky Test Detection
 
@@ -167,14 +167,14 @@ During "loop until green", if test fails:
 2. Check if failure is non-deterministic (timing, random, race)
 3. Check if environment-related (network, disk)
 
-If FLAKY SUSPECTED → STOP loop → mark "FLAKY SUSPECTED: [test]" → ask user → DO NOT "fix" code to make flaky test pass.
+If FLAKY SUSPECTED -> STOP loop -> mark "FLAKY SUSPECTED: [test]" -> ask user -> DO NOT "fix" code to make flaky test pass.
 
 ## Stack-Specific Awareness
 
 Auto-detect stack from project files before reviewing:
-- `next.config.*` → Next.js: check Server Components, Server Actions, `"use client"`, `NEXT_PUBLIC_*`
-- `pyproject.toml` / `requirements.txt` / `manage.py` → Python: check type hints, mutable defaults, async pitfalls, pickle/eval
-- `package.json` with `react` → React: check hooks, re-renders, state management
+- `next.config.*` -> Next.js: check Server Components, Server Actions, `"use client"`, `NEXT_PUBLIC_*`
+- `pyproject.toml` / `requirements.txt` / `manage.py` -> Python: check type hints, mutable defaults, async pitfalls, pickle/eval
+- `package.json` with `react` -> React: check hooks, re-renders, state management
 - Detailed checklists for each stack in `~/.cursor/review-protocol.md`
 
 Critical cross-stack checks (always apply):
@@ -182,7 +182,7 @@ Critical cross-stack checks (always apply):
 - Auth: checked in every mutation endpoint / server action?
 - Input validation: at system boundaries (API, forms, server actions)?
 
-## Gate A — Insufficient Input
+## Gate A -- Insufficient Input
 
 If no diff / no baseline / no context provided:
 - Confidence = LOW, switch to TIER 1
@@ -197,12 +197,12 @@ If no diff / no baseline / no context provided:
 ### [ID] Short Descriptive Title
 Severity: CRITICAL / HIGH / MEDIUM / LOW
 Confidence: [X]/100
-Location: `file.ts` → `functionName()` → near `codeFragment`
+Location: `file.ts` -> `functionName()` -> near `codeFragment`
 Current Code: [exact quote, max 20 lines]
 Problem: [why it's wrong]
-Impact: [what breaks — specific user impact]
-Pre-existing? [YES (skip) / NO — checked via git blame]
-Complete Fix: [full replacement code — must compile and work]
+Impact: [what breaks -- specific user impact]
+Pre-existing? [YES (skip) / NO -- checked via git blame]
+Complete Fix: [full replacement code -- must compile and work]
 Verification: [how to verify the fix]
 ```
 
@@ -226,7 +226,7 @@ Every unfixed issue from a review MUST be persisted to the backlog. No issue get
 ### B-{N}: {Short Title}
 - **Severity:** CRITICAL / HIGH / MEDIUM / LOW
 - **Confidence:** {X}/100
-- **File:** `{path}` → `{function}()`
+- **File:** `{path}` -> `{function}()`
 - **Problem:** {description}
 - **Fix:** {brief fix description}
 - **Source:** review {date}, branch `{branch}`
@@ -236,7 +236,7 @@ Every unfixed issue from a review MUST be persisted to the backlog. No issue get
 ## Rules
 - New issues: append with next B-{N} ID
 - Duplicate: increment "Seen" count, add date, keep highest confidence
-- Fixed: change status to FIXED with date — do NOT delete (history)
+- Fixed: change status to FIXED with date -- do NOT delete (history)
 - WONT_FIX: only when user explicitly says to ignore
 
 ---
@@ -262,7 +262,7 @@ _None yet._
 | Reported but not fixed | User chose `Execute BLOCKING` (skips MEDIUM/LOW) | Tech debt items from report |
 | Deferred by user | User explicitly says "not now" / "later" | Any severity |
 
-**Rule: Real issues don't get lost.** Issues with confidence 26+ go to backlog. Issues 0-25 (hallucinations, total false positives) are DISCARDED — they pollute the backlog and degrade signal-to-noise. Use `/backlog` to periodically review and clean up.
+**Rule: Real issues don't get lost.** Issues with confidence 26+ go to backlog. Issues 0-25 (hallucinations, total false positives) are DISCARDED -- they pollute the backlog and degrade signal-to-noise. Use `/backlog` to periodically review and clean up.
 
 ### When to persist
 
@@ -284,7 +284,7 @@ _None yet._
 
 ### When to mark FIXED
 
-During any review, if you notice a backlog item's file+function was modified and the problem no longer exists → update status to `FIXED ({date})` and move to `## RESOLVED Issues`.
+During any review, if you notice a backlog item's file+function was modified and the problem no longer exists -> update status to `FIXED ({date})` and move to `## RESOLVED Issues`.
 
 ### At review start
 
