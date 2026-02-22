@@ -553,6 +553,20 @@ RULES FOR ETAP 2:
   - Enable post-extraction tests (remove skip) after extraction
 ```
 
+### ETAP-1B Commit (MANDATORY)
+
+After all tests pass and self-eval scores meet thresholds, commit the test files. **This is an ACTION — run these commands now:**
+
+```bash
+git add [list of new/modified test files]
+git commit -m "test([scope]): pre-extraction tests for [contractId]
+
+[N] test files, [M] tests, all passing.
+Self-eval: all ≥ 14/17, critical gates passed."
+```
+
+**Verify:** `git status` shows clean working directory (only CONTRACT/session files may remain unstaged).
+
 ---
 
 # ETAP 2: EXECUTE & VERIFY
@@ -848,19 +862,31 @@ Quick check after each phase:
 
 ---
 
-## Stage 4E: Commit Checkpoint
+## Stage 4E: Commit Checkpoint (MANDATORY — do NOT skip)
 
-```
-refactor([scope]): [phase description]
+After each phase passes verification (Stage 4C + 4D), commit immediately. **This is an ACTION, not documentation.** Run these commands now:
+
+```bash
+# 1. Stage only files from this phase (CONTRACT allowlist)
+git add [list of modified/created files from this phase]
+
+# 2. Commit with structured message
+git commit -m "refactor([scope]): [phase description]
 
 - Task N.1: [description]
 - Task N.2: [description]
 
 Phase N of M. All tests passing.
-CONTRACT: [reference]
+CONTRACT: [reference]"
 ```
 
-One commit per phase. Never push mid-phases.
+**Rules:**
+- One commit per phase — commit BEFORE moving to next phase
+- Never push mid-phases
+- If you forget to commit and move to the next phase → commit the current phase's files NOW before continuing
+- The `Commit: [hash]` in the completion output MUST be a real commit hash from `git log` — never fabricate it
+
+**Verification:** After committing, run `git status` to confirm working directory is clean (or only has files for future phases).
 
 ---
 
