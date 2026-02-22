@@ -4,7 +4,7 @@ description: "Comprehensive API and endpoint integrity audit. Covers validation,
 user-invocable: true
 ---
 
-# /api-audit — API & Endpoint Integrity Audit
+# /api-audit -- API & Endpoint Integrity Audit
 
 Standalone skill for auditing how applications expose, consume, and validate data across API boundaries.
 
@@ -13,36 +13,36 @@ Standalone skill for auditing how applications expose, consume, and validate dat
 
 ## Mandatory File Reading (NON-NEGOTIABLE)
 
-Before starting ANY work, read ALL files below. Confirm each with ✅ or ❌:
+Before starting ANY work, read ALL files below. Confirm each with check or X:
 
 ```
-1. ✅/❌  ~/.cursor/rules/code-quality.md         — CQ1-CQ20 (this audit extends CQ3/5/7/16/19/20)
-2. ✅/❌  ~/.cursor/rules/security.md             — SSRF, path traversal, auth patterns
+1. [x]/[ ]  ~/.cursor/rules/code-quality.md         -- CQ1-CQ20 (this audit extends CQ3/5/7/16/19/20)
+2. [x]/[ ]  ~/.cursor/rules/security.md             -- SSRF, path traversal, auth patterns
 ```
 
-**If ANY file is ❌ → STOP. Do not proceed with a partial rule set.**
+**If ANY file fails to load, STOP. Do not proceed with a partial rule set.**
 
 Parse $ARGUMENTS as target scope (directory, module, or "full" for entire project).
 
 ## Path Resolution (non-Claude-Code environments)
 
 If running in Antigravity, Cursor, or other IDEs where `~/.cursor/` is not accessible, resolve paths from `_agent/` in project root:
-- `~/.cursor/rules/` → `_agent/rules/`
+- `~/.cursor/rules/` -> `_agent/rules/`
 
 ---
 
 ## Safety Gates (NON-NEGOTIABLE)
 
-### GATE 1 — Mutation Prevention
+### GATE 1 -- Mutation Prevention
 **NEVER execute POST, PUT, PATCH, DELETE** against any environment without explicit user confirmation AND sandbox detection. GET and OPTIONS only for live probing.
 
 Before any HTTP request:
-1. Check URL — is it localhost, staging, or production?
-2. If production domain detected → REFUSE (ask user to provide sandbox URL)
-3. If staging → ASK user confirmation before EACH request
-4. If localhost/sandbox → proceed with GET/OPTIONS only
+1. Check URL -- is it localhost, staging, or production?
+2. If production domain detected -> REFUSE (ask user to provide sandbox URL)
+3. If staging -> ASK user confirmation before EACH request
+4. If localhost/sandbox -> proceed with GET/OPTIONS only
 
-### GATE 2 — PII & Credential Censorship
+### GATE 2 -- PII & Credential Censorship
 When logging API responses, headers, or payloads:
 - Replace Bearer tokens: `Bearer ***`
 - Replace API keys: `x-api-key: ***`
@@ -52,7 +52,7 @@ When logging API responses, headers, or payloads:
 
 **ALL output files and reports must be scrubbed BEFORE writing.**
 
-### GATE 3 — Script Execution
+### GATE 3 -- Script Execution
 Long discovery scripts (>20 lines) MUST be saved to file first, then `chmod +x`, then executed. Never paste long scripts directly into terminal.
 
 ---
@@ -63,14 +63,14 @@ This audit extends (not duplicates) the CQ checklist. Relevant CQ dimensions:
 
 | CQ | API Audit Dimension | Depth |
 |----|---------------------|-------|
-| CQ3 | D1 (Validation) — schema completeness across ALL endpoints | Extended |
-| CQ5 | D9 (Auth) — secret exposure in headers/responses | Extended |
-| CQ7 | D3 (Pagination) — query bounds and payload size | Extended |
-| CQ16 | D2 (Payload) — money fields representation consistency cross-endpoint | Extended |
-| CQ19 | D1+D2 — runtime schema on both request AND response | Extended |
-| CQ20 | D2 (Payload) — dual fields in response payloads cross-endpoint | Extended |
+| CQ3 | D1 (Validation) -- schema completeness across ALL endpoints | Extended |
+| CQ5 | D9 (Auth) -- secret exposure in headers/responses | Extended |
+| CQ7 | D3 (Pagination) -- query bounds and payload size | Extended |
+| CQ16 | D2 (Payload) -- money fields representation consistency cross-endpoint | Extended |
+| CQ19 | D1+D2 -- runtime schema on both request AND response | Extended |
+| CQ20 | D2 (Payload) -- dual fields in response payloads cross-endpoint | Extended |
 
-**If `/review` already scored these CQs:** Focus on what CQ self-eval misses — cross-endpoint consistency, client-side waterfall patterns, caching strategy, and system-wide contract drift.
+**If `/review` already scored these CQs:** Focus on what CQ self-eval misses -- cross-endpoint consistency, client-side waterfall patterns, caching strategy, and system-wide contract drift.
 
 ---
 
@@ -163,12 +163,12 @@ grep -rn "useQuery\|useMutation\|fetch(\|axios\.\(get\|post\|put\|patch\|delete\
 Output:
 ```
 ENDPOINT INVENTORY
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+------------------------------
 Stack: [detected]
 Tier: [LIGHT/STANDARD/DEEP]
 Total endpoints: [N]
 Risk signals: [list or "none"]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+------------------------------
 ```
 
 ---
@@ -181,24 +181,24 @@ For EACH dimension, evaluate all endpoints in scope and assign a score:
 
 | # | Dimension | Weight | Max | Critical Gate |
 |---|-----------|--------|-----|---------------|
-| D1 | Input Validation & Type Safety | 15% | 15 | D1=0 → auto-fail |
-| D2 | Payload Efficiency & Data Contracts | 15% | 15 | — |
-| D3 | Pagination & Unbounded Queries | 12% | 12 | D3<3 AND >10K rows → auto-fail |
-| D4 | Error Handling & Standardization | 12% | 12 | — |
-| D5 | Caching & HTTP Headers | 8% | 8 | — |
-| D6 | HTTP Semantics Correctness | 8% | 8 | — |
-| D7 | N+1 API Waterfall (Client-Side) | 5% | 5 | — |
-| D8 | Rate Limiting & Throttling | 5% | 5 | — |
-| D9 | Authentication & Authorization | 15% | 15 | D9<8 → auto-fail |
-| D10 | Documentation & Contracts (DEEP only) | 5% | 5 | — |
+| D1 | Input Validation & Type Safety | 15% | 15 | D1=0 -> auto-fail |
+| D2 | Payload Efficiency & Data Contracts | 15% | 15 | -- |
+| D3 | Pagination & Unbounded Queries | 12% | 12 | D3<3 AND >10K rows -> auto-fail |
+| D4 | Error Handling & Standardization | 12% | 12 | -- |
+| D5 | Caching & HTTP Headers | 8% | 8 | -- |
+| D6 | HTTP Semantics Correctness | 8% | 8 | -- |
+| D7 | N+1 API Waterfall (Client-Side) | 5% | 5 | -- |
+| D8 | Rate Limiting & Throttling | 5% | 5 | -- |
+| D9 | Authentication & Authorization | 15% | 15 | D9<8 -> auto-fail |
+| D10 | Documentation & Contracts (DEEP only) | 5% | 5 | -- |
 
 **Health grades:**
-- ≥ 80: HEALTHY — minor improvements possible
-- 60-79: NEEDS ATTENTION — significant issues to address
-- 40-59: AT RISK — multiple critical/high issues
-- < 40: CRITICAL — immediate remediation required
+- >= 80: HEALTHY -- minor improvements possible
+- 60-79: NEEDS ATTENTION -- significant issues to address
+- 40-59: AT RISK -- multiple critical/high issues
+- < 40: CRITICAL -- immediate remediation required
 
-**Critical gate:** D9 < 8 (auth gaps on mutations), D1 = 0 (no validation), D3 < 3 with >10K records, stack traces in production responses → auto-fail regardless of total.
+**Critical gate:** D9 < 8 (auth gaps on mutations), D1 = 0 (no validation), D3 < 3 with >10K records, stack traces in production responses -> auto-fail regardless of total.
 
 ---
 
@@ -212,7 +212,7 @@ For each controller/module, evaluate against D1-D10 using the instructions in `a
 
 **Prerequisites:**
 1. User confirms target environment (localhost/staging/sandbox)
-2. Production domains → REFUSE
+2. Production domains -> REFUSE
 3. Auth token provided by user (never auto-extract from code)
 
 ### Probing Protocol
@@ -234,7 +234,7 @@ curl -s -I -H "Authorization: Bearer $TOKEN" "$BASE_URL$ENDPOINT" | \
 
 # Error shape consistency
 curl -s "$BASE_URL/nonexistent-endpoint-404-test"
-curl -s "$BASE_URL$PROTECTED_ENDPOINT"  # without auth → should be 401
+curl -s "$BASE_URL$PROTECTED_ENDPOINT"  # without auth -> should be 401
 ```
 
 Record per endpoint:
@@ -251,7 +251,7 @@ Record per endpoint:
 After per-endpoint scoring, analyze system-level patterns:
 
 ### 3.1 Contract Consistency
-- Same entity returned from different endpoints — is the shape identical?
+- Same entity returned from different endpoints -- is the shape identical?
 - Frontend expects field X, backend returns field Y (contract drift)
 - Pagination format consistent across all list endpoints?
 - Error shape consistent across all stacks?
@@ -313,7 +313,7 @@ Save to: `audits/api-audit-[date].md`
 | **TOTAL** | **{X}** | **100** | **{grade}** |
 
 ## Critical Findings
-{CRITICAL/HIGH severity — SCRUBBED of PII}
+{CRITICAL/HIGH severity -- SCRUBBED of PII}
 
 ## All Findings (by dimension)
 {Grouped D1-D10, ordered by severity}
@@ -332,23 +332,23 @@ Save to: `audits/api-audit-[date].md`
 
 ```
 ### API-{N}: {Short Title}
-Dimension: D{X} — {name}
+Dimension: D{X} -- {name}
 Severity: CRITICAL / HIGH / MEDIUM / LOW
 Confidence: {X}/100
 Endpoint: {METHOD} {path}
 Stack: {NestJS/Worker/FastAPI/Frontend}
-File: `{path}` → `{handler}()`
-Evidence: {code quote or response excerpt, max 15 lines — SCRUBBED}
+File: `{path}` -> `{handler}()`
+Evidence: {code quote or response excerpt, max 15 lines -- SCRUBBED}
 Problem: {specific}
 Impact: {user/security/performance}
 Fix: {complete code for MEDIUM+}
-CQ Overlap: {CQ3/CQ5/CQ7/CQ19/CQ20 or "none — cross-endpoint only"}
+CQ Overlap: {CQ3/CQ5/CQ7/CQ19/CQ20 or "none -- cross-endpoint only"}
 ```
 
 ### Backlog Persistence (MANDATORY)
 
 After audit, persist ALL findings (confidence 26+) to `memory/backlog.md`:
 1. Read existing backlog
-2. Duplicates → increment `Seen` count
-3. New → append with next `B-{N}` ID, source: `api-audit/{date}`
-4. Confidence 0-25 → DISCARD (consistent with `/review` rules)
+2. Duplicates -> increment `Seen` count
+3. New -> append with next `B-{N}` ID, source: `api-audit/{date}`
+4. Confidence 0-25 -> DISCARD (consistent with `/review` rules)

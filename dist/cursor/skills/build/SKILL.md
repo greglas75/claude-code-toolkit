@@ -4,7 +4,7 @@ description: "Structured feature development with analysis sub-agents, quality g
 user-invocable: true
 ---
 
-# /build — Structured Feature Development (Cursor)
+# /build -- Structured Feature Development (Cursor)
 
 Lightweight workflow for building new features with quality gates. Lighter than `/refactor` (no CONTRACT, no ETAP), heavier than raw coding (sub-agents, scope fence, backlog).
 
@@ -15,7 +15,7 @@ Parse $ARGUMENTS as the feature description.
 
 ## Path Resolution
 
-Resolve paths from both possible locations — try `~/.cursor/` first, fall back to `_agent/` in project root:
+Resolve paths from both possible locations -- try `~/.cursor/` first, fall back to `_agent/` in project root:
 - `~/.cursor/skills/` or `_agent/skills/`
 - `~/.cursor/rules/` or `_agent/rules/`
 - `~/.cursor/test-patterns.md` or `_agent/test-patterns.md`
@@ -27,10 +27,10 @@ Resolve paths from both possible locations — try `~/.cursor/` first, fall back
 Before starting ANY work, read ALL files below. Confirm each with check or X:
 
 ```
-1. check/X  ~/.cursor/rules/code-quality.md         — CQ1-CQ20 production code checklist
-2. check/X  ~/.cursor/rules/testing.md              — Q1-Q17 test self-eval checklist
-3. check/X  ~/.cursor/test-patterns.md              — G-*/P-* patterns, AP anti-patterns
-4. check/X  ~/.cursor/rules/file-limits.md          — 250-line file limit, 50-line function limit
+1. check/X  ~/.cursor/rules/code-quality.md         -- CQ1-CQ20 production code checklist
+2. check/X  ~/.cursor/rules/testing.md              -- Q1-Q17 test self-eval checklist
+3. check/X  ~/.cursor/test-patterns.md              -- G-*/P-* patterns, AP anti-patterns
+4. check/X  ~/.cursor/rules/file-limits.md          -- 250-line file limit, 50-line function limit
 ```
 
 **If ANY file cannot be read, STOP. Do not proceed with a partial rule set.**
@@ -41,7 +41,7 @@ Before starting ANY work, read ALL files below. Confirm each with check or X:
 
 1. Read project `CLAUDE.md` and `.cursor/rules/` (or `_agent/rules/`) for conventions
 2. Detect stack (check `package.json`, `tsconfig.json`, `pyproject.toml`, etc.)
-3. Read `memory/backlog.md` if it exists — check for related OPEN items
+3. Read `memory/backlog.md` if it exists -- check for related OPEN items
 
 Output:
 ```
@@ -55,7 +55,7 @@ BACKLOG: [N open items in related files, or "none"]
 
 Before planning, delegate to 2 agents for context gathering:
 
-**Agent 1: Blast Radius Mapper** — uses `~/.cursor/skills/refactor/agents/dependency-mapper.md`
+**Agent 1: Blast Radius Mapper** -- uses `~/.cursor/skills/refactor/agents/dependency-mapper.md`
 
 Delegate to @dependency-mapper to trace blast radius:
 - FEATURE: [description]
@@ -63,7 +63,7 @@ Delegate to @dependency-mapper to trace blast radius:
 - PROJECT ROOT: [cwd]
 - INSTRUCTIONS: Read `~/.cursor/skills/refactor/agents/dependency-mapper.md` for full protocol. Trace all importers/callers of the target files. Identify what might break or need updates. Read project CLAUDE.md for import conventions.
 
-**Agent 2: Existing Code Scanner** — uses `~/.cursor/skills/refactor/agents/existing-code-scanner.md`
+**Agent 2: Existing Code Scanner** -- uses `~/.cursor/skills/refactor/agents/existing-code-scanner.md`
 
 Delegate to @existing-code-scanner to find overlapping code:
 - FEATURE: [description]
@@ -71,7 +71,7 @@ Delegate to @existing-code-scanner to find overlapping code:
 - PROJECT ROOT: [cwd]
 - INSTRUCTIONS: Read `~/.cursor/skills/refactor/agents/existing-code-scanner.md` for full protocol. Search for existing services/helpers/components similar to what's planned. Prevent duplication. Read project CLAUDE.md for file organization conventions.
 
-Don't wait for results — start Phase 2 immediately. Incorporate results when ready.
+Don't wait for results -- start Phase 2 immediately. Incorporate results when ready.
 
 ---
 
@@ -90,11 +90,11 @@ ALLOWED: [files to create/modify]
 FORBIDDEN: files outside scope, unrelated improvements
 
 ## 3. Blast Radius
-[From @dependency-mapper results — who depends on files we're changing]
+[From @dependency-mapper results -- who depends on files we're changing]
 [If results not ready yet: list known dependents manually]
 
 ## 4. Duplication Check
-[From @existing-code-scanner results — existing code that overlaps]
+[From @existing-code-scanner results -- existing code that overlaps]
 [If results not ready yet: note "pending scan"]
 
 ## 5. Implementation Plan
@@ -111,16 +111,16 @@ FORBIDDEN: files outside scope, unrelated improvements
 [Flag any file that will exceed 250 lines -> plan split]
 
 ## 8. Questions for Author
-[Only if genuine uncertainty about requirements or approach — e.g. two valid architectures,
+[Only if genuine uncertainty about requirements or approach -- e.g. two valid architectures,
 ambiguous business rules, conflicting patterns found in codebase. Leave empty if clear.]
 ```
 
-**A plan missing any section is INCOMPLETE — do not proceed.**
+**A plan missing any section is INCOMPLETE -- do not proceed.**
 
 ### Questions Gate (before proceeding)
 
 If section 8 is non-empty:
-1. Ask the user each question — max 4 at a time
+1. Ask the user each question -- max 4 at a time
 2. Wait for answers
 3. Update the plan based on answers (revise approach, scope, implementation strategy)
 4. Then proceed
@@ -143,18 +143,18 @@ Before coding, verify:
 ### 3.2: Code
 
 Implement the feature following the plan. Rules:
-- **Stay in scope** — only touch ALLOWED files
-- **Business logic in services** — not in components or API routes
-- **Follow project conventions** — from CLAUDE.md and `.cursor/rules/`
-- **Check file size after each file** — if approaching 250 lines, split NOW. Ad-hoc splits to respect the 250-line limit automatically expand Scope Fence to include newly created helper/sub-files. Justify in execution output.
+- **Stay in scope** -- only touch ALLOWED files
+- **Business logic in services** -- not in components or API routes
+- **Follow project conventions** -- from CLAUDE.md and `.cursor/rules/`
+- **Check file size after each file** -- if approaching 250 lines, split NOW. Ad-hoc splits to respect the 250-line limit automatically expand Scope Fence to include newly created helper/sub-files. Justify in execution output.
 
 ### 3.3: Code Quality Self-Eval
 
 Run CQ1-CQ20 self-eval (from `~/.cursor/rules/code-quality.md`) on each production file you wrote/modified.
 
 - Score each CQ individually (1/0)
-- Static critical gate: CQ3, CQ4, CQ5, CQ6, CQ8, CQ14 — any = 0 -> fix before writing tests
-- Conditional critical gate: CQ16 (if money code), CQ19 (if I/O boundary), CQ20 (if dual fields) — any = 0 -> fix
+- Static critical gate: CQ3, CQ4, CQ5, CQ6, CQ8, CQ14 -- any = 0 -> fix before writing tests
+- Conditional critical gate: CQ16 (if money code), CQ19 (if I/O boundary), CQ20 (if dual fields) -- any = 0 -> fix
 - Score < 14 -> FAIL, 14-15 -> CONDITIONAL PASS, >= 16 -> PASS
 - Evidence required for each critical gate CQ scored as 1
 - Check code-type patterns table for high-risk CQs specific to your code type
@@ -173,7 +173,7 @@ Write tests per the Test Strategy from Phase 2. Requirements:
 Run Q1-Q17 self-eval (from `~/.cursor/rules/testing.md`) on each test file you wrote.
 
 - Score each Q individually (1/0)
-- Critical gate: Q7, Q11, Q13, Q15, Q17 — any = 0 -> fix before proceeding
+- Critical gate: Q7, Q11, Q13, Q15, Q17 -- any = 0 -> fix before proceeding
 - Score < 14 -> fix worst gaps, re-score
 - **Q12 procedure:** list ALL public methods/endpoints under test -> for each repeated test pattern (auth guard, validation, error path), verify ALL methods have it. Missing = 0.
 
@@ -202,6 +202,28 @@ Run in parallel:
 
 **All must pass.** If any fails -> fix -> re-run.
 
+### 4.3: Execute Verification Checklist (NON-NEGOTIABLE)
+
+After all code is written and before committing, verify ALL of these. Print each with [x] or [ ]:
+
+```
+EXECUTE VERIFICATION
+-------------------------------------
+[x]/[ ]  SCOPE: All files match the approved plan (no unplanned files added)
+[x]/[ ]  SCOPE: No extra features/refactoring beyond what the plan specifies
+[x]/[ ]  TESTS PASS: Full test suite green (not just new files)
+[x]/[ ]  TYPES: tsc --noEmit passes (no type errors)
+[x]/[ ]  FILE LIMITS: All created/modified files <= 250 lines (production) / <= 400 lines (test)
+[x]/[ ]  CQ1-CQ20: Self-eval on each new/modified PRODUCTION file (scores + evidence)
+[x]/[ ]  Q1-Q17: Self-eval on each new/modified TEST file (individual scores + critical gate)
+-------------------------------------
+```
+
+**If ANY is [ ], fix before committing.** Common failures:
+- Scope creep: adding helpers or refactoring existing code not in the plan -> revert
+- File limit: new files exceed 250 lines -> split into modules
+- CQ/Q not run: every production file needs CQ1-CQ20, every test file needs Q1-Q17
+
 ---
 
 ## Phase 5: Completion
@@ -222,7 +244,7 @@ Run in parallel:
 
 After verification passes, automatically commit and tag:
 
-1. `git add [list of created/modified files — specific names, not -A]`
+1. `git add [list of created/modified files -- specific names, not -A]`
 2. `git commit -m "build: [feature description]"`
 3. `git tag build-[YYYY-MM-DD]-[short-slug]` (e.g., `build-2026-02-22-offer-export`)
 
@@ -241,7 +263,7 @@ Files modified: [N]
 Tests written: [N], all passing
 Verification: tests PASS | types PASS | lint PASS
 Backlog: [N items persisted | "none"]
-Commit: [hash] — [message]
+Commit: [hash] -- [message]
 Tag: [tag name] (rollback: git reset --hard [tag])
 
 Next steps:

@@ -4,26 +4,26 @@ description: "Audit all test files against Q1-Q17 checklist + AP1-AP18 anti-patt
 user-invocable: true
 ---
 
-# /test-audit — Test Quality Triage
+# /test-audit -- Test Quality Triage
 
 Mass audit of test files against the Q1-Q17 binary checklist + AP anti-patterns.
 Produces a tiered report: which files are fine, which need fixes, which need rewrites.
 
 ## Mandatory File Reading (NON-NEGOTIABLE)
 
-Before starting ANY work, read ALL files below. Confirm each with ✅ or ❌:
+Before starting ANY work, read ALL files below. Confirm each with check or X:
 
 ```
-1. ✅/❌  ~/.cursor/test-patterns.md              — Q1-Q17 checklist, anti-patterns AP1-AP18, stack adjustments, red flags
-2. ✅/❌  ~/.cursor/rules/testing.md              — iron rules, test requirements by code type, self-eval
+1. [x]/[ ]  ~/.cursor/test-patterns.md              -- Q1-Q17 checklist, anti-patterns AP1-AP18, stack adjustments, red flags
+2. [x]/[ ]  ~/.cursor/rules/testing.md              -- iron rules, test requirements by code type, self-eval
 ```
 
-**If ANY file is ❌ → STOP. Do not proceed with a partial rule set.**
+**If ANY file fails to load, STOP. Do not proceed with a partial rule set.**
 
 ## Path Resolution (non-Claude-Code environments)
 
 If running in Antigravity, Cursor, or other IDEs where `~/.cursor/` is not accessible, resolve paths from `_agent/` in project root:
-- `~/.cursor/test-patterns.md` → `_agent/test-patterns.md`
+- `~/.cursor/test-patterns.md` -> `_agent/test-patterns.md`
 
 ## Step 0: Parse $ARGUMENTS
 
@@ -49,18 +49,18 @@ Count total. If >50 files, use `--quick` mode automatically (skip evidence gathe
 ## Step 2: Pair with Production Files
 
 For each test file, identify the production file it tests:
-- `__tests__/api/projects/[id]/route.test.ts` → `app/api/projects/[id]/route.ts`
-- `__tests__/components/Foo.test.tsx` → `components/Foo.tsx`
-- `tests/unit/services/bar.test.ts` → `lib/services/bar.ts` (or similar)
+- `__tests__/api/projects/[id]/route.test.ts` -> `app/api/projects/[id]/route.ts`
+- `__tests__/components/Foo.test.tsx` -> `components/Foo.tsx`
+- `tests/unit/services/bar.test.ts` -> `lib/services/bar.ts` (or similar)
 
-If production file not found → flag as ORPHAN (test without source).
+If production file not found -> flag as ORPHAN (test without source).
 
 ## Step 2.5: Golden File Calibration (optional, recommended for first audit)
 
 If this is the first audit of a project, or agent scores seem inconsistent:
 1. Pick 2-3 test files with **known scores** (one good ~14+, one bad ~5, one mid ~9)
 2. Run a single calibration evaluation on just those files
-3. Compare scores to known scores — if drift >2 points, adjust evaluation wording
+3. Compare scores to known scores -- if drift >2 points, adjust evaluation wording
 4. Once calibrated, proceed with full batch evaluation
 
 This prevents systematic over/under-scoring across the entire audit.
@@ -76,17 +76,17 @@ Split files into batches of 6-8. For each batch, evaluate against Q1-Q17 using t
 ```
 You are a test quality auditor. For each test file below, evaluate against the Q1-Q17 binary checklist.
 
-STEP 0 — RED FLAG PRE-SCAN (do this FIRST, before full evaluation):
-Count these in the test file. If any trigger → auto Tier-D, skip full checklist:
-- Tests with zero `expect()` calls (AP13) → AUTO TIER-D
-- Fixture:assertion ratio > 20:1 (AP16) → AUTO TIER-D
-- 50%+ of tests use `toBeTruthy()`/`toBeDefined()` as sole assertion (AP14) → AUTO TIER-D
+STEP 0 -- RED FLAG PRE-SCAN (do this FIRST, before full evaluation):
+Count these in the test file. If any trigger -> auto Tier-D, skip full checklist:
+- Tests with zero `expect()` calls (AP13) -> AUTO TIER-D
+- Fixture:assertion ratio > 20:1 (AP16) -> AUTO TIER-D
+- 50%+ of tests use `toBeTruthy()`/`toBeDefined()` as sole assertion (AP14) -> AUTO TIER-D
 
 QUICK HEURISTICS (not Tier-D triggers, but predict score):
-- 0 CalledWith in entire file → likely score ≤4
-- 10+ DI providers in test setup → likely score ≤5
-- Tests calling __privateMethod() directly → likely score ≤5
-- Factory functions with overrides present → likely score ≥8
+- 0 CalledWith in entire file -> likely score <=4
+- 10+ DI providers in test setup -> likely score <=5
+- Tests calling __privateMethod() directly -> likely score <=5
+- Factory functions with overrides present -> likely score >=8
 
 CHECKLIST (score 1=YES, 0=NO for each):
 Q1:  Every test name describes expected behavior (not "should work")?
@@ -95,84 +95,84 @@ Q3:  Every mock has CalledWith + not.toHaveBeenCalled?
 Q4:  Assertions use exact matchers (toEqual/toBe, not toBeTruthy)?
 Q5:  Mocks are typed (no `as any`/`as never`)?
 Q6:  Mock state fresh per test (beforeEach, no shared mutable)?
-Q7:  CRITICAL — At least one error path test (throws/rejects)?
+Q7:  CRITICAL -- At least one error path test (throws/rejects)?
 Q8:  Null/empty/edge inputs tested?
 Q9:  Repeated setup (3+ tests) extracted to helper/factory?
-Q10: No magic values — test data is self-documenting?
-Q11: CRITICAL — All code branches exercised?
+Q10: No magic values -- test data is self-documenting?
+Q11: CRITICAL -- All code branches exercised?
 Q12: Symmetric: "does X when Y" has "does NOT do X when not-Y"?
-Q13: CRITICAL — Tests import actual production function?
+Q13: CRITICAL -- Tests import actual production function?
 Q14: Behavioral assertions (not just mock-was-called)?
-Q15: CRITICAL — Content/values assertions, not just counts/shape?
+Q15: CRITICAL -- Content/values assertions, not just counts/shape?
 Q16: Cross-cutting isolation: change to A verified not to affect B?
-Q17: CRITICAL — Assertions verify COMPUTED output, not input echo?
+Q17: CRITICAL -- Assertions verify COMPUTED output, not input echo?
 
 ANTI-PATTERNS (each found = -1 point):
 AP1:  try/catch in test swallowing errors
 AP2:  Conditional assertions (if/else in test)
 AP3:  Re-implementing production logic in test
 AP4:  Snapshot as only test for component
-AP5:  `as any` → `as never` (both bypass types)
+AP5:  `as any` -> `as never` (both bypass types)
 AP6:  Testing CSS classes instead of behavior
 AP7:  `.catch(() => {})` swallowing errors
 AP8:  document.querySelector bypassing Testing Library
 AP9:  Always-true assertion (expect(true).toBe(true))
-AP10: Tautological mock (call mock → verify mock called, no production code)
-AP11: vi.mocked(vi.fn()) — mock targeting fresh fn
+AP10: Tautological mock (call mock -> verify mock called, no production code)
+AP11: vi.mocked(vi.fn()) -- mock targeting fresh fn
 AP12: waitForTimeout(N) hardcoded delays
-AP13: Test with zero expect() calls — AUTO TIER-D
+AP13: Test with zero expect() calls -- AUTO TIER-D
 AP14: toBeTruthy()/toBeDefined() as SOLE assertion on complex object
-AP15: Testing private methods directly (controller.__method()) — avg 3.0/10
-AP16: Fixture:assertion ratio > 20:1 — AUTO TIER-D
+AP15: Testing private methods directly (controller.__method()) -- avg 3.0/10
+AP16: Fixture:assertion ratio > 20:1 -- AUTO TIER-D
 AP17: Unused test data declared but never used in any test
 AP18: Duplicate test numbers/names (copy-paste indicator)
 
 N/A HANDLING: Q3/Q5/Q6 score as 1 (N/A) for pure functions with zero mocks. Q16 scores as 1 (N/A) for simple single-responsibility units.
-Q17 AUDIT RULE: If ≥50% of assertions check values that are direct copies of input/request/mock-return without transformation → Q17=0.
+Q17 AUDIT RULE: If >=50% of assertions check values that are direct copies of input/request/mock-return without transformation -> Q17=0.
 
-CRITICAL GATE: Q7, Q11, Q13, Q15, Q17 — any = 0 → capped at Tier B (Fix) regardless of total.
+CRITICAL GATE: Q7, Q11, Q13, Q15, Q17 -- any = 0 -> capped at Tier B (Fix) regardless of total.
 
 FOR EACH FILE, output this exact format:
 ```
 ### [filename]
 Production file: [path or ORPHAN]
-Red flags: [AP13/AP14/AP16 = auto Tier-D; AP15 = warning only; or "none"] → [AUTO TIER-D or "continue"]
+Red flags: [AP13/AP14/AP16 = auto Tier-D; AP15 = warning only; or "none"] -> [AUTO TIER-D or "continue"]
 Untested methods: [list of public methods in production file with no test coverage, or "all covered"]
 Score: Q1=[0/1] Q2=[0/1] Q3=[0/1/N/A] Q4=[0/1] Q5=[0/1/N/A] Q6=[0/1/N/A] Q7=[0/1] Q8=[0/1] Q9=[0/1] Q10=[0/1] Q11=[0/1] Q12=[0/1] Q13=[0/1] Q14=[0/1] Q15=[0/1] Q16=[0/1/N/A] Q17=[0/1]
 Anti-patterns: [AP IDs found, or "none"]
 Applicable: [N]/17 | Raw: [yes-count]/[applicable] | Normalized: [score]/17
 Total (after AP): [normalized] - [AP count] = [final]
-Critical gate: Q7=[0/1] Q11=[0/1] Q13=[0/1] Q15=[0/1] Q17=[0/1] → [PASS/FAIL]
+Critical gate: Q7=[0/1] Q11=[0/1] Q13=[0/1] Q15=[0/1] Q17=[0/1] -> [PASS/FAIL]
 Tier: [A/B/C/D]
 Top 3 gaps: [brief description of worst 3 issues]
 ```
 
 TIER CLASSIFICATION:
-  A (≥14, critical gate PASS): Leave alone — good ROI on other files
-  B (9-13, or critical gate FAIL with score ≥9): Fix gaps — 2-5 targeted fixes
-  C (5-8): Major rewrite needed — significant gaps
+  A (>=14, critical gate PASS): Leave alone -- good ROI on other files
+  B (9-13, or critical gate FAIL with score >=9): Fix gaps -- 2-5 targeted fixes
+  C (5-8): Major rewrite needed -- significant gaps
   D (<5 or tautological or AUTO TIER-D red flag): Delete and rewrite from scratch
 
 IMPORTANT:
 - You MUST read both the test file AND its production file
 - Do RED FLAG PRE-SCAN first. If any auto Tier-D trigger found, report it and skip full checklist.
-- COVERAGE COMPLETENESS: List all public methods/exported functions in the production file. For each, check if the test file has at least one `it()` block that exercises it. Flag any untested public method as: "UNTESTED: [method_name]() — no test coverage". Report untested methods in "Top 3 gaps" section. This is separate from Q11 (which checks branches within tested code).
+- COVERAGE COMPLETENESS: List all public methods/exported functions in the production file. For each, check if the test file has at least one `it()` block that exercises it. Flag any untested public method as: "UNTESTED: [method_name]() -- no test coverage". Report untested methods in "Top 3 gaps" section. This is separate from Q11 (which checks branches within tested code).
 - For Q11 (branches): scan production file for if/else/switch/ternary, check if test covers both sides
 - For Q13: verify import actually points to production code, not a local mock/copy
 - For Q10: look for hardcoded numbers (100, 50, "test-id") without named constants
 - For Q16 (isolation): look for tests that modify one entity and verify another entity is unchanged
-- For Q17 (computed): compare assertion values against test input — if result.X === input.X, that's input echo (score 0)
-- For AP10: if test only calls mocks and verifies mocks without any production function in between → tautological
-- For AP13: count `it(` blocks and `expect(` calls — if any `it` block has 0 expects → AP13. **RTL exception:** `getByRole`/`getByText`/`getByLabelText` are implicit assertions — a test with only `getBy*` queries is NOT AP13.
+- For Q17 (computed): compare assertion values against test input -- if result.X === input.X, that's input echo (score 0)
+- For AP10: if test only calls mocks and verifies mocks without any production function in between -> tautological
+- For AP13: count `it(` blocks and `expect(` calls -- if any `it` block has 0 expects -> AP13. **RTL exception:** `getByRole`/`getByText`/`getByLabelText` are implicit assertions -- a test with only `getBy*` queries is NOT AP13.
 - For AP15: check if test calls methods with `__` or `_` prefix (private/internal methods)
-- For AP16: count lines of fixture data vs lines containing `expect(` — ratio > 20:1 → AP16
+- For AP16: count lines of fixture data vs lines containing `expect(` -- ratio > 20:1 -> AP16
 - For AP17: search for `const .*= {` or `const .*= [` declarations that are never referenced in any `it()` block
 - For AP18: check for duplicate `it(` descriptions or duplicate test numbering (e.g., two `#1.1`)
-- NestJS specific: check for `spyOn(service, service.ownMethod)` self-mock pattern → likely AP10
-- NestJS specific: count providers in TestingModule — 10+ is a red flag for quality
+- NestJS specific: check for `spyOn(service, service.ownMethod)` self-mock pattern -> likely AP10
+- NestJS specific: count providers in TestingModule -- 10+ is a red flag for quality
 - SmartMock/Proxy pattern: if tests use `as Record<string, jest.Mock>` or Proxy-based mock factories, Q5=0 is correct (no type safety) but note this is a deliberate trade-off vs boilerplate. Recommend typed accessor helper (e.g., `mockMethod(service, 'findOne')`) rather than full typed mocks.
-- N/A normalization math: if 3 Qs are N/A → applicable=14. If raw yes=12 → normalized = (12/14)*17 = 14.6/17. Use normalized for tier classification.
-- SUITE-AWARE MODE: If you see sibling test files for same production file (e.g., `foo.test.ts`, `foo.errors.test.ts`, `foo.edge-cases.test.ts`), evaluate Q7/Q11 at suite level — error paths in `foo.errors.test.ts` satisfy Q7 for the suite group. Report as: "Suite group: [files] — Q7 covered by [file]".
+- N/A normalization math: if 3 Qs are N/A -> applicable=14. If raw yes=12 -> normalized = (12/14)*17 = 14.6/17. Use normalized for tier classification.
+- SUITE-AWARE MODE: If you see sibling test files for same production file (e.g., `foo.test.ts`, `foo.errors.test.ts`, `foo.edge-cases.test.ts`), evaluate Q7/Q11 at suite level -- error paths in `foo.errors.test.ts` satisfy Q7 for the suite group. Report as: "Suite group: [files] -- Q7 covered by [file]".
 
 Files to audit:
 [LIST OF FILES FOR THIS BATCH]
@@ -196,7 +196,7 @@ Total tests: [count from test runner]
 
 | Tier | Count | % | Action |
 |------|-------|---|--------|
-| A (≥14) | [N] | [%] | No action needed |
+| A (>=14) | [N] | [%] | No action needed |
 | B (9-13) | [N] | [%] | Fix targeted gaps |
 | C (5-8) | [N] | [%] | Major rewrite |
 | D (<5 or red flag) | [N] | [%] | Delete + rewrite |
@@ -240,22 +240,22 @@ Files where Q7/Q11/Q13/Q15/Q17 = 0 (highest priority):
 | Anti-pattern | Files affected | Total instances |
 |-------------|---------------|-----------------|
 
-## Tier D — Rewrite Queue (worst first)
+## Tier D -- Rewrite Queue (worst first)
 
 | File | Score | Why rewrite |
 |------|-------|-------------|
 
-## Tier C — Major Fix Queue
+## Tier C -- Major Fix Queue
 
 | File | Score | Top 3 gaps |
 |------|-------|------------|
 
-## Tier B — Targeted Fix Queue
+## Tier B -- Targeted Fix Queue
 
 | File | Score | Gaps to fix |
 |------|-------|-------------|
 
-## Tier A — No Action
+## Tier A -- No Action
 
 | File | Score |
 |------|-------|
@@ -288,12 +288,32 @@ After generating the report, persist ALL findings to `memory/backlog.md`:
 
 After presenting the report, the user may request fixes. Follow this sequence:
 
-1. **Fix** — user says "napraw X" or "fix tier D files" → rewrite test files following `~/.cursor/test-patterns.md`
-2. **Test** — run test suite (`npm run test:run` or equivalent) to confirm all tests pass
-3. **Auto-Commit + Tag** — after tests pass:
+1. **Fix** -- user says "napraw X" or "fix tier D files" -> rewrite test files following `~/.cursor/test-patterns.md`
+2. **Test** -- run test suite (`npm run test:run` or equivalent) to confirm all tests pass
+3. **Execute Verification Checklist** -- after tests pass, verify ALL of these. Print each with [x] or [ ]:
+
+```
+EXECUTE VERIFICATION
+-------------------------------------
+[x]/[ ]  SCOPE: Only test files from the audit report modified (no production code changes)
+[x]/[ ]  SCOPE: No new tests added beyond what the fix requires (no "bonus" tests)
+[x]/[ ]  TESTS PASS: Full test suite green (not just fixed files)
+[x]/[ ]  FILE LIMITS: All modified/created test files <= 400 lines
+[x]/[ ]  Q1-Q17: Self-eval on each fixed/rewritten test file (individual scores + critical gate)
+[x]/[ ]  TIER IMPROVEMENT: Fixed files now score higher tier than before (D->C+, C->B+, B->A)
+[x]/[ ]  NO SCOPE CREEP: Only fixes from the audit applied, nothing extra
+-------------------------------------
+```
+
+**If ANY is [ ], fix before committing.** Common failures:
+- Scope creep: adding tests for files not in the audit -> revert extra files
+- Q1-Q17 not run: after rewriting test files, re-eval is mandatory
+- No tier improvement: fix didn't address root cause -> revisit top gaps
+
+4. **Auto-Commit + Tag** -- after verification passes:
    - `git add [specific test files]`
    - `git commit -m "test-fix: [brief description]"`
    - `git tag test-fix-[YYYY-MM-DD]-[short-slug]`
-4. **Re-audit** — optionally re-run `/test-audit` on fixed files to verify tier improvement
+4. **Re-audit** -- optionally re-run `/test-audit` on fixed files to verify tier improvement
 
 **Do NOT push.** Push is a separate user decision.

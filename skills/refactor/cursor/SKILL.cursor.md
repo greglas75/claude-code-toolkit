@@ -4,7 +4,7 @@ description: "Smart refactoring runner with structured workflow (ETAP-1A/1B/2). 
 user-invocable: true
 ---
 
-# /refactor — Smart Refactoring Runner (Cursor)
+# /refactor -- Smart Refactoring Runner (Cursor)
 
 You are a senior software architect executing a structured refactoring workflow.
 
@@ -13,11 +13,11 @@ You are a senior software architect executing a structured refactoring workflow.
 Before starting ANY work, read ALL files below. Confirm each with check or X:
 
 ```
-1. check/X  ~/.cursor/skills/refactor/rules.md      — types, iron rules, hard gates, scope fence, sub-agents
-2. check/X  ~/.cursor/refactoring-protocol.md       — full ETAP-1A -> 1B -> 2 protocol
-3. check/X  ~/.cursor/rules/code-quality.md         — CQ1-CQ20 production code checklist
-4. check/X  ~/.cursor/rules/testing.md              — Q1-Q17 test self-eval checklist
-5. check/X  ~/.cursor/test-patterns.md              — G-*/P-* patterns, AP anti-patterns
+1. check/X  ~/.cursor/skills/refactor/rules.md      -- types, iron rules, hard gates, scope fence, sub-agents
+2. check/X  ~/.cursor/refactoring-protocol.md       -- full ETAP-1A -> 1B -> 2 protocol
+3. check/X  ~/.cursor/rules/code-quality.md         -- CQ1-CQ20 production code checklist
+4. check/X  ~/.cursor/rules/testing.md              -- Q1-Q17 test self-eval checklist
+5. check/X  ~/.cursor/test-patterns.md              -- G-*/P-* patterns, AP anti-patterns
 ```
 
 **If ANY file cannot be read, STOP. Do not proceed with a partial rule set.**
@@ -26,7 +26,7 @@ Parse $ARGUMENTS to determine mode, then follow the protocol.
 
 ## Path Resolution
 
-Resolve paths from both possible locations — try `~/.cursor/` first, fall back to `_agent/` in project root:
+Resolve paths from both possible locations -- try `~/.cursor/` first, fall back to `_agent/` in project root:
 - `~/.cursor/skills/` or `_agent/skills/`
 - `~/.cursor/rules/` or `_agent/rules/`
 - `~/.cursor/refactoring-protocol.md` or `_agent/refactoring-protocol.md`
@@ -41,7 +41,7 @@ Resolve paths from both possible locations — try `~/.cursor/` first, fall back
 ```
 $ARGUMENTS = empty     -> FULL mode (STOPs at plan approval + test approval)
 $ARGUMENTS = "auto"    -> AUTO mode (only STOP at plan approval)
-$ARGUMENTS = "plan-only" -> PLAN mode (ETAP-1A only — analyze, no execution)
+$ARGUMENTS = "plan-only" -> PLAN mode (ETAP-1A only -- analyze, no execution)
 $ARGUMENTS = "continue"  -> RESUME mode (load existing CONTRACT.json)
 $ARGUMENTS = other     -> treat as task description, FULL mode
 ```
@@ -87,7 +87,7 @@ Default (if no match): EXTRACT_METHODS
 
 ### GOD_CLASS Auto-Escalation
 
-**After keyword-based detection, ALWAYS check the target file for GOD_CLASS thresholds** (defined in `rules.md` — includes stack-specific dependency counting).
+**After keyword-based detection, ALWAYS check the target file for GOD_CLASS thresholds** (defined in `rules.md` -- includes stack-specific dependency counting).
 
 If thresholds met -> **override** to `GOD_CLASS`, show detection message from `rules.md`, offer force-override (user's risk).
 
@@ -112,7 +112,7 @@ Wait for user confirmation (unless AUTO mode).
 After completing the ETAP-1A audit and before the HARD STOP for plan approval, if there is genuine uncertainty (ambiguous scope, two valid extraction strategies, unclear business rules):
 
 1. Add a **Questions for Author** section at the end of the plan
-2. Ask the user each question — max 4 at a time
+2. Ask the user each question -- max 4 at a time
 3. Wait for answers
 4. Update the CONTRACT and plan based on answers
 5. Then proceed to HARD STOP for plan approval
@@ -125,14 +125,14 @@ If no uncertainty -> skip questions, go directly to HARD STOP.
 
 Delegate to 2 agents for context gathering:
 
-**Agent 1: Dependency Mapper** — uses `~/.cursor/skills/refactor/agents/dependency-mapper.md`
+**Agent 1: Dependency Mapper** -- uses `~/.cursor/skills/refactor/agents/dependency-mapper.md`
 
 Delegate to @dependency-mapper to trace blast radius:
 - TARGET FILES: [list from Phase 1]
 - PROJECT ROOT: [cwd]
 - INSTRUCTIONS: Read `~/.cursor/skills/refactor/agents/dependency-mapper.md` for full protocol. Trace all importers/callers of each target file. Build a dependency map showing blast radius. Read project CLAUDE.md for import conventions.
 
-**Agent 2: Existing Code Scanner** — uses `~/.cursor/skills/refactor/agents/existing-code-scanner.md`
+**Agent 2: Existing Code Scanner** -- uses `~/.cursor/skills/refactor/agents/existing-code-scanner.md`
 
 Delegate to @existing-code-scanner to find overlapping code:
 - PLANNED EXTRACTIONS: [list of functions/methods to extract]
@@ -158,14 +158,14 @@ Execute in order:
 1. **ETAP-1A** (Analyze & Scope Freeze)
    - Stages 0 -> 0.5 -> 1 -> 2 -> **2.5 (Parallelism Analysis)** -> 3 -> HARD STOP
    - Incorporate @dependency-mapper + @existing-code-scanner results
-   - Stage 2.5 determines whether tasks can be parallelized — included in CONTRACT
+   - Stage 2.5 determines whether tasks can be parallelized -- included in CONTRACT
    - **Present your plan. Wait for user approval before proceeding.** (all modes)
 
    If PLAN mode (`plan-only`): OUTPUT plan and STOP here.
 
 2. **ETAP-1B** (Tests)
    - Mode routing based on type
-   - If WRITE_NEW with parallelizable tasks: delegate test writing to available @agents or write tests sequentially. Each agent writes tests for their assigned functions — separate spec files, no conflicts.
+   - If WRITE_NEW with parallelizable tasks: delegate test writing to available @agents or write tests sequentially. Each agent writes tests for their assigned functions -- separate spec files, no conflicts.
    - If WRITE_NEW solo: sequential test writing flow
    - If RUN_EXISTING/VERIFY_COMPILATION: compiler + optional tests (always solo)
    - **Present test results. Wait for user approval before proceeding.** (FULL mode only; AUTO mode continues)
@@ -182,7 +182,7 @@ Execute in order:
 
 After ETAP-1B completes, delegate:
 
-**Agent 3: Test Quality Auditor** — uses `~/.cursor/skills/refactor/agents/test-quality-auditor.md`
+**Agent 3: Test Quality Auditor** -- uses `~/.cursor/skills/refactor/agents/test-quality-auditor.md`
 
 Delegate to @test-quality-auditor to verify test quality:
 - TEST FILES WRITTEN/MODIFIED: [list from ETAP-1B]
@@ -193,12 +193,34 @@ Delegate to @test-quality-auditor to verify test quality:
 - Output: PASS / FIX / BLOCK with details
 - **If BACKLOG ITEMS section present in output -> persist to backlog** (see Phase 4.5)
 
+### Execute Verification Checklist (NON-NEGOTIABLE)
+
+After ETAP-2 execution and before spawning post-extraction verifier, verify ALL of these. Print each with [x] or [ ]:
+
+```
+EXECUTE VERIFICATION
+-------------------------------------
+[x]/[ ]  CONTRACT: All changes match the CONTRACT scope (no files outside contract modified)
+[x]/[ ]  SCOPE: No extra refactoring beyond what the contract specifies
+[x]/[ ]  TESTS PASS: Full test suite green (before = after)
+[x]/[ ]  FILE LIMITS: All modified/created files <= 250 lines (production) / <= 400 lines (test)
+[x]/[ ]  CQ1-CQ20: Self-eval on each modified PRODUCTION file (scores + evidence)
+[x]/[ ]  Q1-Q17: Self-eval on each modified/created TEST file (individual scores + critical gate)
+[x]/[ ]  NO BEHAVIOR CHANGE: Refactoring preserved existing behavior (same inputs -> same outputs)
+-------------------------------------
+```
+
+**If ANY is [ ], fix before proceeding.** Common failures:
+- Contract violation: touching files not listed in CONTRACT -> revert extra changes
+- Behavior change: refactoring accidentally changed logic -> fix or add tests to prove equivalence
+- Q1-Q17 not run: after splitting/rewriting test files, re-eval is mandatory
+
 After ETAP-2 phases complete, delegate:
 
-**Agent 4: Post-Extraction Verifier** — uses `~/.cursor/skills/refactor/agents/post-extraction-verifier.md`
+**Agent 4: Post-Extraction Verifier** -- uses `~/.cursor/skills/refactor/agents/post-extraction-verifier.md`
 
 Delegate to @post-extraction-verifier to verify refactoring integrity:
-- CONTRACT: [contract details — extractions, file sizes, type]
+- CONTRACT: [contract details -- extractions, file sizes, type]
 - ORIGINAL FILE: [path] (was [N] lines)
 - EXTRACTED FILES: [list with paths]
 - REFACTORING TYPE: [type]
@@ -274,9 +296,9 @@ This creates a clean rollback point. User can `git reset --hard <tag>` if needed
 REFACTORING COMPLETE
 
 Type: [TYPE]
-File: [path] — [before] -> [after] lines (-[X]%)
+File: [path] -- [before] -> [after] lines (-[X]%)
 Tests: [N] written, [N] passing
-Commit: [hash] — [message]
+Commit: [hash] -- [message]
 Tag: [tag name] (rollback: git reset --hard [tag])
 
 Next steps:
@@ -291,13 +313,13 @@ Next steps:
 
 1. Read `refactoring-session/contracts/CONTRACT.json` (fixed path per protocol schema)
    - If missing: check for `refactoring-session/contracts/*.md` as fallback
-   - If both missing: STOP — "No CONTRACT found. Run `/refactor` to start."
+   - If both missing: STOP -- "No CONTRACT found. Run `/refactor` to start."
 2. Load `contractId`, `type`, `status`, `sourceFile`, and `phases` from JSON
-3. Find the first phase with `status != "completed"` — that's where to resume
+3. Find the first phase with `status != "completed"` -- that's where to resume
 4. Display summary:
    ```
    RESUME: [contractId]
    Type: [type] | Source: [sourceFile]
-   Completed: Phase 1..N-1 | Resume from: Phase N — [name]
+   Completed: Phase 1..N-1 | Resume from: Phase N -- [name]
    ```
 5. Ask the user to confirm, then resume protocol from that phase

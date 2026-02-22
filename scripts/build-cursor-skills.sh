@@ -159,28 +159,33 @@ for f in "$DIST"/skills/*/SKILL.md; do
   fi
 done
 
-# Check for Claude Code-specific tool references in ALL dist files
+# Check for Claude Code-specific tool references in ALL dist SKILL.md files
+# (skip shared docs like rules.md where terms may appear in documentation tables)
 claude_refs=$(grep -rln \
-  'TaskCreate\|TaskUpdate\|TaskList\|EnterPlanMode\|ExitPlanMode\|AskUserQuestion\|subagent_type\|run_in_background\|TeamCreate\|SendMessage' \
-  "$DIST" 2>/dev/null || true)
+  'TaskCreate\|TaskUpdate\|TaskList\|EnterPlanMode\|ExitPlanMode\|AskUserQuestion\|run_in_background\|TeamCreate\|SendMessage' \
+  "$DIST"/skills/*/SKILL.md "$DIST"/agents/*.md 2>/dev/null || true)
 
 if [ -n "$claude_refs" ]; then
-  echo "  WARN: Claude Code-specific references found:"
+  echo "  ERROR: Claude Code-specific references found (build blocked):"
   echo "$claude_refs" | while IFS= read -r f; do
     echo "    $(echo "$f" | sed "s|$DIST/||")"
   done
-  warnings=$((warnings + 1))
+  echo ""
+  echo "  Fix: update the overlay or source file to remove Claude Code tool references."
+  exit 1
 fi
 
 # Check for untransformed ~/.claude/ paths
 claude_paths=$(grep -rln '~/.claude/' "$DIST" 2>/dev/null || true)
 
 if [ -n "$claude_paths" ]; then
-  echo "  WARN: Untransformed ~/.claude/ paths found:"
+  echo "  ERROR: Untransformed ~/.claude/ paths found (build blocked):"
   echo "$claude_paths" | while IFS= read -r f; do
     echo "    $(echo "$f" | sed "s|$DIST/||")"
   done
-  warnings=$((warnings + 1))
+  echo ""
+  echo "  Fix: update the overlay or add path replacement to transform_skill()."
+  exit 1
 fi
 
 # Verify all agents were adapted
