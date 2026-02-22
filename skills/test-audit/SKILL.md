@@ -302,7 +302,27 @@ After presenting the report, the user may request fixes. Follow this sequence:
 
 1. **Fix** — user says "napraw X" or "fix tier D files" → rewrite test files following `~/.claude/test-patterns.md`
 2. **Test** — run test suite (`npm run test:run` or equivalent) to confirm all tests pass
-3. **Auto-Commit + Tag** — after tests pass:
+3. **Execute Verification Checklist** — after tests pass, verify ALL of these. Print each with ✅/❌:
+
+```
+EXECUTE VERIFICATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅/❌  SCOPE: Only test files from the audit report modified (no production code changes)
+✅/❌  SCOPE: No new tests added beyond what the fix requires (no "bonus" tests)
+✅/❌  TESTS PASS: Full test suite green (not just fixed files)
+✅/❌  FILE LIMITS: All modified/created test files ≤ 400 lines
+✅/❌  Q1-Q17: Self-eval on each fixed/rewritten test file (individual scores + critical gate)
+✅/❌  TIER IMPROVEMENT: Fixed files now score higher tier than before (D→C+, C→B+, B→A)
+✅/❌  NO SCOPE CREEP: Only fixes from the audit applied, nothing extra
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**If ANY is ❌ → fix before committing.** Common failures:
+- Scope creep: adding tests for files not in the audit → revert extra files
+- Q1-Q17 not run: after rewriting test files, re-eval is mandatory
+- No tier improvement: fix didn't address root cause → revisit top gaps
+
+4. **Auto-Commit + Tag** — after verification passes:
    - `git add [specific test files]`
    - `git commit -m "test-fix: [brief description]"`
    - `git tag test-fix-[YYYY-MM-DD]-[short-slug]`

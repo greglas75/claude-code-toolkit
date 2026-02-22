@@ -235,6 +235,28 @@ Read project CLAUDE.md and .claude/rules/ for project-specific test conventions.
 - Output: PASS / FIX / BLOCK with details
 - **If BACKLOG ITEMS section present in output → persist to backlog** (see Phase 4.5)
 
+### Execute Verification Checklist (NON-NEGOTIABLE)
+
+After ETAP-2 execution and before spawning post-extraction verifier, verify ALL of these. Print each with ✅/❌:
+
+```
+EXECUTE VERIFICATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅/❌  CONTRACT: All changes match the CONTRACT scope (no files outside contract modified)
+✅/❌  SCOPE: No extra refactoring beyond what the contract specifies
+✅/❌  TESTS PASS: Full test suite green (before = after)
+✅/❌  FILE LIMITS: All modified/created files ≤ 250 lines (production) / ≤ 400 lines (test)
+✅/❌  CQ1-CQ20: Self-eval on each modified PRODUCTION file (scores + evidence)
+✅/❌  Q1-Q17: Self-eval on each modified/created TEST file (individual scores + critical gate)
+✅/❌  NO BEHAVIOR CHANGE: Refactoring preserved existing behavior (same inputs → same outputs)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**If ANY is ❌ → fix before proceeding.** Common failures:
+- Contract violation: touching files not listed in CONTRACT → revert extra changes
+- Behavior change: refactoring accidentally changed logic → fix or add tests to prove equivalence
+- Q1-Q17 not run: after splitting/rewriting test files, re-eval is mandatory
+
 After ETAP-2 phases complete, spawn:
 
 **Agent 4: Post-Extraction Verifier** — uses `~/.claude/skills/refactor/agents/post-extraction-verifier.md`

@@ -374,7 +374,27 @@ After presenting the report, the user may request fixes. Follow this sequence:
 
 1. **Fix** — user says "napraw X" (specific CQs, specific files, or whole tier). Implement fixes using the audit report as context (lines, evidence, proposed fixes are already known — no re-discovery needed).
 2. **Test** — run existing tests (`npx jest --no-coverage` or project test runner) to verify fixes don't break anything.
-3. **Auto-Commit + Tag** — after tests pass:
+3. **Execute Verification Checklist** — after tests pass, verify ALL of these. Print each with ✅/❌:
+
+```
+EXECUTE VERIFICATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅/❌  SCOPE: Only files from the audit report modified (no "while we're here" additions)
+✅/❌  SCOPE: No new features/tests added beyond what the CQ fix requires
+✅/❌  TESTS PASS: Full test suite green (not just changed files)
+✅/❌  FILE LIMITS: All modified files ≤ 250 lines (production) / ≤ 400 lines (test)
+✅/❌  CQ1-CQ20: Re-eval on each modified PRODUCTION file (verify fixed CQs now score 1)
+✅/❌  Q1-Q17: Self-eval on any modified/created TEST file (individual scores + critical gate)
+✅/❌  NO SCOPE CREEP: Only CQ fixes from the audit applied, nothing extra
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**If ANY is ❌ → fix before committing.** Common failures:
+- Scope creep: refactoring or adding features not in the audit → revert extra changes
+- CQ re-eval: after fixing CQ8, verify the fix actually scores CQ8=1 with evidence
+- File limit: fix caused file to exceed 250 lines → split
+
+4. **Auto-Commit + Tag** — after verification passes:
    - `git add [list of modified files — specific names, not -A]`
    - `git commit -m "code-audit-fix: [brief description of CQs fixed]"`
    - `git tag audit-fix-[YYYY-MM-DD]-[short-slug]` (e.g., `audit-fix-2026-02-22-cq8-cq14`)

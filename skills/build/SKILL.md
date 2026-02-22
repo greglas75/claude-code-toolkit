@@ -252,6 +252,28 @@ Run in parallel:
 
 **All must pass.** If any fails → fix → re-run.
 
+### 4.3: Execute Verification Checklist (NON-NEGOTIABLE)
+
+After all code is written and before committing, verify ALL of these. Print each with ✅/❌:
+
+```
+EXECUTE VERIFICATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅/❌  SCOPE: All files match the approved plan (no unplanned files added)
+✅/❌  SCOPE: No extra features/refactoring beyond what the plan specifies
+✅/❌  TESTS PASS: Full test suite green (not just new files)
+✅/❌  TYPES: `tsc --noEmit` passes (no type errors)
+✅/❌  FILE LIMITS: All created/modified files ≤ 250 lines (production) / ≤ 400 lines (test)
+✅/❌  CQ1-CQ20: Self-eval on each new/modified PRODUCTION file (scores + evidence)
+✅/❌  Q1-Q17: Self-eval on each new/modified TEST file (individual scores + critical gate)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**If ANY is ❌ → fix before committing.** Common failures:
+- Scope creep: adding helpers or refactoring existing code not in the plan → revert
+- File limit: new files exceed 250 lines → split into modules
+- CQ/Q not run: every production file needs CQ1-CQ20, every test file needs Q1-Q17
+
 ---
 
 ## Phase 5: Completion
