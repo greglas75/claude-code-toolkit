@@ -82,14 +82,26 @@ for skill_dir in "$TOOLKIT_DIR"/skills/*/; do
 done
 echo "  + ~/.gemini/antigravity/skills/ (Antigravity global skills)"
 
-# --- 6. Cursor IDE global integration ---
-CURSOR_DIR="$HOME/.cursor/skills"
-mkdir -p "$CURSOR_DIR"
-for skill_dir in "$TOOLKIT_DIR"/skills/*/; do
-  skill_name=$(basename "$skill_dir")
-  ln -sf "$CLAUDE_DIR/skills/$skill_name" "$CURSOR_DIR/$skill_name" 2>/dev/null || true
+# --- 6. Cursor IDE integration (native agent orchestration) ---
+# Build Cursor-adapted skills (overlays + agent adaptation)
+bash "$TOOLKIT_DIR/scripts/build-cursor-skills.sh" "$TOOLKIT_DIR"
+
+# Install skills
+CURSOR_SKILLS_DIR="$HOME/.cursor/skills"
+mkdir -p "$CURSOR_SKILLS_DIR"
+for skill_dir in "$TOOLKIT_DIR"/dist/cursor/skills/*/; do
+  [ -d "$skill_dir" ] || continue
+  ln -sf "$skill_dir" "$CURSOR_SKILLS_DIR/$(basename "$skill_dir")" 2>/dev/null || true
 done
-echo "  + ~/.cursor/skills/ (Cursor global skills)"
+
+# Install agents
+CURSOR_AGENTS_DIR="$HOME/.cursor/agents"
+mkdir -p "$CURSOR_AGENTS_DIR"
+for agent in "$TOOLKIT_DIR"/dist/cursor/agents/*.md; do
+  [ -f "$agent" ] || continue
+  ln -sf "$agent" "$CURSOR_AGENTS_DIR/$(basename "$agent")" 2>/dev/null || true
+done
+echo "  + ~/.cursor/skills/ + ~/.cursor/agents/ (Cursor native integration)"
 
 # --- 7. Per-project setup script ---
 mkdir -p "$CLAUDE_DIR/scripts"
@@ -106,7 +118,8 @@ echo "Skills: $SKILL_LIST"
 echo ""
 echo "Symlinked to:"
 echo "  ~/.claude/skills/       (Claude Code)"
-echo "  ~/.cursor/skills/       (Cursor)"
+echo "  ~/.cursor/skills/       (Cursor — native agent orchestration)"
+echo "  ~/.cursor/agents/       (Cursor — sub-agents)"
 echo "  ~/.gemini/antigravity/  (Google Antigravity)"
 echo ""
 echo "All tools auto-update when you edit skills in this repo."

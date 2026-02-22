@@ -1,0 +1,536 @@
+---
+name: review
+description: "Code review with triage, audit, confidence scoring, and auto-fix. Use when reviewing code changes, PRs, or diffs."
+user-invocable: true
+---
+
+# /review -- Code Review (Cursor)
+
+Triage + full audit in one step. No separate "Go" command needed.
+
+## Mandatory File Reading (NON-NEGOTIABLE)
+
+Before starting ANY work, read ALL 6 files below. Confirm each with a check or X:
+
+```
+1. [x]  ~/.cursor/skills/review/rules.md        -- Iron Rules, severity, confidence, backlog
+2. [x]  ~/.cursor/review-protocol.md            -- detailed checklists, red-flag patterns, tier rules
+3. [x]  ~/.cursor/rules/testing.md              -- Q1-Q17 test self-eval checklist
+4. [x]  ~/.cursor/rules/code-quality.md         -- CQ1-CQ20 production code checklist
+5. [x]  ~/.cursor/test-patterns.md              -- G-*/P-* patterns, AP anti-patterns, scoring formula
+6. [x]  ~/.cursor/rules/security.md             -- SSRF, XSS, auth, path traversal patterns
+```
+
+**If ANY file fails to load, STOP. Do not proceed with a partial rule set.**
+
+After reading, print step name before executing each step:
+- `STEP: Triage` (tier + mode)
+- `STEP: Scope Fence`
+- `STEP: Audit` (which auditors, solo or team?)
+- `STEP: CQ1-CQ20` (or N/A with reason)
+- `STEP: Q1-Q17` on each test file (individual scores, critical gate)
+- `STEP: Confidence Gate` (re-scorer)
+- `STEP: 7.0 Compliance`
+- `STEP: Report`
+
+## Path Resolution
+
+If `~/.cursor/` is not accessible, resolve paths from `_agent/` in project root:
+- `~/.cursor/skills/` -> `_agent/skills/`
+- `~/.cursor/rules/` -> `_agent/rules/`
+- `~/.cursor/review-protocol.md` -> `_agent/review-protocol.md`
+- `~/.cursor/test-patterns.md` -> `_agent/test-patterns.md`
+
+## Step 0: Parse $ARGUMENTS
+
+$ARGUMENTS controls WHAT gets reviewed AND which mode to use.
+
+### Scope (what to review)
+
+| Input | Interpretation | Git Command |
+|-------|---------------|-------------|
+| _(empty)_ | All uncommitted changes | `git diff --stat HEAD` |
+| `new` | Commits since last review | `git diff --stat reviewed..HEAD` (tag) |
+| `HEAD~1` | Last commit only | `git diff --stat HEAD~1..HEAD` |
+| `HEAD~3` | Last 3 commits | `git diff --stat HEAD~3..HEAD` |
+| `HEAD~2..HEAD~1` | Specific commit range | `git diff --stat HEAD~2..HEAD~1` |
+| `apps/designer/` | Only this directory (uncommitted) | `git diff --stat HEAD -- apps/designer/` |
+| `auth.controller.ts` | Only files matching name (uncommitted) | `git diff --stat HEAD -- '**/auth.controller.ts'` |
+| `apps/api/ apps/runner/` | Multiple paths (uncommitted) | `git diff --stat HEAD -- apps/api/ apps/runner/` |
+| `staged` | Only staged changes | `git diff --stat --cached` |
+
+**Special: `new` keyword**
+- Uses git tag `reviewed` as the baseline (set automatically after Push)
+- If tag doesn't exist, show warning and fall back to `git diff --stat HEAD` (all uncommitted)
+- Combines with paths: `new apps/api/` -> only unreviewed changes in API dir
+
+Multiple tokens can combine: `HEAD~1 apps/designer/` -> last commit, only designer dir.
+
+### Mode (what to do after audit)
+
+| Token in $ARGUMENTS | Mode | Behavior |
+|---------------------|------|----------|
+| _(none)_ | MODE 1 | Report only. Wait for Execute. |
+| `fix` | MODE 2 | Auto-fix ALL + tests + loop (Mode 2 gate applies) |
+| `blocking` | MODE 3 | Fix CRITICAL/HIGH only + tests + loop |
+
+Examples: `/review`, `/review fix`, `/review HEAD~1 blocking`, `/review new apps/worker/ fix`
+
+---
+
+## Phase 0: Triage (Steps 1-6)
+
+### Step 1: Detect Changes
+
+Run the git command determined in Step 0 from the current working directory (git repo root).
+
+Also check for new untracked files in scope: `git status --short` filtered by pathspec.
+
+If no changes found in the resolved scope, check if user pasted code/diff.
+
+If NOTHING found at all, trigger GATE A (see review-rules):
+- Set Confidence = LOW
+- Output Context Request Block (max 3 bullets)
+- STOP -- wait for context
+
+### Step 2: Assess Scope
+
+Fill this matrix from the diff:
+
+```
+TRIAGE RESULT
+-------------------------------------
+Files changed:    ___
+Lines changed:    +___/-___
+Change intent:    [BUGFIX/REFACTOR/FEATURE/INFRA]
+
+Risk signals:
+  [ ] DB/migration changes
+  [ ] Security/auth changes
+  [ ] API contract changes
+  [ ] Payment/money flow
+  [ ] >500 lines changed
+  [ ] AI-generated code suspected
+
+Tier:       [1-LIGHT / 2-STANDARD / 3-DEEP]
+Mode 2 OK:  [YES / NO -- reason]
+-------------------------------------
+```
+
+### Step 3: Intent Detection
+
+Heuristics (check commit messages + diff content):
+- "fix", "bug", "patch", "hotfix" -> **BUGFIX**
+- "refactor", "rename", "extract", "move" -> **REFACTOR**
+- New files + new routes/endpoints/components -> **FEATURE**
+- Config/CI/Dockerfile/terraform -> **INFRA**
+- Can't determine -> ask user (max 1 question)
+
+### Step 4: Tier Selection
+
+| Condition | Tier |
+|-----------|------|
+| <50 lines, no risk signals | TIER 1 (LIGHT) |
+| 50-500 lines, max 1 risk signal | TIER 2 (STANDARD) |
+| >500 lines OR 2+ risk signals | TIER 3 (DEEP) |
+
+### Step 5: Mode 2 Blocker Check
+
+Mode 2 (`/review fix`) is **FORBIDDEN** if ANY:
+- TIER 3
+- DB/migration changes
+- Security/auth changes
+- API contract changes
+- Payment/money flow changes
+
+If blocked and user requested `fix`, warn, downgrade to MODE 1 (report only), suggest `Execute BLOCKING` after report.
+
+### Step 6: Conditional Sections
+
+Flag which extra audit sections are needed:
+- New feature? -> Feature Completeness (Step 3.7)
+- DB changes? -> Database review (Step 4.3)
+- i18n/strings? -> Internationalization (Step 8)
+- New dependencies? -> Dependency Security (Step 7.2)
+- External API? -> External Services (Step 4.4)
+- API/interface changes? -> Backward Compatibility (Step 4.6)
+- AI-generated code? -> AI Code Smell Check (Step 3.8)
+
+### Step 6.5: Read Backlog
+
+Read `memory/backlog.md` from the project's auto memory directory (path shown in system prompt). If the file doesn't exist, create it from the template in rules.md. Check if any OPEN items are in files touched by this PR. If yes, include them in the report under `## BACKLOG ITEMS IN SCOPE`.
+
+---
+
+## Phase A: Audit (proceed immediately -- no user confirmation needed)
+
+Show header:
+```
+===============================================================
+CODE REVIEW [+ AUTO-FIX if Mode 2/3]
+===============================================================
+REVIEWING: [1-2 sentence summary]
+FILES: [X files, +Y/-Z lines]
+TIER: [1/2/3] - [LIGHT/STANDARD/DEEP]
+AUDIT: [SOLO / TEAM (2 auditors)]
+CHANGE INTENT: [BUGFIX/REFACTOR/FEATURE/INFRA]
+===============================================================
+```
+
+### Pre-Audit Context Gathering
+
+Before starting the audit steps, gather context from 2 analyses. Perform these inline (they feed into the audit).
+
+**Blast Radius Analysis:**
+
+Analyze the blast radius of the changed files from triage:
+- For each changed file, search for all importers (`grep -r 'import.*[filename]'` or `grep -r 'from.*[module]'`)
+- List direct callers (files that import the changed file)
+- List transitive callers (1 level up -- who imports the importers)
+- Flag if a changed file is: a public API, a shared utility, a config, or a type definition
+- Produce a dependency map showing blast radius per file
+
+**Pre-Existing Line Check:**
+
+Run `git blame` on the changed line ranges for each changed file. Categorize each changed hunk as:
+- NEW: line didn't exist before (added by this change)
+- MODIFIED: line existed but was changed
+- MOVED: line content is identical, just relocated
+- PRE-EXISTING: surrounding context that wasn't touched
+
+This data is used later to filter pre-existing issues from the review.
+
+### Audit Mode Decision
+
+After context gathering, decide audit execution mode:
+
+```
+IF TIER 1:
+  -> SOLO AUDIT (too few steps for parallelism)
+
+IF (TIER 2 AND files_changed >= 5) OR TIER 3:
+  -> TEAM AUDIT (delegate to auditor agents)
+
+ELSE:
+  -> SOLO AUDIT
+```
+
+### Audit Steps by Tier
+
+**TIER 1 (LIGHT):** Steps 0 -> 1 -> 2.1 -> 6.1 -> Confidence Gate -> Report (always SOLO)
+**TIER 2 (STANDARD):** Steps 0 -> 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7.0 -> 9 -> Confidence Gate -> Report
+**TIER 3 (DEEP):** ALL steps 0-11 -> Confidence Gate -> Report
+
+### Solo Audit (default)
+
+Execute all steps sequentially yourself. No delegation.
+
+### Team Audit (TIER 2 with 5+ files OR TIER 3)
+
+After completing context gathering (blast radius + pre-existing line check), delegate to 2 auditor agents in parallel. Each is read-only -- they analyze the same diff through different "lenses."
+
+Delegate to @structure-auditor to audit architecture, types, integration, and performance:
+- CONTEXT: Read your full instructions at `~/.cursor/agents/structure-auditor.md`
+- CHANGED FILES: [list from Step 1]
+- DIFF: [full diff or file paths]
+- TECH STACK: [detected stack]
+- CHANGE INTENT: [from triage]
+- TIER: [1/2/3]
+- CONDITIONAL SECTIONS: [list from triage]
+- BLAST RADIUS: [from blast radius analysis]
+- SCOPE RULES by TIER + INTENT:
+  - TIER 2 REFACTOR: focus on import correctness, barrel exports, file limits. Skip deep performance analysis unless obvious regression.
+  - TIER 2 FEATURE: full Steps 2, 4, 5.
+  - TIER 3: Include Steps 10 (Rollback) and 11 (Documentation).
+- OUTPUT: STRUCT-N issues per the format in your instructions.
+
+Delegate to @behavior-auditor to audit logic, side effects, regressions, and security:
+- CONTEXT: Read your full instructions at `~/.cursor/agents/behavior-auditor.md`
+- CHANGED FILES: [list from Step 1]
+- DIFF: [full diff or file paths]
+- TECH STACK: [detected stack]
+- CHANGE INTENT: [from triage]
+- TIER: [1/2/3]
+- CONDITIONAL SECTIONS: [list from triage]
+- PRE-EXISTING DATA: [from pre-existing line check]
+- SCOPE RULES by TIER + INTENT:
+  - TIER 2 REFACTOR: verify behavioral equivalence (before=after). Run ONLY affected tests, NOT full suite. Skip feature completeness (Step 3.7).
+  - TIER 2 FEATURE: full Steps 3, 6, 9. Run affected + related tests.
+  - TIER 3: Include Steps 7 (Security) and 8 (i18n). Full test suite allowed.
+- OUTPUT: BEHAV-N issues per the format in your instructions.
+
+**After both auditors complete, merge results:**
+1. Collect issue lists (STRUCT-* + BEHAV-*)
+2. Deduplicate -- if both agents found the same issue, keep the one with more detail
+3. Renumber sequentially: R-1, R-2, R-3...
+4. Proceed to Confidence Gate with merged list
+
+### Step Reference (details in ~/.cursor/review-protocol.md)
+
+**Step 0 -- Pre-flight:** Understand WHY the change was made. Verify scope matches intent. Check blast radius results to understand who depends on changed code.
+
+**Step 1 -- Change Inventory:** Table of modified/new/deleted files with risk and blast radius. Dependency and config changes.
+
+**Step 2 -- Static & Architecture:**
+- 2.1: Compilation, type safety, `any` abuse, non-null assertions, lint
+- 2.2: Import correctness, circular deps, unused imports, barrel exports
+- 2.3: Naming conventions
+- 2.4: SRP, coupling, file/function size limits (250 lines source / 400 tests, 50 line functions -- see `~/.cursor/rules/file-limits.md`)
+
+**Step 3 -- Logic & Side Effects:**
+- 3.1: Business logic correctness, edge cases, error handling + silent failure hunt
+- 3.2: Hook integrity (useEffect deps, cleanup, stale closures) [React only]
+- 3.3: Race conditions, async safety (AbortController, unmount)
+- 3.4: State management (immutability, derived state, prop drilling)
+- 3.5: Next.js specific (Server Components, Server Actions, caching, middleware) [Next.js only]
+- 3.6: Python specific (async pitfalls, mutable defaults, type hints, FastAPI/Django) [Python only]
+- 3.7: Feature completeness (loading/error/empty states, a11y) [conditional]
+- 3.8: AI code smell check (hallucinated imports, generic names) [conditional]
+
+**Step 4 -- Integration:**
+- 4.1: Component props/callbacks [React only]
+- 4.2: API integration (endpoints, auth, error handling, types)
+- 4.3: Database (indexes, migrations, N+1, transactions) [conditional]
+- 4.4: External services (timeouts, circuit breakers, fallbacks) [conditional]
+- 4.5: Environment variables (validated? secrets not exposed? .env.example updated?)
+- 4.6: Backward compatibility (API shape, DB format, feature flags) [conditional]
+
+**Step 5 -- Performance:**
+- 5.1: Re-renders, memoization, list keys, virtualization [React only]
+- 5.2: Bundle size, memory leaks, lazy loading
+- 5.3: Heavy computations, debounce, pagination, caching
+
+**Step 6 -- Regressions:**
+- 6.1: Test impact (existing pass? new coverage? skipped tests?)
+- 6.2: System impact (other modules, env vars, cache, cron, webhooks)
+- 6.3: Test quality (behavior tests, deterministic, meaningful assertions)
+
+**Step 7 -- Security:** [TIER 3 only]
+- 7.1: XSS, injection, secrets, auth, CSRF, PII logging
+- 7.2: New dependency trustworthiness [conditional]
+
+**Step 8 -- i18n:** [conditional] Hardcoded strings, locale formatting, RTL
+
+**Step 9 -- Observability:** Logging quality, error tracking, debug support
+
+**Step 10 -- Rollback:** [TIER 3 only] Rollback plan, migration reversibility, feature flags
+
+**Step 11 -- Documentation:** README, API docs, TODOs tracked, env vars documented
+
+### Confidence Gate (after audit, before report)
+
+After completing all audit steps, DO NOT write the report yet. Instead:
+
+1. Collect all candidate issues found during audit
+2. Cross-reference with pre-existing line check results -- mark any issue on pre-existing lines
+
+3. Delegate to @confidence-rescorer to re-score all issues:
+   - CONTEXT: Read your full instructions at `~/.cursor/agents/confidence-rescorer.md`
+   - ISSUES: [paste issue list with: ID, severity, file, code quote, problem description]
+   - CHANGE INTENT: [from triage]
+   - BACKLOG: [path to memory/backlog.md if it exists]
+   - PRE-EXISTING DATA: [from pre-existing line check -- which lines are new vs old]
+   - OUTPUT: Return the confidence table and summary per your instructions.
+
+4. After @confidence-rescorer completes:
+5. DROP from report any issue scoring < 51 -- **PERSIST issues scoring 26-50 TO BACKLOG** (0-25 = DISCARD as hallucinations)
+6. Adjust severity if re-scorer disagrees (e.g., reviewer said HIGH but scorer says 55 = downgrade to MEDIUM)
+7. Write final report with issues scoring 51+
+8. **MANDATORY: Write dropped issues (confidence 26-50) to `memory/backlog.md`** with their confidence score and "(dropped from report)" note -- do this BEFORE showing the report to the user. Issues scoring 0-25 are DISCARDED (do not persist).
+
+### Report Output
+
+Generate the full report following the format in review-protocol.md. Include:
+1. META (date, intent, tier, audit mode [SOLO/TEAM], confidence, agents used)
+2. SCOPE FENCE (allowed files)
+3. FINAL VERDICT + score
+4. SUMMARY OF CHANGES
+5. SKIPPED STEPS with reasons
+6. VERIFICATION PASSED (what's OK)
+7. BACKLOG ITEMS IN SCOPE (if any open backlog items touch changed files)
+8. DROPPED ISSUES (brief list of what was filtered out by confidence gate, so user knows)
+9. ISSUES (CRITICAL -> HIGH -> MEDIUM -> LOW) -- each with evidence, confidence score, fix code, verification
+10. QUESTIONS FOR AUTHOR
+11. QUALITY WINS
+12. TEST ANALYSIS (validity gate, missing tests, existing status)
+13. REQUIRED ACTIONS (prioritized: blocking -> before-prod -> tech-debt)
+14. EXECUTION PLAN (fix list + test list + run commands)
+
+### Backlog Update (after report)
+
+**MANDATORY** -- After writing the report, persist unfixed issues to backlog per the Backlog Persistence rules in rules.md:
+- **Dropped issues (confidence 26-50)** -> backlog with confidence score and "(dropped from report)" -- THIS IS REQUIRED, NOT OPTIONAL
+- **Discarded issues (confidence 0-25)** -> NOT persisted (hallucinations/false positives don't pollute backlog)
+- Pre-existing issues (identified by pre-existing line check) -> backlog
+- Issues on unmodified lines -> backlog
+- If MODE 1 (report only): all reported issues go to backlog too (they haven't been fixed yet)
+
+**Verify:** Every issue with confidence 26+ must end up either in the report (51+) OR in the backlog (26-50). Issues scoring 0-25 are discarded as hallucinations -- this is the only case where silent discard is correct.
+
+### Questions Gate (after report, before Execute)
+
+If the report contains **QUESTIONS FOR AUTHOR** (section 10 is non-empty):
+
+1. Do NOT proceed to Execute yet
+2. Present each question to the user conversationally. Ask the user:
+   - "Author input needed -- I have questions before proceeding:"
+   - List each question with relevant options or context
+   - If more than 4 questions, ask the first 4 and wait, then ask remaining
+3. Wait for user answers
+4. Incorporate answers before proceeding:
+   - Update affected issue severities if answers change the picture (e.g., "billing = display only" -> R-6 drops from CRITICAL to LOW)
+   - Mark answered questions with the user's response inline in the report
+5. Then proceed to Execute prompt
+
+If QUESTIONS FOR AUTHOR is empty, skip this gate, go directly to Execute prompt.
+
+---
+
+## Phase B: Execute (Mode 2 and 3, or on user command)
+
+If MODE 1 (report only): after report + backlog update, ask the user:
+
+> **What to do with the fixes?**
+> - **"Execute"** (Recommended) -- apply ALL fixes from report
+> - **"Execute BLOCKING"** -- apply CRITICAL + HIGH only
+> - **"Skip"** -- do nothing, keep report for reference
+
+### Execute Flow
+
+1. Show SCOPE FENCE + EXECUTION HEADER:
+```
+===============================================================
+EXECUTING FIXES
+===============================================================
+ORIGINAL ISSUE: [summary]
+CHANGE INTENT: [intent]
+SCOPE FENCE:
+  ALLOWED: [file list]
+  FORBIDDEN: files outside scope, new APIs, "while we're here" fixes
+FIXES TO APPLY:
+  [ ] [ID] [description]
+===============================================================
+```
+
+2. Apply fixes -- choose execution mode:
+
+   **Fix scope:**
+   - MODE 2 ("fix"): ALL issues (CRITICAL + HIGH + MEDIUM + LOW)
+   - MODE 3 ("BLOCKING"): CRITICAL + HIGH only
+   - "Execute [ID]": specified issues only
+
+   **Solo execution (default):** Apply fixes sequentially.
+
+   **Parallel execution (when 3+ fixes touch DIFFERENT files):**
+   When 3+ fixes touch DIFFERENT files, apply fixes in parallel. Analyze which fixes can be applied independently (different target files, no interaction). Each fix gets:
+   - The issue(s) from report with full fix code
+   - Allowed files (only files the issues touch)
+   - Scope fence rules
+   - Stack + test runner info
+
+   Do NOT parallelize fixes that touch the same file or that interact (e.g., one fix changes an interface, another uses that interface).
+
+3. Write ALL required tests (complete, runnable -- not stubs). Per CHANGE INTENT rules.
+   If parallel execution was used, verify no test conflicts across fix groups.
+
+4. Run verification -- detect test runner from project:
+   - If `turbo.json`: `npx turbo test --force && npx turbo type-check`
+   - If `package.json` "test": `npm test` + `npm run typecheck` (if exists) + `npm run lint` (if exists)
+   - If `pyproject.toml` with pytest: `pytest` + `mypy .` (if configured) + `ruff check .` (if configured)
+   - If `manage.py` (Django): `python manage.py test` + `mypy .`
+   - If `Makefile` with `test` target: `make test`
+   - Otherwise: ask user for test command
+
+5. If RED -> check FLAKY (per rules.md), then fix and repeat step 4
+6. If GREEN -> run **Execute Verification Checklist** (below), then re-audit changed code
+7. If NEW ISSUES -> go back to step 2
+8. If ALL GREEN -> auto-commit + tag + show completion + update backlog:
+
+### Execute Verification Checklist (NON-NEGOTIABLE)
+
+After applying fixes and before committing, verify ALL of these. Print each with a check or X:
+
+```
+EXECUTE VERIFICATION
+-------------------------------------
+[x]/[ ]  SCOPE: No files modified outside SCOPE FENCE (no "while we're here" additions)
+[x]/[ ]  SCOPE: No new features/tests added beyond what the fix requires
+[x]/[ ]  TESTS PASS: Full test suite green (not just changed files)
+[x]/[ ]  FILE LIMITS: All modified/created files <= 250 lines (production) / <= 400 lines (test)
+[x]/[ ]  CQ1-CQ20: Self-eval on each modified PRODUCTION file (or N/A if test-only)
+[x]/[ ]  Q1-Q17: Self-eval on each modified/created TEST file (individual scores + critical gate)
+[x]/[ ]  NO SCOPE CREEP: Only fixes from the report applied, nothing extra
+-------------------------------------
+```
+
+**If ANY fails, fix before committing.** Common failures:
+- Scope creep: adding tests or refactoring not in the report -> revert extra changes
+- File limit: split files created during fix exceed limits -> split further
+- Q1-Q17 not run: after splitting/rewriting test files, re-eval is mandatory
+
+**Auto-Commit + Tag:**
+1. `git add [list of modified/created files -- specific names, not -A]`
+2. `git commit -m "review-fix: [brief description of fixes applied]"`
+3. `git tag review-[YYYY-MM-DD]-[short-slug]` (e.g., `review-2026-02-22-fix-auth-cq4`)
+
+This creates a clean rollback point. User can `git reset --hard <tag>` if needed.
+
+```
+===============================================================
+EXECUTION COMPLETE
+===============================================================
+ORIGINAL ISSUE: [summary]
+FILES MODIFIED: [list]
+
+FIXED:
+  - [ID] [description]
+
+TESTS WRITTEN:
+  - [TEST-ID] [description]
+
+VERIFIED:
+  - Tests: PASS
+  - Types: PASS
+
+Commit: [hash] -- [message]
+Tag: [tag name] (rollback: git reset --hard [tag])
+===============================================================
+```
+
+### Post-Execute Backlog Update
+
+After Execute completes, persist unfixed issues to backlog:
+- If `Execute BLOCKING`: all MEDIUM + LOW issues -> backlog
+- If `Execute [ID]`: all issues NOT in the ID list -> backlog
+- Mark any previously open backlog items as FIXED if the fix resolved them
+
+---
+
+## Phase C: Post-Execute
+
+Changes are already committed and tagged (auto-commit in Phase B).
+
+Ask the user:
+
+> **Next step?**
+> - **"Push"** (Recommended) -- push + tag reviewed
+> - **"Re-audit"** -- run full audit again on current state
+> - **"Done"** -- stop here, don't push
+
+### Actions
+
+**"Re-audit":**
+1. Run full audit on current code state
+2. If issues -> show report, prompt Execute again
+3. If clean -> show "RE-AUDIT PASSED", prompt Push
+
+**"Push":**
+1. `git push origin [branch]`
+2. Move the `reviewed` tag to HEAD: `git tag -f reviewed HEAD`
+3. Show pushed confirmation: "Tag `reviewed` updated -- use `/review new` next time to see only unreviewed commits"
+
+**"Done":**
+1. Show summary of what was fixed
+2. Stop -- don't push (commit already done)
+
+$ARGUMENTS
