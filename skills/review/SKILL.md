@@ -515,9 +515,31 @@ FIXES TO APPLY:
    - Otherwise: ask user for test command
 
 5. If RED → check FLAKY (per rules.md), then fix and repeat step 4
-6. If GREEN → re-audit changed code
+6. If GREEN → run **Execute Verification Checklist** (below), then re-audit changed code
 7. If NEW ISSUES → go back to step 2
 8. If ALL GREEN → auto-commit + tag + show completion + update backlog:
+
+### Execute Verification Checklist (NON-NEGOTIABLE)
+
+After applying fixes and before committing, verify ALL of these. Print each with ✅/❌:
+
+```
+EXECUTE VERIFICATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅/❌  SCOPE: No files modified outside SCOPE FENCE (no "while we're here" additions)
+✅/❌  SCOPE: No new features/tests added beyond what the fix requires
+✅/❌  TESTS PASS: Full test suite green (not just changed files)
+✅/❌  FILE LIMITS: All modified/created files ≤ 250 lines (production) / ≤ 400 lines (test)
+✅/❌  CQ1-CQ20: Self-eval on each modified PRODUCTION file (or N/A if test-only)
+✅/❌  Q1-Q17: Self-eval on each modified/created TEST file (individual scores + critical gate)
+✅/❌  NO SCOPE CREEP: Only fixes from the report applied, nothing extra
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**If ANY is ❌ → fix before committing.** Common failures:
+- Scope creep: adding tests or refactoring not in the report → revert extra changes
+- File limit: split files created during fix exceed limits → split further
+- Q1-Q17 not run: after splitting/rewriting test files, re-eval is mandatory
 
 **Auto-Commit + Tag:**
 1. `git add [list of modified/created files — specific names, not -A]`
