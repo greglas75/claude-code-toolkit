@@ -88,17 +88,15 @@ bash "$TOOLKIT_DIR/scripts/build-cursor-skills.sh" "$TOOLKIT_DIR"
 
 CURSOR_DIR="$HOME/.cursor"
 
-# Install rules (skills reference ~/.cursor/rules/)
+# Install rules from dist (unicode-normalized)
 mkdir -p "$CURSOR_DIR/rules"
-for f in "$TOOLKIT_DIR"/rules/*.md; do
+for f in "$TOOLKIT_DIR"/dist/cursor/rules/*.md; do
   [ -f "$f" ] && ln -sf "$f" "$CURSOR_DIR/rules/$(basename "$f")"
 done
 
-# Install protocol files (skills reference ~/.cursor/test-patterns.md etc.)
-for f in "$TOOLKIT_DIR"/*.md; do
-  base=$(basename "$f")
-  [ "$base" = "README.md" ] && continue
-  ln -sf "$f" "$CURSOR_DIR/$base"
+# Install protocol files from dist (unicode-normalized)
+for f in "$TOOLKIT_DIR"/dist/cursor/protocols/*.md; do
+  [ -f "$f" ] && ln -sf "$f" "$CURSOR_DIR/$(basename "$f")"
 done
 
 # Install skills

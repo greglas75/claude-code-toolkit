@@ -51,15 +51,7 @@ adapt_agent() {
     -e 's|~/.claude/skills/|~/.cursor/skills/|g' \
     -e 's|~/.claude/rules/|~/.cursor/rules/|g' \
     -e 's|~/.claude/|~/.cursor/|g' \
-    -e 's/—/--/g' \
-    -e 's/→/->/g' \
-    -e 's/✅/[x]/g' \
-    -e 's/❌/[ ]/g' \
-    -e 's/━/-/g' \
-    -e 's/═/=/g' \
-    -e 's/≤/<=/g' \
-    -e 's/≥/>=/g' \
-    > "$dst"
+    | normalize_unicode > "$dst"
 }
 
 # --- Skill Transform (mechanical, for skills without overlay) ---
@@ -90,7 +82,13 @@ transform_skill() {
     /^[[:space:]]*run_in_background:/ { next }
 
     { print }
-  ' "$src" | sed \
+  ' "$src" | normalize_unicode > "$dst"
+}
+
+# --- Unicode Normalization (reusable) ---
+# Converts unicode characters to ASCII equivalents for Cursor rendering.
+normalize_unicode() {
+  sed \
     -e 's/—/--/g' \
     -e 's/→/->/g' \
     -e 's/✅/[x]/g' \
@@ -98,12 +96,37 @@ transform_skill() {
     -e 's/━/-/g' \
     -e 's/═/=/g' \
     -e 's/≤/<=/g' \
-    -e 's/≥/>=/g' \
-    > "$dst"
+    -e 's/≥/>=/g'
 }
 
 # ============================================================
-# 1. Adapt agents
+# 1. Normalize rules + protocol files
+# ============================================================
+echo "Normalizing rules and protocols..."
+mkdir -p "$DIST/rules" "$DIST/protocols"
+
+for f in "$TOOLKIT_DIR"/rules/*.md; do
+  [ -f "$f" ] && sed \
+    -e 's|~/.claude/skills/|~/.cursor/skills/|g' \
+    -e 's|~/.claude/rules/|~/.cursor/rules/|g' \
+    -e 's|~/.claude/|~/.cursor/|g' \
+    "$f" | normalize_unicode > "$DIST/rules/$(basename "$f")"
+done
+echo "  + rules/ ($(ls "$TOOLKIT_DIR"/rules/*.md 2>/dev/null | wc -l | tr -d ' ') files)"
+
+for f in "$TOOLKIT_DIR"/*.md; do
+  base=$(basename "$f")
+  [ "$base" = "README.md" ] && continue
+  sed \
+    -e 's|~/.claude/skills/|~/.cursor/skills/|g' \
+    -e 's|~/.claude/rules/|~/.cursor/rules/|g' \
+    -e 's|~/.claude/|~/.cursor/|g' \
+    "$f" | normalize_unicode > "$DIST/protocols/$base"
+done
+echo "  + protocols/ (test-patterns, refactoring-protocol, review-protocol)"
+
+# ============================================================
+# 2. Adapt agents
 # ============================================================
 echo "Adapting agents..."
 agent_count=0
@@ -152,15 +175,7 @@ for skill_dir in "$TOOLKIT_DIR"/skills/*/; do
           -e 's|~/.claude/|~/.cursor/|g' \
           -e '/^[[:space:]]*subagent_type:/d' \
           -e '/^[[:space:]]*run_in_background:/d' \
-          -e 's/—/--/g' \
-          -e 's/→/->/g' \
-          -e 's/✅/[x]/g' \
-          -e 's/❌/[ ]/g' \
-          -e 's/━/-/g' \
-          -e 's/═/=/g' \
-          -e 's/≤/<=/g' \
-          -e 's/≥/>=/g' \
-          > "$DIST/skills/$skill/$f"
+          | normalize_unicode > "$DIST/skills/$skill/$f"
     fi
   done
 
