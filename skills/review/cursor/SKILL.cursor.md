@@ -8,20 +8,38 @@ user-invocable: true
 
 Triage + full audit in one step. No separate "Go" command needed.
 
-## Mandatory File Reading (NON-NEGOTIABLE)
+## File Loading (Tier-Aware)
 
-Before starting ANY work, read ALL 6 files below. Confirm each with a check or X:
+Load files in two phases to minimize token cost. Phase 1 is always required. Phase 2 is conditional.
+
+**Phase 1: Always Load (before triage)**
 
 ```
-1. [x]  ~/.cursor/skills/review/rules.md        -- Iron Rules, severity, confidence, backlog
-2. [x]  ~/.cursor/review-protocol.md            -- detailed checklists, red-flag patterns, tier rules
-3. [x]  ~/.cursor/rules/testing.md              -- Q1-Q17 test self-eval checklist
-4. [x]  ~/.cursor/rules/code-quality.md         -- CQ1-CQ20 production code checklist
-5. [x]  ~/.cursor/test-patterns.md              -- G-*/P-* patterns, AP anti-patterns, scoring formula
-6. [x]  ~/.cursor/rules/security.md             -- SSRF, XSS, auth, path traversal patterns
+1. [x]/[ ]  ~/.cursor/skills/review/rules.md        -- Iron Rules, severity, confidence, backlog
+2. [x]/[ ]  ~/.cursor/rules/code-quality.md         -- CQ1-CQ20 production code checklist
 ```
 
-**If ANY file fails to load, STOP. Do not proceed with a partial rule set.**
+**If ANY Phase 1 file is [ ] -> STOP.**
+
+**Phase 2: Conditional Loading (after triage Step 4 -- tier known)**
+
+Load each file ONLY when its trigger condition is met:
+
+| File | Load When | Skip When |
+|------|-----------|-----------|
+| `~/.cursor/review-protocol.md` | TIER 2+ | TIER 1 (only runs steps 0->1->2.1->6.1, covered by rules.md) |
+| `~/.cursor/rules/testing.md` | TIER 2+, OR diff contains `*.test.*`/`*.spec.*` files | TIER 1 with no test files in diff |
+| `~/.cursor/test-patterns.md` | Diff contains `*.test.*`/`*.spec.*` files | No test files in diff |
+| `~/.cursor/rules/security.md` | Triage Step 6 flags SECURITY conditional section, OR TIER 3 | TIER 1-2 with no security signals |
+
+Print loaded files after triage:
+```
+FILES LOADED: rules.md, code-quality.md [Phase 1]
+              + review-protocol.md, testing.md [Phase 2 -- TIER 2]
+              (skipped: test-patterns.md -- no test files, security.md -- no security signals)
+```
+
+**If a Phase 2 file is needed but unreadable -> STOP.**
 
 After reading, print step name before executing each step:
 - `STEP: Triage` (tier + mode)
@@ -177,28 +195,29 @@ CHANGE INTENT: [BUGFIX/REFACTOR/FEATURE/INFRA]
 ---------------------------------------------------------------
 ```
 
-### Pre-Audit Context Gathering
+### Pre-Audit Context Gathering (tier-gated)
 
-Before starting the audit steps, gather context from 2 analyses. Perform these inline (they feed into the audit).
+Context gathering depth depends on tier:
 
-**Blast Radius Analysis:**
+**TIER 1 (inline -- no separate analyses):**
+- **Blast radius (inline):** Run a single `grep -r 'import.*[changed-file]'` to find importers. For 1 file / <50 lines, this is 1 search.
+- **Pre-existing check (inline):** Run `git blame -L <start>,<end> <file>` on changed hunks. For <50 lines, this is 1-2 commands.
 
-Analyze the blast radius of the changed files from triage:
+**TIER 2+ (full analysis):**
+
+Perform these 2 analyses inline (they feed into the audit):
+
+*Blast Radius Analysis:*
 - For each changed file, search for all importers (`grep -r 'import.*[filename]'` or `grep -r 'from.*[module]'`)
 - List direct callers (files that import the changed file)
 - List transitive callers (1 level up -- who imports the importers)
 - Flag if a changed file is: a public API, a shared utility, a config, or a type definition
 - Produce a dependency map showing blast radius per file
 
-**Pre-Existing Line Check:**
-
-Run `git blame` on the changed line ranges for each changed file. Categorize each changed hunk as:
-- NEW: line didn't exist before (added by this change)
-- MODIFIED: line existed but was changed
-- MOVED: line content is identical, just relocated
-- PRE-EXISTING: surrounding context that wasn't touched
-
-This data is used later to filter pre-existing issues from the review.
+*Pre-Existing Line Check:*
+- Run `git blame` on the changed line ranges for each changed file
+- Categorize each changed hunk as: NEW / MODIFIED / MOVED / PRE-EXISTING
+- This data is used later to filter pre-existing issues from the review
 
 ### Audit Mode Decision
 
@@ -221,6 +240,28 @@ ELSE:
 **TIER 2 (STANDARD):** Steps 0 -> 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7.0 -> 9 -> Confidence Gate -> Report
 **TIER 3 (DEEP):** ALL steps 0-11 -> Confidence Gate -> Report
 
+### Diff Scoping (reduce tokens passed to agents)
+
+Before delegating to auditor agents in Team Audit, preprocess the diff to give each agent only the data it needs. This avoids passing the full diff to multiple agents.
+
+**Step: Prepare scoped diffs (lead, before delegating)**
+
+1. Run `git diff [scope]` to get the full diff
+2. Split into scoped fragments:
+
+| Agent | What to include | What to exclude |
+|-------|----------------|-----------------|
+| **@structure-auditor** | Diff of production code files only (`.ts`, `.tsx`, `.py`, `.go`, `.rs`, `.java`). Skip: `.md`, `.json`, `.lock`, `.env*`, `*.test.*`, `*.spec.*`. | Non-code files, test files |
+| **@behavior-auditor** | Diff of production code files only. Skip: test files (`*.test.*`, `*.spec.*`), config files (`.json`, `.lock`, `.yaml`). | Test files, config files |
+
+3. Pass the scoped fragment in each agent's prompt where it says `DIFF: [scoped diff]`
+
+**TIER 1:** No diff scoping needed (lead processes everything inline, no agents).
+
+**TIER 2 solo:** No scoping needed (lead processes the full diff directly).
+
+**Fallback:** If diff is small (<100 lines total), skip scoping -- pass full diff to all agents. The overhead of preprocessing exceeds the savings.
+
 ### Solo Audit (default)
 
 Execute all steps sequentially yourself. No delegation.
@@ -232,7 +273,7 @@ After completing context gathering (blast radius + pre-existing line check), del
 Delegate to @structure-auditor to audit architecture, types, integration, and performance:
 - CONTEXT: Read your full instructions at `~/.cursor/agents/structure-auditor.md`
 - CHANGED FILES: [list from Step 1]
-- DIFF: [full diff or file paths]
+- DIFF: [scoped diff -- see Diff Scoping section above]
 - TECH STACK: [detected stack]
 - CHANGE INTENT: [from triage]
 - TIER: [1/2/3]
@@ -247,7 +288,7 @@ Delegate to @structure-auditor to audit architecture, types, integration, and pe
 Delegate to @behavior-auditor to audit logic, side effects, regressions, and security:
 - CONTEXT: Read your full instructions at `~/.cursor/agents/behavior-auditor.md`
 - CHANGED FILES: [list from Step 1]
-- DIFF: [full diff or file paths]
+- DIFF: [scoped diff -- see Diff Scoping section above]
 - TECH STACK: [detected stack]
 - CHANGE INTENT: [from triage]
 - TIER: [1/2/3]
@@ -324,6 +365,22 @@ After completing all audit steps, DO NOT write the report yet. Instead:
 1. Collect all candidate issues found during audit
 2. Cross-reference with pre-existing line check results -- mark any issue on pre-existing lines
 
+**TIER 1: Inline Confidence Scoring**
+
+For TIER 1 (max 2-3 issues), score confidence directly -- no @confidence-rescorer needed.
+
+Apply the scoring table from rules.md (Confidence Re-Scoring section):
+- Score 0-25: DISCARD (hallucination / false positive)
+- Score 26-50: DROP to backlog
+- Score 51+: KEEP in report
+
+Score UP when: matches a project rule, has concrete reproduction scenario, affects user-visible behavior, involves money/auth/data.
+Score DOWN when: theoretical only, covered by tests, rarely-executed code, author made intentional choice.
+
+For each issue, state: `Confidence: [X]/100 -- [reason]`
+
+**TIER 2+: Delegate to @confidence-rescorer**
+
 3. Delegate to @confidence-rescorer to re-score all issues:
    - CONTEXT: Read your full instructions at `~/.cursor/agents/confidence-rescorer.md`
    - ISSUES: [paste issue list with: ID, severity, file, code quote, problem description]
@@ -332,7 +389,10 @@ After completing all audit steps, DO NOT write the report yet. Instead:
    - PRE-EXISTING DATA: [from pre-existing line check -- which lines are new vs old]
    - OUTPUT: Return the confidence table and summary per your instructions.
 
-4. After @confidence-rescorer completes:
+4. After scoring completes (inline or @confidence-rescorer):
+
+**Common (all tiers):**
+
 5. DROP from report any issue scoring < 51 -- **PERSIST issues scoring 26-50 TO BACKLOG** (0-25 = DISCARD as hallucinations)
 6. Adjust severity if re-scorer disagrees (e.g., reviewer said HIGH but scorer says 55 = downgrade to MEDIUM)
 7. Write final report with issues scoring 51+
@@ -368,14 +428,14 @@ Generate the full report following the format in review-protocol.md, but with Cu
 
 ### Backlog Update (after report)
 
-**MANDATORY** -- After writing the report, persist unfixed issues to backlog per the Backlog Persistence rules in rules.md:
-- **Dropped issues (confidence 26-50)** -> backlog with confidence score and "(dropped from report)" -- THIS IS REQUIRED, NOT OPTIONAL
-- **Discarded issues (confidence 0-25)** -> NOT persisted (hallucinations/false positives don't pollute backlog)
-- Pre-existing issues (identified by pre-existing line check) -> backlog
+**MANDATORY** -- After writing the report, persist unfixed issues to backlog per rules.md:
+- **Dropped issues (confidence 26-50)** -> backlog
+- **Discarded issues (confidence 0-25)** -> NOT persisted (hallucinations)
+- Pre-existing issues -> backlog
 - Issues on unmodified lines -> backlog
-- If MODE 1 (report only): all reported issues go to backlog too (they haven't been fixed yet)
+- MODE 1 (report only): all reported issues go to backlog (not fixed yet)
 
-**Verify:** Every issue with confidence 26+ must end up either in the report (51+) OR in the backlog (26-50). Issues scoring 0-25 are discarded as hallucinations -- this is the only case where silent discard is correct.
+**Prune on every write:** delete FIXED/WONT_FIX items. No RESOLVED section -- fixed = deleted.
 
 ### Questions Gate (after report, before Execute)
 
@@ -512,7 +572,9 @@ Tag: [tag name] (rollback: git reset --hard [tag])
 After Execute completes, persist unfixed issues to backlog:
 - If `Execute BLOCKING`: all MEDIUM + LOW issues -> backlog
 - If `Execute [ID]`: all issues NOT in the ID list -> backlog
-- Mark any previously open backlog items as FIXED if the fix resolved them
+- If fix resolved a previously open backlog item -> **delete it** (not "mark as resolved")
+
+**Prune on every write:** delete FIXED/WONT_FIX items. No RESOLVED section -- fixed = deleted.
 
 ---
 

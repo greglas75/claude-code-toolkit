@@ -1,4 +1,4 @@
-# Code Review Rules (Always Active)
+ocen f# Code Review Rules (Always Active)
 
 These rules govern all code reviews via `/review`.
 Full protocol with detailed checklists, red-flag patterns, and report templates is at `~/.claude/review-protocol.md` — read it on-demand when `/review` starts.
@@ -56,12 +56,15 @@ The sub-agent acts as a skeptic defending the code author. See `/review` for ful
 **Threshold: 51+** goes into the report with fix code. 26-50 → backlog only. 0-25 → DISCARD (hallucinations and total false positives don't pollute backlog).
 For each reported issue, show the confidence score: `Confidence: [X]/100`
 
-Sub-agents used during review (spawned by `/review`):
-- **Blast Radius Mapper** (Sonnet, inline prompt, parallel at start) — traces importers/callers of changed files
-- **Pre-Existing Checker** (Haiku, inline prompt, parallel at start) — git blame to classify new vs old lines
-- **Structure Auditor** (custom agent: `~/.claude/skills/review/agents/structure-auditor.md`, Sonnet, read-only) — architecture, types, integration, performance
-- **Behavior Auditor** (custom agent: `~/.claude/skills/review/agents/behavior-auditor.md`, Opus, read-only) — logic, side effects, regressions, security, observability
-- **Confidence Re-Scorer** (custom agent: `~/.claude/skills/review/agents/confidence-rescorer.md`, Haiku) — independent skeptic filtering false positives
+Sub-agents used during review (tier-gated — see SKILL.md for full logic):
+
+| Agent | Model | Spawned When |
+|-------|-------|--------------|
+| **Blast Radius Mapper** | Sonnet | TIER 2 (3+ files) or TIER 3. TIER 1 / TIER 2 (<3 files): lead does inline grep. |
+| **Pre-Existing Checker** | Haiku | TIER 2+. TIER 1: lead does inline `git blame`. |
+| **Structure Auditor** | Sonnet | Team audit only (TIER 2 with 5+ files OR TIER 3). |
+| **Behavior Auditor** | Sonnet or Opus | Team audit only. Sonnet for TIER 2 team and small TIER 3. Opus only for TIER 3 with 15+ files OR security/money risk signals. |
+| **Confidence Re-Scorer** | Haiku | TIER 2+. TIER 1: lead scores inline (max 2-3 issues). |
 
 ### Team Audit Mode (TIER 2 with 5+ files OR TIER 3)
 
@@ -74,7 +77,9 @@ For larger reviews, `/review` splits audit steps across 2 custom agents in paral
 |------|-------|-------|-------|-------|
 | Lead | (orchestrator) | inherited | 0, 1 (sequential, first) | Context setting, change inventory |
 | Structure Auditor | `structure-auditor` | Sonnet | 2, 4, 5 (+10, 11 for T3) | Types, imports, architecture, integration, performance |
-| Behavior Auditor | `behavior-auditor` | Opus | 3, 6, 9 (+7, 8 for T3) | Logic, side effects, regressions, security, observability |
+| Behavior Auditor | `behavior-auditor` | Sonnet (default) / Opus (T3 large+risky) | 3, 6, 9 (+7, 8 for T3) | Logic, side effects, regressions, security, observability |
+
+**Behavior Auditor model routing:** Opus only when `TIER 3 AND (files_changed >= 15 OR risk signals include Security/auth or Payment/money)`. All other team audits use Sonnet.
 
 **Merge protocol:**
 1. Wait for both auditors to complete
@@ -212,14 +217,17 @@ Verification: [how to verify the fix]
 To find it: look for the `auto memory directory` path in your system prompt (e.g., `~/.claude/projects/{project-slug}/memory/`). The backlog file is `backlog.md` inside that directory.
 If `backlog.md` doesn't exist yet, create it using the template below.
 
-Every unfixed issue from a review MUST be persisted to the backlog. No issue gets lost.
+### Size Management
+
+1. **FIXED/WONT_FIX → DELETE** (not "move to resolved"). Git has history if needed.
+2. **No RESOLVED section.** Fixed = gone. This prevents unbounded growth.
 
 ### Backlog file template (create if missing)
 
 ```markdown
 # Tech Debt Backlog
 
-> Auto-maintained by `/review`. Every unfixed issue lands here.
+> Auto-maintained by `/review`. Max 50 OPEN items. Fixed items are deleted.
 
 ## Format
 
@@ -229,27 +237,14 @@ Every unfixed issue from a review MUST be persisted to the backlog. No issue get
 - **File:** `{path}` → `{function}()`
 - **Problem:** {description}
 - **Fix:** {brief fix description}
-- **Source:** review {date}, branch `{branch}`
-- **Seen:** {count}x (dates)
-- **Status:** OPEN / FIXED ({date}) / WONT_FIX ({reason})
-
-## Rules
-- New issues: append with next B-{N} ID
-- Duplicate: increment "Seen" count, add date, keep highest confidence
-- Fixed: change status to FIXED with date — do NOT delete (history)
-- WONT_FIX: only when user explicitly says to ignore
+- **Source:** review {date}
+- **Seen:** {count}x
 
 ---
 
 ## OPEN Issues
 
 _No issues yet._
-
----
-
-## RESOLVED Issues
-
-_None yet._
 ```
 
 ### What goes to backlog
@@ -262,29 +257,31 @@ _None yet._
 | Reported but not fixed | User chose `Execute BLOCKING` (skips MEDIUM/LOW) | Tech debt items from report |
 | Deferred by user | User explicitly says "not now" / "later" | Any severity |
 
-**Rule: Real issues don't get lost.** Issues with confidence 26+ go to backlog. Issues 0-25 (hallucinations, total false positives) are DISCARDED — they pollute the backlog and degrade signal-to-noise. Use `/backlog` to periodically review and clean up.
+Issues with confidence 0-25 are DISCARDED — hallucinations don't go to backlog.
 
 ### When to persist
 
-- **After confidence gate:** persist dropped issues with confidence 26+ to backlog (0-25 = DISCARD, don't wait for Execute)
-- **After `/review` (report only):** persist all reported issues + all pre-existing/unmodified-line issues to backlog
+- **After confidence gate:** persist dropped issues with confidence 26+ (0-25 = DISCARD)
+- **After `/review` (report only):** persist all reported issues + pre-existing issues
 - **After `/review fix`:** persist any issues that couldn't be auto-fixed
-- **After `/review blocking`:** persist all MEDIUM + LOW issues (not fixed)
-- **After `Execute` / `Execute BLOCKING`:** persist all issues that were NOT applied
-- **After `Execute [ID]`:** persist all issues whose IDs were NOT in the execute list
+- **After `/review blocking`:** persist MEDIUM + LOW issues (not fixed)
+- **After `Execute` / `Execute BLOCKING`:** persist issues NOT applied
+- **After `Execute [ID]`:** persist issues whose IDs were NOT in the execute list
 
 ### How to persist
 
 1. Read current `backlog.md`
 2. For each issue to persist:
    - Search backlog for same file + same function/location
-   - If **duplicate**: increment `Seen` count, add today's date, keep highest confidence score
+   - If **duplicate**: increment `Seen` count, keep highest confidence score
    - If **new**: append under `## OPEN Issues` with next `B-{N}` ID
-3. Write updated `backlog.md`
+3. **Prune:** delete any FIXED/WONT_FIX items.
+4. Write updated `backlog.md`
 
-### When to mark FIXED
+### When to delete items
 
-During any review, if you notice a backlog item's file+function was modified and the problem no longer exists → update status to `FIXED ({date})` and move to `## RESOLVED Issues`.
+- During any review, if a backlog item's file+function was modified and the problem no longer exists → **delete the item** (not "mark as resolved")
+- User says "wontfix" or "ignore" → **delete the item**
 
 ### At review start
 

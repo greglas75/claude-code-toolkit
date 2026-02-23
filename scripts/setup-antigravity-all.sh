@@ -36,6 +36,9 @@ setup() {
   # Conditional rules
   [ -d "$HOME/.claude/conditional-rules" ] && ln -sf "$HOME/.claude/conditional-rules" "$dir/_agent/conditional-rules"
 
+  # Agent instructions (tells IDE agents what's available and how to use it)
+  ln -sf "$HOME/.claude/agent-instructions.md" "$dir/_agent/AGENT_INSTRUCTIONS.md"
+
   # memory/backlog.md
   local has_mem=""
   if [ -f "$memory_src/backlog.md" ]; then

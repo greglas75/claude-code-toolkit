@@ -8,20 +8,38 @@ user-invocable: true
 
 Triage + full audit in one step. No separate "Go" command needed.
 
-## Mandatory File Reading (NON-NEGOTIABLE)
+## File Loading (Tier-Aware)
 
-Before starting ANY work, read ALL 6 files below. Confirm each with ✅ or ❌:
+Load files in two phases to minimize token cost. Phase 1 is always required. Phase 2 is conditional.
+
+### Phase 1: Always Load (before triage)
 
 ```
 1. ✅/❌  ~/.claude/skills/review/rules.md        — Iron Rules, severity, confidence, backlog
-2. ✅/❌  ~/.claude/review-protocol.md            — detailed checklists, red-flag patterns, tier rules
-3. ✅/❌  ~/.claude/rules/testing.md              — Q1-Q17 test self-eval checklist
-4. ✅/❌  ~/.claude/rules/code-quality.md         — CQ1-CQ20 production code checklist
-5. ✅/❌  ~/.claude/test-patterns.md              — G-*/P-* patterns, AP anti-patterns, scoring formula
-6. ✅/❌  ~/.claude/rules/security.md             — SSRF, XSS, auth, path traversal patterns
+2. ✅/❌  ~/.claude/rules/code-quality.md         — CQ1-CQ20 production code checklist
 ```
 
-**If ANY file is ❌ → STOP. Do not proceed with a partial rule set.**
+**If ANY Phase 1 file is ❌ → STOP.**
+
+### Phase 2: Conditional Loading (after triage Step 4 — tier known)
+
+Load each file ONLY when its trigger condition is met:
+
+| File | Load When | Skip When |
+|------|-----------|-----------|
+| `~/.claude/review-protocol.md` | TIER 2+ | TIER 1 (only runs steps 0→1→2.1→6.1, covered by rules.md) |
+| `~/.claude/rules/testing.md` | TIER 2+, OR diff contains `*.test.*`/`*.spec.*` files | TIER 1 with no test files in diff |
+| `~/.claude/test-patterns.md` | Diff contains `*.test.*`/`*.spec.*` files | No test files in diff |
+| `~/.claude/rules/security.md` | Triage Step 6 flags SECURITY conditional section, OR TIER 3 | TIER 1-2 with no security signals |
+
+Print loaded files after triage:
+```
+FILES LOADED: rules.md, code-quality.md [Phase 1]
+              + review-protocol.md, testing.md [Phase 2 — TIER 2]
+              (skipped: test-patterns.md — no test files, security.md — no security signals)
+```
+
+**If a Phase 2 file is needed but unreadable → STOP.**
 
 After reading, print step name before executing each step:
 - `STEP: Triage` (tier + mode)
@@ -189,22 +207,52 @@ CHANGE INTENT: [BUGFIX/REFACTOR/FEATURE/INFRA]
 ═══════════════════════════════════════════════════════════════
 ```
 
-### Sub-Agent Preparation (launch in parallel at start)
-
-Before starting the audit steps, spawn 2 support agents in parallel (use Task tool, run_in_background=true). They gather context while you audit.
+### Sub-Agent Preparation (tier-gated)
 
 **IMPORTANT — Model Routing:**
 The Task tool does NOT read `.claude/agents/*.md` files automatically. You MUST specify the `model` parameter explicitly on every Task call. Agent definition files are referenced in prompts so agents can read their own instructions, but the model is set by YOU.
 
-| Agent | Model | subagent_type |
-|-------|-------|---------------|
-| Blast Radius Mapper | **sonnet** | Explore |
-| Pre-Existing Checker | **haiku** | Explore |
-| Structure Auditor | **sonnet** | Explore |
-| Behavior Auditor | **opus** | Explore |
-| Confidence Re-Scorer | **haiku** | Explore |
+**Agent spawning is gated by tier to avoid unnecessary API calls:**
 
-**Agent 1: Blast Radius Mapper** (Sonnet, background)
+```
+IF TIER 1:
+  → NO background agents. Lead does blast radius (single grep) and blame (single git blame) inline.
+  → NO Confidence Re-Scorer (max 2-3 issues — lead scores inline).
+
+IF TIER 2 solo (< 5 files):
+  → Blast Radius Mapper: ONLY if files_changed >= 3 (otherwise lead does inline grep)
+  → Pre-Existing Checker: YES (50-500 lines justifies dedicated blame agent)
+  → Confidence Re-Scorer: YES (issue list can be large)
+
+IF TIER 2 team (5+ files) OR TIER 3:
+  → ALL agents spawned (Blast Radius, Pre-Existing, Structure/Behavior Auditors, Re-Scorer)
+```
+
+**Agent model table (when spawned):**
+
+| Agent | Model | subagent_type | Spawned When |
+|-------|-------|---------------|--------------|
+| Blast Radius Mapper | **sonnet** | Explore | TIER 2 (3+ files) or TIER 3 |
+| Pre-Existing Checker | **haiku** | Explore | TIER 2+ |
+| Structure Auditor | **sonnet** | Explore | Team audit only |
+| Behavior Auditor | **sonnet** or **opus** | Explore | Team audit only (see Model Routing below) |
+| Confidence Re-Scorer | **haiku** | Explore | TIER 2+ |
+
+#### TIER 1 Inline Analysis (no agents)
+
+Instead of spawning agents, the lead does this directly:
+
+**Blast radius (inline):** Run a single `grep -r 'import.*[changed-file]'` or `grep -r 'from.*[module]'` to find importers. For 1 file / <50 lines, this is 1 tool call vs an entire agent.
+
+**Pre-existing check (inline):** Run `git blame -L <start>,<end> <file>` on changed hunks. For <50 lines, this is 1-2 Bash calls.
+
+**Confidence scoring (inline):** With max 2-3 issues from TIER 1 audit, lead assigns confidence scores directly using the scoring table from rules.md (Confidence Re-Scoring section — already loaded in Phase 1).
+
+#### TIER 2+ Agent Spawning
+
+Spawn applicable agents in parallel (use Task tool, run_in_background=true). Don't wait — start auditing immediately. Incorporate results when available.
+
+**Agent 1: Blast Radius Mapper** (Sonnet, background) — skip if files_changed < 3
 ```
 Spawn via Task tool with:
   subagent_type: Explore
@@ -235,8 +283,6 @@ Return a summary: which lines are genuinely new/modified vs pre-existing.
 This will be used to filter out pre-existing issues from the review."
 ```
 
-Don't wait for these agents — start auditing immediately. Incorporate their results when available.
-
 ### Audit Mode Decision
 
 After Steps 0-1 (context), decide audit execution mode:
@@ -258,6 +304,30 @@ ELSE:
 **TIER 2 (STANDARD):** Steps 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7.0 → 9 → Confidence Gate → Report
 **TIER 3 (DEEP):** ALL steps 0-11 → Confidence Gate → Report
 
+### Diff Scoping (reduce tokens passed to agents)
+
+Before spawning audit agents, preprocess the diff to give each agent only the data it needs. This avoids passing the full diff 4× to different agents.
+
+**Step: Prepare scoped diffs (lead, before spawning Team Audit agents)**
+
+1. Run `git diff [scope]` to get the full diff
+2. Split into scoped fragments:
+
+| Agent | What to include in prompt | What to exclude |
+|-------|--------------------------|-----------------|
+| **Blast Radius Mapper** | File list + exported symbol names only (extracted via `git diff --stat` + grep for `export` in changed files). No diff hunks needed. | Full diff content |
+| **Pre-Existing Checker** | Hunk headers (`@@ -12,5 +12,8 @@`) + file paths + line ranges only. No diff content needed — agent runs `git blame` on the ranges. | Diff content body |
+| **Structure Auditor** | Diff of production code files only (`.ts`, `.tsx`, `.py`, `.go`, `.rs`, `.java`). Skip: `.md`, `.json`, `.lock`, `.env*`, `*.test.*`, `*.spec.*`. | Non-code files, test files |
+| **Behavior Auditor** | Diff of production code files only. Skip: test files (`*.test.*`, `*.spec.*`), config files (`.json`, `.lock`, `.yaml`). | Test files, config files |
+
+3. Pass the scoped fragment in each agent's prompt where it says `DIFF: [scoped diff]`
+
+**TIER 1:** No diff scoping needed (lead processes everything inline, no agents spawned).
+
+**TIER 2 solo:** Diff scoping applies only to Blast Radius Mapper and Pre-Existing Checker (if spawned). Lead processes the full diff directly.
+
+**Fallback:** If diff is small (<100 lines total), skip scoping — pass full diff to all agents. The overhead of preprocessing exceeds the savings.
+
 ### Solo Audit (default)
 
 Lead executes all steps sequentially. Current behavior, no changes.
@@ -265,6 +335,23 @@ Lead executes all steps sequentially. Current behavior, no changes.
 ### Team Audit (TIER 2 with 5+ files OR TIER 3)
 
 After Steps 0-1 (lead, sequential — these set context for everything), spawn 2 audit agents in parallel. Each is read-only — they analyze the same diff through different "lenses."
+
+#### Behavior Auditor Model Routing
+
+The Behavior Auditor model depends on review complexity:
+
+```
+IF TIER 2 team:
+  → Behavior Auditor model: "sonnet"
+
+IF TIER 3 AND (files_changed >= 15 OR risk_signals include SECURITY or MONEY):
+  → Behavior Auditor model: "opus"
+
+IF TIER 3 AND files_changed < 15 AND no security/money risk:
+  → Behavior Auditor model: "sonnet"
+```
+
+Rationale: Sonnet handles CQ3-CQ10 adequately for medium reviews. Opus adds value only for large, complex reviews with security/financial cross-cutting concerns.
 
 **Structure Auditor** — `~/.claude/skills/review/agents/structure-auditor.md` (Sonnet, read-only):
 ```
@@ -275,7 +362,7 @@ Spawn via Task tool with:
   prompt: "Read your full instructions at ~/.claude/skills/review/agents/structure-auditor.md, then audit these changed files.
 
 CHANGED FILES: [list from Step 1]
-DIFF: [full diff or file paths]
+DIFF: [scoped diff — see Diff Scoping section above]
 TECH STACK: [detected stack]
 CHANGE INTENT: [from triage]
 TIER: [1/2/3]
@@ -290,16 +377,16 @@ SCOPE RULES by TIER + INTENT:
 Output STRUCT-N issues per the format in your instructions."
 ```
 
-**Behavior Auditor** — `~/.claude/skills/review/agents/behavior-auditor.md` (Opus, read-only):
+**Behavior Auditor** — `~/.claude/skills/review/agents/behavior-auditor.md` (Sonnet or Opus, read-only):
 ```
 Spawn via Task tool with:
   subagent_type: Explore          ← enforces read-only (no Edit/Write)
-  model: "opus"                   ← MUST set explicitly, Task tool ignores agent .md
+  model: [use model from Behavior Auditor Model Routing above]
   run_in_background: true
   prompt: "Read your full instructions at ~/.claude/skills/review/agents/behavior-auditor.md, then audit these changed files.
 
 CHANGED FILES: [list from Step 1]
-DIFF: [full diff or file paths]
+DIFF: [scoped diff — see Diff Scoping section above]
 TECH STACK: [detected stack]
 CHANGE INTENT: [from triage]
 TIER: [1/2/3]
@@ -373,12 +460,29 @@ Output BEHAV-N issues per the format in your instructions."
 
 **Step 11 — Documentation:** README, API docs, TODOs tracked, env vars documented
 
-### Confidence Gate (Sub-Agent — after audit, before report)
+### Confidence Gate (after audit, before report)
 
 After completing all audit steps, DO NOT write the report yet. Instead:
 
 1. Collect all candidate issues found during audit
-2. Cross-reference with Pre-Existing Checker results — mark any issue on pre-existing lines
+2. Cross-reference with Pre-Existing Checker results (or inline blame for TIER 1) — mark any issue on pre-existing lines
+
+#### TIER 1: Inline Confidence Scoring
+
+For TIER 1 (max 2-3 issues), the lead scores confidence directly — no agent spawn needed.
+
+Apply the scoring table from rules.md (Confidence Re-Scoring section):
+- Score 0-25: DISCARD (hallucination / false positive)
+- Score 26-50: DROP to backlog
+- Score 51+: KEEP in report
+
+Score UP when: matches a project rule, has concrete reproduction scenario, affects user-visible behavior, involves money/auth/data.
+Score DOWN when: theoretical only, covered by tests, rarely-executed code, author made intentional choice.
+
+For each issue, state: `Confidence: [X]/100 — [reason]`
+
+#### TIER 2+: Confidence Re-Scorer Agent
+
 3. Spawn **Confidence Re-Scorer** — `~/.claude/skills/review/agents/confidence-rescorer.md` (Haiku):
 
 ```
@@ -397,7 +501,10 @@ PRE-EXISTING DATA: [from Agent 2 — which lines are new vs old]
 Return the confidence table and summary per your instructions."
 ```
 
-4. Wait for Agent 3 result
+4. Wait for Re-Scorer result
+
+#### Common (all tiers)
+
 5. DROP from report any issue scoring < 51 — **PERSIST issues scoring 26-50 TO BACKLOG** (0-25 = DISCARD as hallucinations)
 6. Adjust severity if re-scorer disagrees (e.g., reviewer said HIGH but scorer says 55 = downgrade to MEDIUM)
 7. Write final report with issues scoring 51+
@@ -423,14 +530,14 @@ Generate the full report following the format in review-protocol.md. Include:
 
 ### Backlog Update (after report)
 
-**MANDATORY** — After writing the report, persist unfixed issues to backlog per the Backlog Persistence rules in rules.md:
-- **Dropped issues (confidence 26-50)** → backlog with confidence score and "(dropped from report)" — THIS IS REQUIRED, NOT OPTIONAL
-- **Discarded issues (confidence 0-25)** → NOT persisted (hallucinations/false positives don't pollute backlog)
-- Pre-existing issues (identified by Pre-Existing Checker) → backlog
+**MANDATORY** — After writing the report, persist unfixed issues to backlog per rules.md:
+- **Dropped issues (confidence 26-50)** → backlog
+- **Discarded issues (confidence 0-25)** → NOT persisted (hallucinations)
+- Pre-existing issues → backlog
 - Issues on unmodified lines → backlog
-- If MODE 1 (report only): all reported issues go to backlog too (they haven't been fixed yet)
+- MODE 1 (report only): all reported issues go to backlog (not fixed yet)
 
-**Verify:** Every issue with confidence 26+ must end up either in the report (51+) OR in the backlog (26-50). Issues scoring 0-25 are discarded as hallucinations — this is the only case where silent discard is correct.
+**Prune on every write:** delete FIXED/WONT_FIX items. No RESOLVED section — fixed = deleted.
 
 ### Questions Gate (after report, before Execute)
 

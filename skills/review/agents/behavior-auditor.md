@@ -1,7 +1,7 @@
 ---
 name: behavior-auditor
 description: "Read-only code review auditor for logic, side effects, regressions, security, and observability. Spawned by /review for TIER 2+ team audits."
-model: opus
+model: sonnet  # default; upgraded to opus by lead for TIER 3 large+risky reviews
 tools:
   - Read
   - Grep
