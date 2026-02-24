@@ -58,6 +58,8 @@ If `~/.codex/` is not accessible, resolve from `_agent/` in project root:
 | `--pattern AP14` | Replace `toBeDefined()`/`toBeTruthy()` sole assertions with content assertions |
 | `--pattern AP2` | Replace conditional assertions `if (x) { expect }` with hard assertions |
 | `--pattern Q7-API` | Add `mockRejectedValue` error tests to API wrapper files with zero error coverage |
+| `--pattern AP5` | Replace `as any`/`as never` mock casts with typed factories |
+| `--pattern Q3-CalledWith` | Upgrade `toHaveBeenCalled()` to `toHaveBeenCalledWith(expectedArgs)` |
 | `--triage` | Run Batch Diagnosis greps, report counts, ask user which to fix |
 | `[path]` | Limit scope to specific directory (default: `src/`) |
 | `--dry-run` | Show what would be changed, don't write files |
@@ -139,6 +141,19 @@ for f in $(find [path] -name "*.api.test.*" -o -name "*.api.spec.*" -o -name "*.
   rejected=$(grep -c "mockRejectedValue\|rejects\|\.reject\b" "$f" 2>/dev/null || echo 0)
   [ "$rejected" -eq 0 ] && echo "$f: 0 error tests"
 done
+
+# AP5: as any / as never in test mocks (files with high density)
+for f in $(find [path] -name "*.test.*" -o -name "*.spec.*" | grep -v node_modules); do
+  count=$(grep -c "as any\|as never" "$f" 2>/dev/null || echo 0)
+  [ "$count" -gt 5 ] && echo "$f: $count as-any casts"
+done
+
+# Q3-CalledWith: toHaveBeenCalled() without any CalledWith in same file
+for f in $(grep -rln "\.toHaveBeenCalled()\|\.toHaveBeenCalledTimes(" [path] --include="*.test.*" --include="*.spec.*" | grep -v node_modules); do
+  has_with=$(grep -c "toHaveBeenCalledWith\|toHaveBeenLastCalledWith\|toHaveBeenNthCalledWith" "$f" 2>/dev/null || echo 0)
+  called=$(grep -c "\.toHaveBeenCalled()\|\.toHaveBeenCalledTimes(" "$f" 2>/dev/null || echo 0)
+  [ "$has_with" -eq 0 ] && [ "$called" -gt 0 ] && echo "$f: $called bare .toHaveBeenCalled(), 0 CalledWith"
+done
 ```
 
 Report format:
@@ -149,6 +164,8 @@ Triage results:
   AP14 (toBeDefined sole): [N] files with >50% AP14 -> [ACTION: Fix / Skip]
   AP2 (conditional assert):  [N] hits -> [ACTION: Fix / Skip]
   Q7-API (no rejection):  [N] api wrapper files with 0 mockRejectedValue -> [ACTION: Fix / Skip]
+  AP5 (as-any mocks):    [N] files with >5 as-any casts -> [ACTION: Fix / Skip]
+  Q3-CalledWith (bare):  [N] files with 0 CalledWith -> [ACTION: Fix / Skip]
   P-41 (loading-only):   [N] hits in [M] files -> [ACTION: Fix / Skip]
   G-43 (opaque dispatch): [N] hits in [M] files -> [ACTION: Fix / Skip]
   P-40 (wrong init state): [N] hits in [M] files -> [ACTION: Fix / Skip]
@@ -204,6 +221,8 @@ For EACH pair of (test file, production file), extract:
 | **NestJS-P3** | Production service -- which injected dependencies does the method call? What does the external dep return? What does the service compute from it? |
 | **AP2** | No production file needed -- fix is always mechanical (remove if-guard, add direct assertion) |
 | **Q7-API** | Production wrapper -- which HTTP methods used? Does wrapper transform errors? Per-status handling? |
+| **AP5** | Production interfaces/types -- what is the real shape of the mocked object? Which fields does the test actually use? |
+| **Q3-CalledWith** | Production service/handler -- what args does each mocked dependency receive? What computed transformations happen before the call? |
 
 Attach this context to each fixer agent's prompt. Without it, the agent writes generic assertions that don't match the real state shape.
 
@@ -662,3 +681,122 @@ describe('POST /api/[resource]', () => {
 ```
 
 Read the route handler to identify which cases are missing. Don't generate generic tests -- match assertions to actual response shapes.
+
+### AP5: `as any` / `as never` Mock Casts -> Typed Factories
+
+Context needed: production interface/type that the mock should satisfy. Read imports in test file to find the type, then read the production type definition.
+
+**Trigger:** `as any` or `as never` used to silence TypeScript when creating mock objects or casting mock return values. High density (>5 per file) indicates the test was written without proper type support.
+
+**Fix strategy -- 3 tiers based on scope:**
+
+**Tier 1: Inline cast on mock return value (most common)**
+```typescript
+// BEFORE:
+mockService.getUser.mockResolvedValue({ id: 1, name: 'Alice' } as any);
+
+// AFTER -- satisfy the interface:
+const mockUser: User = { id: 1, name: 'Alice', email: 'a@b.com', role: 'user', createdAt: new Date() };
+mockService.getUser.mockResolvedValue(mockUser);
+```
+
+**Tier 2: Mock object creation with `as any`**
+```typescript
+// BEFORE:
+const mockCtx = { req: { headers: {} }, res: {} } as any;
+
+// AFTER -- create typed factory:
+function createMockContext(overrides: Partial<RequestContext> = {}): RequestContext {
+  return {
+    req: { headers: {}, method: 'GET', url: '/', ...overrides.req },
+    res: { status: vi.fn().mockReturnThis(), json: vi.fn(), ...overrides.res },
+    ...overrides,
+  };
+}
+const mockCtx = createMockContext();
+```
+
+**Tier 3: Shared factory for repeated patterns (Q9 fix bundled)**
+When the same `as any` pattern repeats across 3+ test files (e.g., `RequestContext`, `Repository`, `Service`):
+1. Create `__tests__/factories/` directory (or `test/helpers/`)
+2. Move factory to shared file
+3. Import in all affected test files
+
+```typescript
+// __tests__/factories/context.factory.ts
+import type { RequestContext } from '../../types';
+export function createMockContext(overrides: Partial<RequestContext> = {}): RequestContext {
+  return { /* full typed shape */ ...overrides };
+}
+```
+
+**Priority order:**
+1. Fix Tier 2 first (object creation) -- biggest type safety win
+2. Then Tier 1 (return values) -- most numerous
+3. Tier 3 only if same factory pattern appears 3+ times across files
+
+**SKIP when:** `as any` is on a genuinely untyped third-party library with no `@types/*` available -- add `// eslint-disable-next-line @typescript-eslint/no-explicit-any` comment instead.
+
+**Batch note:** In NestJS projects, `RequestContext` and repository mocks are the #1 source of `as any`. One shared factory eliminates 50%+ of casts across the entire test suite. Read the repository interface first, then build the factory once.
+
+### Q3-CalledWith: Bare `toHaveBeenCalled()` -> `toHaveBeenCalledWith(args)`
+
+Context needed: production code for each mocked dependency -- what args does the method receive? Are args transformed before the call?
+
+**Trigger:** File has `toHaveBeenCalled()` or `toHaveBeenCalledTimes(N)` assertions but zero `toHaveBeenCalledWith` anywhere. The test proves "something was called" but not "the right thing was called with the right data."
+
+**Critical distinction from AP10:** AP10 = delegation-only tests (CalledWith is the ONLY assertion). Q3-CalledWith = tests that may have other assertions (return values, state changes) but the mock call verification is bare.
+
+**Fix -- for each bare `toHaveBeenCalled()`:**
+
+1. Read production code to find what args the dependency receives
+2. Replace with `toHaveBeenCalledWith`:
+
+```typescript
+// BEFORE:
+expect(mockEmailService.send).toHaveBeenCalled();
+
+// AFTER -- verify WHAT was sent:
+expect(mockEmailService.send).toHaveBeenCalledWith(
+  expect.objectContaining({
+    to: user.email,
+    subject: expect.stringContaining('Welcome'),
+    template: 'welcome',
+  })
+);
+```
+
+**For `toHaveBeenCalledTimes(N)`:** keep the count check AND add CalledWith:
+```typescript
+// BEFORE:
+expect(mockRepo.save).toHaveBeenCalledTimes(2);
+
+// AFTER -- keep count + add content:
+expect(mockRepo.save).toHaveBeenCalledTimes(2);
+expect(mockRepo.save).toHaveBeenNthCalledWith(1, expect.objectContaining({ type: 'create' }));
+expect(mockRepo.save).toHaveBeenNthCalledWith(2, expect.objectContaining({ type: 'update' }));
+```
+
+**Also add negative verification (Q12 symmetry):**
+```typescript
+// After verifying the call was made with correct args:
+expect(mockEmailService.send).toHaveBeenCalledWith(expect.objectContaining({ to: user.email }));
+// Add negative: service that should NOT be called in this path
+expect(mockNotificationService.push).not.toHaveBeenCalled();
+```
+
+**Watch for Q17:** The CalledWith args must include COMPUTED values, not just echo of input. If production code transforms the input before calling the dep, assert the transformed value:
+```typescript
+// Production code: this.repo.save({ ...input, slug: slugify(input.name), createdAt: expect.any(Date) })
+expect(mockRepo.save).toHaveBeenCalledWith(
+  expect.objectContaining({
+    name: INPUT.name,
+    slug: 'my-project-name',  // COMPUTED via slugify, not echo of INPUT.slug
+    createdAt: expect.any(Date),  // COMPUTED, not from input
+  })
+);
+```
+
+**SKIP when:** the mock is a logger or metrics collector where argument content is not behaviorally significant -- bare `toHaveBeenCalled()` is acceptable for fire-and-forget observability calls.
+
+**Batch note:** Handler/controller test files are the #1 source of bare CalledWith -- they verify "service was called" after request but never check what args the service received. Process all handler tests in one batch since they follow identical patterns.

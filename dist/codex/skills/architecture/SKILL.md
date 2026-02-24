@@ -1,17 +1,19 @@
 ---
 name: architecture
-description: "Create Architecture Decision Records (ADRs) or design systems. Use for 'should we use X or Y', 'how should we architect', 'system design for', 'document this decision', or any technical decision needing structured trade-off analysis."
+description: "Architecture skill -- three modes: (1) review existing project architecture, (2) create ADRs for decisions, (3) design new systems. Use for 'review the architecture of [path]', 'should we use X or Y', 'design a system for', 'document this decision', or any technical decision needing structured trade-off analysis."
 ---
 
-# /architecture -- ADR & System Design
+# /architecture -- Review, ADR & System Design
 
-Two modes: create an ADR for a decision already being made, or design a system from requirements.
+Three modes: audit an existing codebase architecture, create an ADR for a decision, or design a new system from requirements.
 
 ## Parse $ARGUMENTS
 
 | Input | Action |
 |-------|--------|
-| _(empty)_ | Ask: "What decision or system are you working on?" |
+| _(empty)_ | Ask: "What would you like to do? (review [path] / adr / design)" |
+| `review [path]` | Architecture Review mode -- scan codebase, assess structure and health |
+| `review` (no path) | Architecture Review mode -- scan current directory |
 | "should we use X or Y…" | ADR mode -- structured trade-off comparison |
 | "design a system for…" | System design mode -- full requirements -> design |
 | "document this decision…" | ADR mode -- formalize a decision already made |
@@ -19,7 +21,112 @@ Two modes: create an ADR for a decision already being made, or design a system f
 
 ---
 
-## Mode 1: ADR -- Architecture Decision Record
+## Mode 1: Architecture Review
+
+### When to use
+Understanding and evaluating an existing codebase -- before a major refactor, onboarding, tech debt planning, or when something "feels wrong" structurally.
+
+### Step 1 -- Read the project structure
+
+Before any assessment, read actual files. In order:
+1. `package.json` / `pyproject.toml` / `composer.json` -- dependencies, scripts, stack
+2. Directory tree (top 2 levels) -- module boundaries visible from folder names
+3. Entry points: `main.ts`, `app.module.ts`, `index.ts`, `server.ts` etc.
+4. Key domain files: services, controllers, models (sample, not all)
+5. `README.md`, `CLAUDE.md`, any `docs/` folder
+
+**Never write the review from memory. Read first.**
+
+### Step 2 -- Map the architecture
+
+Identify:
+- **Layers:** presentation / application / domain / infrastructure -- are they present and respected?
+- **Module boundaries:** what are the main modules/services? are they cohesive?
+- **Data flow:** how does a request travel from entry point to DB and back?
+- **External dependencies:** external APIs, queues, caches -- how coupled are they?
+- **Cross-cutting concerns:** auth, logging, error handling -- centralized or scattered?
+
+### Step 3 -- Score against 8 dimensions
+
+| # | Dimension | What to check |
+|---|-----------|--------------|
+| A1 | **Modularity** | Clear module boundaries? Low coupling, high cohesion? |
+| A2 | **Layering** | Layers respected? (No DB calls in controllers, no business logic in repositories) |
+| A3 | **Dependency direction** | Dependencies point inward (domain doesn't depend on infra)? |
+| A4 | **Single responsibility** | God classes / god modules? One module doing too many things? |
+| A5 | **Scalability** | Horizontal scaling possible? Any shared mutable state blocking it? |
+| A6 | **Testability** | Pure business logic isolated from I/O? Easy to unit test core? |
+| A7 | **Observability** | Logging, metrics, tracing present? Correlation IDs? |
+| A8 | **Security boundary** | Auth/authz at layer boundary? Input validated at entry point only? |
+
+Score each: **Good** / **Needs work** / **Critical issue** + 1-line evidence.
+
+### Step 4 -- Identify top problems
+
+For each Critical or Needs-work dimension, describe:
+- **Pattern:** what's wrong (e.g., "Circular dependency between UserModule and AuthModule")
+- **Risk:** what breaks if this stays (e.g., "Can't test UserService in isolation")
+- **Fix:** concrete recommendation (e.g., "Extract shared AuthToken type to shared/types")
+
+### Output -- Architecture Review Report
+
+```markdown
+# Architecture Review: [Project Name]
+
+**Date:** [YYYY-MM-DD]
+**Stack:** [framework, language, key dependencies]
+**Scope:** [which modules/paths were reviewed]
+
+## Overview
+
+[2-3 sentences: overall assessment -- is this clean, messy, mixed?]
+
+## Architecture Map
+
+[ASCII or described component diagram showing key modules and data flow]
+
+## Dimension Scores
+
+| Dimension | Score | Evidence |
+|-----------|-------|----------|
+| A1 Modularity | Good / Needs work / Critical | [1-line finding] |
+| A2 Layering | ... | ... |
+| A3 Dependency direction | ... | ... |
+| A4 Single responsibility | ... | ... |
+| A5 Scalability | ... | ... |
+| A6 Testability | ... | ... |
+| A7 Observability | ... | ... |
+| A8 Security boundary | ... | ... |
+
+## Critical Issues
+
+### [Issue title]
+- **Pattern:** [what's wrong]
+- **Risk:** [consequence if not fixed]
+- **Fix:** [specific recommendation]
+- **Files:** [key file:line references]
+
+## Needs-Work Items
+
+[Same format, lower severity]
+
+## Strengths
+
+[What's done well -- architecture review should surface positives too]
+
+## Recommendations
+
+Prioritized by impact:
+1. [Highest priority fix]
+2. [Second priority]
+3. [Third priority]
+
+Consider running `/backlog add` for each Critical issue.
+```
+
+---
+
+## Mode 2: ADR -- Architecture Decision Record
 
 ### When to use
 Capturing a significant technical decision: framework choice, data store selection, communication pattern, API design approach, auth strategy, etc.
@@ -122,7 +229,7 @@ Not a repeat of pros/cons -- synthesize: "Option A wins on X and Y but loses on 
 
 ---
 
-## Mode 2: System Design
+## Mode 3: System Design
 
 ### When to use
 Designing a new service, API, or subsystem from requirements.

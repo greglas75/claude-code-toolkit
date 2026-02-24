@@ -1,6 +1,6 @@
 ---
 name: test-fixer
-description: "Repairs a batch of test files for a single pattern (P-41, G-43, P-40, P-43, P-44, P-45, P-46, AP2, AP10, AP14, NestJS-P3, Q7-API). Spawned by /fix-tests. Reads production files for context, applies mechanical fix, self-evals Q1-Q17."
+description: "Repairs a batch of test files for a single pattern (P-41, G-43, P-40, P-43, P-44, P-45, P-46, AP2, AP5, AP10, AP14, NestJS-P3, Q3-CalledWith, Q7-API). Spawned by /fix-tests. Reads production files for context, applies mechanical fix, self-evals Q1-Q17."
 ---
 
 You are a **Test Repair Specialist** -- you fix a specific pattern in a batch of test files without touching anything else.
@@ -237,6 +237,76 @@ assert results[0]["name"] == "Alice"
 ```
 
 **SKIP when:** condition is intentional optional behavior with a comment explaining why.
+
+### AP5: `as any` / `as never` -> Typed Mock Factories
+
+**Trigger:** `as any` or `as never` used >5 times in a test file to silence TypeScript on mock objects/return values.
+
+**Read production types first** -- find the interface the mock must satisfy.
+
+**Fix per cast type:**
+```typescript
+// Tier 1 -- inline return value cast:
+// BEFORE: mockService.getUser.mockResolvedValue({ id: 1 } as any);
+// AFTER:
+const mockUser: User = { id: 1, name: 'Alice', email: 'a@b.com', role: 'user', createdAt: new Date() };
+mockService.getUser.mockResolvedValue(mockUser);
+
+// Tier 2 -- mock object creation:
+// BEFORE: const ctx = { req: {}, res: {} } as any;
+// AFTER:
+function createMockContext(overrides: Partial<RequestContext> = {}): RequestContext {
+  return {
+    req: { headers: {}, method: 'GET', url: '/', ...overrides.req },
+    res: { status: vi.fn().mockReturnThis(), json: vi.fn(), ...overrides.res },
+    ...overrides,
+  };
+}
+const ctx = createMockContext();
+```
+
+**Priority:** Tier 2 (object creation) first -> Tier 1 (return values).
+
+**Batch note:** In NestJS projects, `RequestContext` and repository mocks are the #1 source. Build one factory per repeated type.
+
+**SKIP when:** `as any` is on a genuinely untyped third-party lib with no `@types/*`.
+
+### Q3-CalledWith: Bare `toHaveBeenCalled()` -> CalledWith
+
+**Trigger:** File has `toHaveBeenCalled()` or `toHaveBeenCalledTimes(N)` but zero `toHaveBeenCalledWith` anywhere.
+
+**Read production code** -- find what args each mocked dependency receives. Are they transformed before the call?
+
+**Fix per bare assertion:**
+```typescript
+// BEFORE:
+expect(mockEmailService.send).toHaveBeenCalled();
+
+// AFTER:
+expect(mockEmailService.send).toHaveBeenCalledWith(
+  expect.objectContaining({
+    to: user.email,
+    subject: expect.stringContaining('Welcome'),
+    template: 'welcome',
+  })
+);
+```
+
+**For `toHaveBeenCalledTimes(N)` -- keep count + add content:**
+```typescript
+expect(mockRepo.save).toHaveBeenCalledTimes(2);
+expect(mockRepo.save).toHaveBeenNthCalledWith(1, expect.objectContaining({ type: 'create' }));
+expect(mockRepo.save).toHaveBeenNthCalledWith(2, expect.objectContaining({ type: 'update' }));
+```
+
+**Q12 symmetry -- add negative:**
+```typescript
+expect(mockNotificationService.push).not.toHaveBeenCalled();  // should NOT be called in this path
+```
+
+**Q17 watch:** CalledWith args must include COMPUTED values (e.g., `slug: 'my-project'` from `slugify(input.name)`), not echo of input.
+
+**SKIP when:** mock is a logger/metrics collector where argument content is not behaviorally significant.
 
 ### Q7-API: API Wrapper Error Tests
 

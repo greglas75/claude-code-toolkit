@@ -317,8 +317,10 @@ Commit: [hash] — [message]
 Tag: [tag name] (rollback: git reset --hard [tag])
 
 Next steps:
-  /review  → Review the new code
-  Push     → git push origin [branch]
+  /review             → Review the new code before push
+  /docs readme [path] → Write README for the new module (if new service/module created)
+  /docs api [path]    → Document the new endpoints (if new endpoints added)
+  Push                → git push origin [branch]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
