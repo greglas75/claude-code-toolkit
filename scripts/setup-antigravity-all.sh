@@ -17,7 +17,7 @@ setup() {
 
   # _agent/skills/ and _agent/workflows/
   mkdir -p "$dir/_agent/skills" "$dir/_agent/workflows"
-  for skill in build review refactor code-audit test-audit api-audit backlog; do
+  for skill in build review refactor code-audit test-audit api-audit backlog fix-tests; do
     ln -sf "$SKILLS/$skill"          "$dir/_agent/skills/$skill"
     ln -sf "$SKILLS/$skill/SKILL.md" "$dir/_agent/workflows/$skill.md"
   done
