@@ -61,6 +61,8 @@ Use `TaskCreate` at the start for multi-step visibility. Update status as you pr
 | `--pattern AP10` | Upgrade tautological delegation (toHaveBeenCalled-only) to CalledWith + return value |
 | `--pattern NestJS-P3` | Remove self-mock spyOn on own service, test computed output instead |
 | `--pattern AP14` | Replace `toBeDefined()`/`toBeTruthy()` sole assertions with content assertions |
+| `--pattern AP2` | Replace conditional assertions `if (x) { expect }` with hard assertions |
+| `--pattern Q7-API` | Add `mockRejectedValue` error tests to API wrapper files with zero error coverage |
 | `--triage` | Run Batch Diagnosis greps, report counts, ask user which to fix |
 | `[path]` | Limit scope to specific directory (default: `src/`) |
 | `--dry-run` | Show what would be changed, don't write files |
@@ -131,6 +133,17 @@ for f in $(find [path] -name "*.test.*" -o -name "*.spec.*" | grep -v node_modul
   [ "$total" -gt 0 ] && ratio=$((weak * 100 / total)) || ratio=0
   [ "$ratio" -gt 40 ] && echo "$f: $weak/$total assertions are toBeDefined/toBeTruthy ($ratio%)"
 done
+
+# AP2: Conditional assertions (if-guarded expect — silent skip when condition false)
+grep -rn "if (" [path] --include="*.test.*" --include="*.spec.*" | grep "expect\|assert" | grep -v "node_modules"
+# Python variant:
+grep -rn "^    if " [path] --include="test_*.py" | grep -v "node_modules"
+
+# Q7-API: API wrapper files with zero error tests
+for f in $(find [path] -name "*.api.test.*" -o -name "*.api.spec.*" -o -name "*.client.test.*" | grep -v node_modules); do
+  rejected=$(grep -c "mockRejectedValue\|rejects\|\.reject\b" "$f" 2>/dev/null || echo 0)
+  [ "$rejected" -eq 0 ] && echo "$f: 0 error tests"
+done
 ```
 
 Report format:
@@ -139,6 +152,8 @@ Triage results:
   AP10 (delegation-only): [N] files (no CalledWith) → [ACTION: Fix / Skip]
   NestJS-P3 (self-mock):  [N] hits in [M] files → [ACTION: Fix / Skip]
   AP14 (toBeDefined sole): [N] files with >50% AP14 → [ACTION: Fix / Skip]
+  AP2 (conditional assert):  [N] hits → [ACTION: Fix / Skip]
+  Q7-API (no rejection):  [N] api wrapper files with 0 mockRejectedValue → [ACTION: Fix / Skip]
   P-41 (loading-only):   [N] hits in [M] files → [ACTION: Fix / Skip]
   G-43 (opaque dispatch): [N] hits in [M] files → [ACTION: Fix / Skip]
   P-40 (wrong init state): [N] hits in [M] files → [ACTION: Fix / Skip]
