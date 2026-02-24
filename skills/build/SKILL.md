@@ -53,7 +53,7 @@ Before starting ANY work, read ALL files below. Confirm each with ✅ or ❌:
 ```
 1. ✅/❌  ~/.claude/rules/code-quality.md         — CQ1-CQ20 production code checklist
 2. ✅/❌  ~/.claude/rules/testing.md              — Q1-Q17 test self-eval checklist
-3. ✅/❌  ~/.claude/test-patterns.md              — G-*/P-* patterns, AP anti-patterns
+3. ✅/❌  ~/.claude/test-patterns.md              — Q1-Q17 protocol, lookup table → routes to catalog/domain files
 4. ✅/❌  ~/.claude/rules/file-limits.md          — 250-line file limit, 50-line function limit
 ```
 

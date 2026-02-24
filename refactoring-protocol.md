@@ -332,6 +332,7 @@ BREAK_CIRCULAR, MOVE, RENAME_MOVE,
 INTRODUCE_INTERFACE, DELETE_DEAD → VERIFY_COMPILATION (compiler is primary check)
 FIX_ERROR_HANDLING              → RUN_IF_EXISTS (tests if they exist, else lint + compile)
 SIMPLIFY                        → RUN_EXISTING + WRITE_NEW_EDGES
+IMPROVE_TESTS                   → IMPROVE_TEST_QUALITY (dedicated flow below)
 ```
 
 ---
@@ -418,7 +419,7 @@ After split, verify the split added REAL new test coverage — not just file bou
 3. Calculate ratio: `flow_tests / total_tests`
 4. **HARD FAIL if flow ratio < 30%** — rewrite tests before proceeding
 
-**Minimum flows per component type** — see P-39 in `test-patterns.md` for the full lookup table. At minimum:
+**Minimum flows per component type** — see P-39 in `test-patterns-catalog.md` for the full lookup table. At minimum:
 - **Form**: submit valid → callback args verified
 - **Search/Filter**: type → results change
 - **Modal**: open → submit → callback + close
@@ -552,6 +553,153 @@ RULES FOR ETAP 2:
   - If behavioral tests fail → fix production code, not tests
   - Enable post-extraction tests (remove skip) after extraction
 ```
+
+---
+
+## IMPROVE_TEST_QUALITY Mode (IMPROVE_TESTS)
+
+When `/refactor` targets a test file (`.test.*`, `.spec.*`), the goal is twofold: structural cleanup AND assertion strengthening. Both are required — structural-only refactoring is INCOMPLETE.
+
+### ETAP-1A: Test Quality Audit (replaces production audit)
+
+**Stage 1 — Q1-Q17 Self-Eval as Primary Audit:**
+
+Read `~/.claude/test-patterns.md`. Classify the component under test (Step 1), load matching patterns (Step 2). Run Q1-Q17 on the target test file. Score EACH question individually.
+
+**Stage 2 — Gap Classification:**
+
+For each Q=0, count ALL instances and classify as STRUCTURAL or ASSERTION:
+
+| Category | What it means | Examples |
+|----------|--------------|---------|
+| **STRUCTURAL** | Code organization, DRY, readability | Duplicate setup, magic strings, shared mutable mocks, missing helpers |
+| **ASSERTION** | What tests actually verify (bug-catching power) | `toHaveBeenCalled` without args, missing validation tests, no interaction tests, input echo tests |
+
+**MANDATORY gap table format:**
+
+| # | Category | Q | Gap | Instances | Fix Strategy |
+|---|----------|---|-----|-----------|--------------|
+| 1 | ASSERTION | Q3 | `addUser` called without payload check | 1 | `toHaveBeenCalledWith(expect.objectContaining({...}))` |
+| 2 | ASSERTION | Q17 | Input echo tests (test React binding, not business logic) | 2 | Replace with validation error tests or dropdown interaction |
+| 3 | ASSERTION | Q11 | No validation error path tested | 0 tests | Submit empty required fields → verify error state |
+| 4 | ASSERTION | Q11 | No dropdown interaction | 0 tests | Select role/territory → verify value in submit payload |
+| 5 | STRUCTURAL | Q9 | Duplicate render setup across modes | 6 | Extract `renderForm()` helper |
+| 6 | STRUCTURAL | Q10 | Magic test IDs repeated | 12 | Extract constants |
+
+**Also identify the component under test's type** (from test-patterns.md Step 1) and check P-* gap patterns:
+- REACT component → check P-39, P-18, P-12 (see `test-patterns-catalog.md` for definitions)
+- Form component → minimum: submit valid → callback args verified
+- List/Table → minimum: sort or paginate → output changes
+
+**Stage 3 — CONTRACT:**
+
+```
+CONTRACT_ID: IMPROVE_TESTS|[YYYY-MM-DD]|[test-file-name]
+
+TEST FILE: [path] ([N] lines, [M] it-blocks)
+COMPONENT UNDER TEST: [path] (type: [REACT/SERVICE/etc.])
+
+Q1-Q17 SCORES: Q1=X Q2=X ... Q17=X → [total]/17
+CRITICAL GATE: Q7=X Q11=X Q13=X Q15=X Q17=X
+
+GAP TABLE (FROZEN): [table above]
+STRUCTURAL TASKS: [list from gaps marked STRUCTURAL]
+ASSERTION TASKS: [list from gaps marked ASSERTION]
+
+SCOPE FENCE:
+  ALLOWED: [test file, shared test helpers if extracted]
+  FORBIDDEN: production code, other test files
+```
+
+**HARD STOP** — wait for approval.
+
+### ETAP-1B: Structural Cleanup (first)
+
+Execute STRUCTURAL tasks from CONTRACT:
+1. Extract shared helpers (renderForm, submitFormAfterInput, etc.)
+2. Extract constants (test IDs, test data)
+3. DRY duplicate setup (beforeEach, factories)
+4. Fix mock hygiene (clearAllMocks, fresh per test)
+
+**Rules:**
+- NO assertion changes in this phase — only infrastructure
+- All existing tests must still pass after cleanup
+- Commit after structural cleanup is complete
+
+### ETAP-2: Assertion Strengthening (second, on clean infrastructure)
+
+Execute ASSERTION tasks from CONTRACT. For each gap:
+
+1. **Strengthen weak assertions:**
+   - `toHaveBeenCalled()` → `toHaveBeenCalledWith(expected)` with actual payload verification
+   - `toBeTruthy()` → `toEqual(specificValue)` or `toBe(exactValue)`
+   - Count-only assertions → content assertions
+
+2. **Replace low-value tests:**
+   - Input echo tests (testing React's `onChange` binding) → replace with validation tests, interaction tests, or error state tests
+   - Rendering-only tests → add user flow: action → state change → callback verified
+
+3. **Add missing test scenarios:**
+   - Validation errors (submit empty required fields → verify error feedback)
+   - Dropdown/select interaction (choose value → verify in submit payload)
+   - Error paths (API failure → verify error state)
+   - Missing symmetric tests (edit mode has payload check → add mode must too)
+
+4. **Apply P-* patterns** from test-patterns.md for the component type
+
+**Rules:**
+- Use the helpers/constants from ETAP-1B (don't duplicate)
+- Each new/modified test must follow G-2 (behavior assertions), G-4 (factories) patterns (see `test-patterns-catalog.md`)
+- All tests must pass after each change
+
+### Post-Execution: Re-Score
+
+Run Q1-Q17 self-eval again on the modified test file. Compare with pre-refactoring scores:
+
+```
+IMPROVE_TESTS COMPLETE
+
+FILE: [path]
+COMPONENT: [type]
+
+SCORE COMPARISON:
+| Dimension | Before | After | Changed |
+|-----------|--------|-------|---------|
+| Q1-Q17    | [individual scores] | [individual scores] | [deltas] |
+| Total     | X/17   | Y/17  | +Z      |
+
+GAP RESOLUTION:
+| # | Category | Gap | Status |
+|---|----------|-----|--------|
+| 1 | ASSERTION | addUser payload | FIXED — toHaveBeenCalledWith added |
+| 2 | ASSERTION | Input echo tests | FIXED — replaced with validation tests |
+| 3 | STRUCTURAL | Duplicate setup | FIXED — renderForm() extracted |
+
+ASSERTION IMPROVEMENT:
+  Weak assertions fixed: N
+  Low-value tests replaced: N
+  Missing scenarios added: N
+  Flow test ratio: X% → Y% (gate: ≥30%)
+```
+
+**HARD GATE:**
+- Total score must improve by ≥ 2 points (or reach 15+/17 if already high)
+- ALL ASSERTION gaps from CONTRACT must be FIXED
+- Flow test ratio must meet ≥ 30% gate (P-39 in `test-patterns-catalog.md`)
+- Structural-only improvement with assertion gaps still open = FAIL
+
+### ETAP-2 Commit
+
+```bash
+git add [modified test file] [new helpers if any]
+git commit -m "test([scope]): strengthen assertions + structural cleanup
+
+Q1-Q17: [before]/17 → [after]/17 (+[delta])
+Assertion fixes: [count] | Structural fixes: [count]
+All tests passing."
+```
+
+---
 
 ### ETAP-1B Commit (MANDATORY)
 

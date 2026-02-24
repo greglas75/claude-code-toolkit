@@ -1,6 +1,6 @@
 ---
 name: test-audit
-description: "Audit all test files against Q1-Q17 checklist + AP1-AP18 anti-patterns. Produces tiered report with scores, gaps, and fix recommendations. Use: /test-audit [path] or /test-audit all"
+description: "Audit all test files against Q1-Q17 checklist + AP/P-* anti-patterns (see test-patterns.md lookup table → catalog/domain files). Produces tiered report with scores, gaps, and fix recommendations. Use: /test-audit [path] or /test-audit all"
 user-invocable: true
 ---
 
@@ -14,7 +14,7 @@ Produces a tiered report: which files are fine, which need fixes, which need rew
 Before starting ANY work, read ALL files below. Confirm each with check or X:
 
 ```
-1. [x]/[ ]  ~/.cursor/test-patterns.md              -- Q1-Q17 checklist, anti-patterns AP1-AP18, stack adjustments, red flags
+1. [x]/[ ]  ~/.cursor/test-patterns.md              -- Q1-Q17 protocol, lookup table -> routes to catalog/domain files
 2. [x]/[ ]  ~/.cursor/rules/testing.md              -- iron rules, test requirements by code type, self-eval
 ```
 

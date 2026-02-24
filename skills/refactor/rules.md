@@ -20,6 +20,7 @@ Stack-specific examples are at `~/.claude/refactoring-examples/{stack}.md` — l
 | `FIX_ERROR_HANDLING` | Fix error handling patterns | RUN_IF_EXISTS | lint + grep patterns |
 | `DELETE_DEAD` | Remove dead/unused code | RUN_EXISTING | grep usage = 0 + tsc |
 | `SIMPLIFY` | Simplify logic in-place | RUN_EXISTING + NEW_EDGES | tests + complexity down |
+| `IMPROVE_TESTS` | Strengthen test assertions + structural cleanup | IMPROVE_TEST_QUALITY | Q1-Q17 self-eval → gap fixes → re-score |
 
 ### GOD_CLASS Auto-Detection
 
@@ -59,6 +60,7 @@ OK?
 | RUN_EXISTING | BREAK_CIRCULAR, MOVE, RENAME_MOVE, INTRODUCE_INTERFACE, DELETE_DEAD | Run existing tests; compiler is primary check |
 | RUN_IF_EXISTS | FIX_ERROR_HANDLING | Run tests if they exist; lint + compile otherwise |
 | RUN_EXISTING + NEW_EDGES | SIMPLIFY | Run existing + write new edge case tests |
+| IMPROVE_TEST_QUALITY | IMPROVE_TESTS | Q1-Q17 audit → structural cleanup → assertion strengthening → re-score |
 
 ---
 

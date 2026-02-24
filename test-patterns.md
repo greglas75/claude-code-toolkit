@@ -16,7 +16,7 @@ Look at the function/component and pick ALL matching types:
 
 | Code Type | How to recognize |
 |-----------|-----------------|
-| **PURE** | No side effects, no mocks needed, input → output |
+| **PURE** | No side effects, no mocks needed, input -> output |
 | **REACT** | React component, uses hooks, renders UI |
 | **SERVICE** | Class/module with injected dependencies, business logic |
 | **REDIS/CACHE** | Uses Redis, KV, or in-memory cache |
@@ -26,31 +26,49 @@ Look at the function/component and pick ALL matching types:
 | **STATE-MACHINE** | Multiple states/transitions (interceptor, workflow, status) |
 | **ORCHESTRATOR** | Calls multiple sub-methods in sequence |
 | **EXPORT/FORMAT** | Generates output in standard format (CSV, JSON, XLSX, XML, PDF) |
-| **ADAPTER/TRANSFORM** | Maps between two formats/APIs (legacy↔modern, UUID↔int, snake↔camel) |
+| **ADAPTER/TRANSFORM** | Maps between two formats/APIs (legacy<->modern, UUID<->int, snake<->camel) |
 | **CONTROLLER** | NestJS/Express controller with DI, route handlers, auth guards |
 | **STATIC-ANALYSIS** | Tests scanning source code without executing it (AST, regex, security) |
 | **INTEGRATION-PIPELINE** | End-to-end tests crossing multiple services with real data |
+| **REDUX-SLICE** | Redux Toolkit slice — reducer + `createAsyncThunk` thunks, MSW-backed integration tests |
+| **API-ROUTE** | Serverless/function-based handler (Next.js App Router, Cloudflare Workers, Express router) — no DI, middleware chain |
+| **E2E-BROWSER** | Playwright/Cypress browser tests with page navigation, selectors, auth flows |
 
 ### Step 2: Load patterns from lookup table
 
 | Code Type | Good patterns (replicate) | Gap patterns (check) |
 |-----------|--------------------------|----------------------|
-| **PURE** | G-2, G-3, G-5, G-20, G-22, G-30 | P-1, P-8, P-13, P-20, P-22, P-27 |
-| **REACT** | G-1, G-7, G-8, G-10, G-18, G-19, G-25, G-26, G-27, G-29 | P-1, P-9, P-10, P-12, P-17, P-18, P-19, P-21, P-25, P-28, P-30, P-39 |
-| **SERVICE** | G-2, G-4, G-9, G-11, G-23, G-24, G-25, G-28, G-30, G-31, G-38, G-39 | P-1, P-4, P-5, P-11, P-22, P-23, P-25, P-27, P-28, P-29, P-31, P-32, P-37 |
+| **PURE** | G-2, G-3, G-5, G-20, G-22, G-30, G-54 | P-1, P-8, P-13, P-20, P-22, P-27 |
+| **REACT** | G-1, G-7, G-8, G-10, G-18, G-19, G-25, G-26, G-27, G-29, G-43, G-44, G-45, G-51, G-53, G-54, G-55 | P-1, P-9, P-10, P-12, P-17, P-18, P-19, P-21, P-25, P-28, P-30, P-39, P-43, P-45, P-46, P-53, P-54, P-55, P-57 |
+| **SERVICE** | G-2, G-4, G-9, G-11, G-23, G-24, G-25, G-28, G-30, G-31, G-38, G-39, G-53, G-54 | P-1, P-4, P-5, P-11, P-22, P-23, P-25, P-27, P-28, P-29, P-31, P-32, P-37, P-56, P-57 |
 | **REDIS/CACHE** | G-2, G-4 | P-1, P-5, P-6, P-14, P-29 |
 | **ORM/DB** | G-9, G-28, G-30 | P-5, P-11, P-15, P-29, P-32 |
-| **API-CALL** | G-3, G-15, G-28, G-29, G-36 | P-1, P-2, P-6, P-16, P-25, P-27, P-28, P-31, P-35 |
+| **API-CALL** | G-3, G-15, G-28, G-29, G-36, G-55 | P-1, P-2, P-6, P-16, P-25, P-27, P-28, P-31, P-35, P-56 |
 | **GUARD/AUTH** | G-6, G-8, G-11, G-20, G-28, G-29, G-32 | P-1, P-6, P-7, P-14, P-28 |
 | **STATE-MACHINE** | G-1, G-7, G-21, G-28 | P-7, P-13, P-18 |
 | **ORCHESTRATOR** | G-2, G-20, G-21, G-23, G-24, G-25, G-31 | P-5, P-14, P-20, P-21, P-22, P-23, P-24, P-25, P-28 |
 | **EXPORT/FORMAT** | G-2, G-4, G-11, G-12, G-13, G-16, G-17, G-23, G-24, G-28, G-35 | P-1, P-4, P-22, P-23 |
 | **ADAPTER/TRANSFORM** | G-2, G-14, G-15, G-22, G-30, G-35 | P-1, P-9, P-16 |
-| **CONTROLLER** | G-2, G-4, G-6, G-9, G-28, G-32, G-33, G-34 | P-1, P-5, P-28, P-33, P-34, AP15, AP16 |
+| **CONTROLLER** | G-2, G-4, G-6, G-9, G-28, G-32, G-33†, G-34†, NestJS-G1†, NestJS-G2† | P-1, P-5, P-28, P-33, P-34, P-38, P-62, AP15, AP16, NestJS-AP1†, NestJS-P1†, NestJS-P2†, NestJS-P3† |
 | **STATIC-ANALYSIS** | G-37, G-28, G-30 | P-26, P-35 |
 | **INTEGRATION-PIPELINE** | G-35, G-36, G-38, G-22, G-13 | P-35, P-36, P-37 |
+| **REDUX-SLICE** | G-4, G-28, G-41, G-42, G-44, G-45, G-53 | P-40, P-41, P-42, P-44, P-55 |
+| **API-ROUTE** | G-2, G-4, G-6, G-11, G-28, G-29, G-32, G-55 | P-1, P-5, P-6, P-28, P-38, P-62, P-65 |
+| **E2E-BROWSER** | G-56, G-57 | P-63, P-64, P-57 |
 
-**Always apply:** G-2 (behavior assertions), G-4 (factories), P-1 (null/undefined), P-3 (boolean returns if applicable), P-4 (DRY boilerplate), P-26 (test name = test behavior), P-28 (phantom mocks), G-31 (call order when sequence matters), G-32 (admin/non-admin symmetry for guarded endpoints)
+**†** = domain-specific pattern, lives in domain file (not catalog). Loaded only when domain file is active.
+
+**Always apply:** G-2 (behavior assertions), G-4 (factories), P-1 (null/undefined), P-3 (boolean returns if applicable), P-4 (DRY boilerplate), P-26 (test name = test behavior), P-28 (phantom mocks), G-31 (call order when sequence matters), G-32 (admin/non-admin symmetry for guarded endpoints), G-54 (regression anchor naming)
+
+**Pattern files (load on demand by matched IDs):**
+
+| File | Contains | When to load |
+|------|----------|--------------|
+| `~/.claude/test-patterns-catalog.md` | G-1 -- G-40, G-51 -- G-57, P-1 -- P-46, P-53 -- P-57, P-62 -- P-65 (general + E2E) | Always — grep matched pattern IDs |
+| `~/.claude/test-patterns-redux.md` | G-41 -- G-45, P-40, P-41, P-44 | Code type includes REDUX-SLICE |
+| `~/.claude/test-patterns-nestjs.md` | G-33, G-34, NestJS-G1, NestJS-G2, NestJS-AP1, NestJS-P1–P3, security S1–S7, templates | Code type includes CONTROLLER + NestJS stack |
+
+**Efficient loading:** Don't read entire catalog. Grep for `### G-4:` or `### P-28:` to jump to matched patterns only.
 
 ### Step 3: Write tests applying ONLY loaded patterns
 
@@ -75,12 +93,12 @@ Run this checklist IMMEDIATELY after writing tests. You already have full contex
 | Q9 | Readability | Repeated setup (3+ tests) extracted to helper/factory? | |
 | Q10 | Readability | No magic values — test data is self-documenting or uses named constants? | |
 | Q11 | Completeness | All code branches exercised (every if/else, switch case, early return)? **CRITICAL** — In deep mode: cite 2-3 specific branches and the tests covering them as evidence. | |
-| Q12 | Completeness | Symmetric coverage: every "does X when Y" has a "does NOT do X when not-Y"? **Procedure: list ALL methods → for each repeated pattern (auth guard, validation, error), verify EVERY method has it. One missing = 0.** | |
+| Q12 | Completeness | Symmetric coverage: every "does X when Y" has a "does NOT do X when not-Y"? **Procedure: list ALL methods -> for each repeated pattern (auth guard, validation, error), verify EVERY method has it. One missing = 0.** | |
 | Q13 | Behavioral | Tests import and call actual production function (not a local copy/reimplementation)? **CRITICAL** | |
 | Q14 | Behavioral | Assertions verify output/behavior, not just that a mock was called? | |
 | Q15 | Depth | Assertions verify content/values, not just counts or shape? (`options[0].text === '18-24'` not just `options.length === 2`) **CRITICAL** | |
 | Q16 | Isolation | Cross-cutting isolation verified? When changing A, assert B is NOT affected? (**N/A** if single-entity tests — score as 1) | |
-| Q17 | Computed | Assertions verify COMPUTED output, not input echo? **CRITICAL** — BAD: `expect(result.from).toEqual(18)` (18 was the input); BAD: `expect(result.id).toEqual(1)` (mock returns `{id:1}`); GOOD: `expect(result.cpi_after_discount).toBe(2.25)` (2.5 × 0.9 computed) | |
+| Q17 | Computed | Assertions verify COMPUTED output, not input echo? **CRITICAL** — BAD: `expect(result.from).toEqual(18)` (18 was the input); BAD: `expect(result.id).toEqual(1)` (mock returns `{id:1}`); GOOD: `expect(result.cpi_after_discount).toBe(2.25)` (2.5 x 0.9 computed) | |
 
 **Q14/Q15/Q17 Disambiguation:**
 - **Q14** (behavior): Does the test verify a meaningful outcome, not just "mock was called"? Fail if ALL assertions are `toHaveBeenCalled` with zero output/state checks.
@@ -97,12 +115,12 @@ Run this checklist IMMEDIATELY after writing tests. You already have full contex
 | AP2 | Any `if (element) { expect... }` conditional assertion? | Use `getByX` (throws if missing) or assert existence first |
 | AP3 | Function defined in test that mirrors production logic? | Import from production module |
 | AP4 | 3+ identical mock object literals (not using factory)? | Extract `createX()` factory |
-| AP5 | `as any` → `as never` rename counted as Q5 fix? | Both bypass types equally. Use typed helper/factory/interface instead. |
+| AP5 | `as any` -> `as never` rename counted as Q5 fix? | Both bypass types equally. Use typed helper/factory/interface instead. |
 | AP6 | Testing CSS classes (`className.includes('bg-purple')`)? | Test behavior: `aria-disabled`, `toBeDisabled()`, `getByRole` |
 | AP7 | `.catch(() => {})` swallowing assertion errors? Test never fails. | Remove catch, or assert the specific error. A test that can't fail is not a test. |
 | AP8 | `document.querySelector` bypassing Testing Library (React)? | Use `screen.getByRole`, `getByText`, `getByTestId`. querySelector tests DOM structure, not behavior. |
-| AP9 | Always-true assertion (`document.body.toBeTruthy()`, `expect(true).toBe(true)`)? | Assert specific content/state that would change if component breaks. |
-| AP10 | Tautological mock test: call mock directly → verify mock called, zero production code in between? | Import and call production function. Test proves vi.fn() works, not your code. Overlaps Q13 but more specific. |
+| AP9 | Always-true assertion (`document.body.toBeTruthy()`, `expect(true).toBe(true)`, `expect(screen).toBeDefined()`)? `screen` from Testing Library is ALWAYS defined — checking it proves nothing. | Assert specific content/state that would change if component breaks. |
+| AP10 | Tautological mock test — three sub-types, all score 0 for Q17: **(1)** Call mock -> verify mock called, zero production code: `service.method(); expect(service.method).toHaveBeenCalled()`. **(2)** UI echo: `await userEvent.type(input, 'x'); expect(input).toHaveValue('x')` — tests React's input binding, not your component logic. **(3)** MSW echo: mock server configured to return `{ id }`, test asserts `payload.id === id` — verifies mock setup, not transformation. | Fix: verify COMPUTED output or CalledWith on downstream action. |
 | AP11 | `vi.mocked(vi.fn())` — mock targeting a fresh fn instead of imported module? | Mock the actual import: `vi.mocked(useParams).mockReturnValue(...)`. Fresh fn mock does nothing. |
 | AP12 | `waitForTimeout(N)` hardcoded delay in async/E2E tests? | Use event-based waits: `waitForRequest`, `waitForSelector`, `waitFor(() => expect(...))`. |
 | AP13 | Test body has zero `expect()` calls — just calls code and exits | Add assertions or delete the test. A test without expect is not a test. **AUTO TIER-D.** **Exception:** In RTL, `getByRole`/`getByText`/`getByLabelText` are implicit assertions (throw if not found). A test with only `getBy*` queries and no `expect()` is NOT AP13. AP13 targets tests that call production code with zero verification. |
@@ -121,7 +139,7 @@ Run this checklist IMMEDIATELY after writing tests. You already have full contex
 | React | Semantic queries (`getByRole`, `getByLabelText`), not CSS selectors? | Component rendering assertions |
 | Backend | Tests 4xx/5xx status codes, not just 200? | API endpoint handler |
 | Backend | CalledWith on DB mock verifies WHERE clause? | Prisma/DB query mock |
-| Backend/Service | Tests infrastructure failure (DB/API throws → fail-open or fail-closed)? | Code with try/catch around DB/API calls |
+| Backend/Service | Tests infrastructure failure (DB/API throws -> fail-open or fail-closed)? | Code with try/catch around DB/API calls |
 | NestJS | No `spyOn(service, service.ownMethod)` self-mock? | Any NestJS service test |
 | NestJS | Uses `makeX()` factory, not inline 100+ LOC fixture? | 3+ tests with similar setup |
 | NestJS | Tests public controller methods, not `__private`? | Any controller test |
@@ -135,14 +153,14 @@ When scoring a file that's part of a modular test suite (orchestrator + suite fi
 
 **Critical gate:**
 
-If ANY of Q7, Q11, Q13, Q15, Q17 = 0 → result is **capped at FIX** regardless of total score. These dimensions cannot be compensated by high scores elsewhere. A test with perfect names and factories but zero error coverage or input-echo-only assertions is not PASS-worthy.
+If ANY of Q7, Q11, Q13, Q15, Q17 = 0 -> result is **capped at FIX** regardless of total score. These dimensions cannot be compensated by high scores elsewhere. A test with perfect names and factories but zero error coverage or input-echo-only assertions is not PASS-worthy.
 
 **Auto Tier-D triggers** (bypass scoring entirely):
-- AP13 found (test without assertions) → file is Tier D
-- AP16 found (fixture:assertion ratio > 20:1) → file is Tier D
-- 50%+ of tests have AP14 (toBeTruthy as sole assertion) → file is Tier D
+- AP13 found (test without assertions) -> file is Tier D
+- AP16 found (fixture:assertion ratio > 20:1) -> file is Tier D
+- 50%+ of tests have AP14 (toBeTruthy as sole assertion) -> file is Tier D
 
-**Q17 audit rule:** If ≥50% of assertions check values that are direct copies of input/request/mock-return without transformation → Q17=0. In deep mode, cite 1-2 examples: "assertion X is echo of input Y".
+**Q17 audit rule:** If >=50% of assertions check values that are direct copies of input/request/mock-return without transformation -> Q17=0. In deep mode, cite 1-2 examples: "assertion X is echo of input Y".
 
 **N/A normalization:** Questions marked N/A (Q3/Q5/Q6/Q16 when not applicable) score as 1 — don't penalize tests for not having mocks when no mocks are needed. This prevents PURE function tests from being unfairly scored lower than mock-heavy service tests.
 
@@ -151,7 +169,7 @@ If ANY of Q7, Q11, Q13, Q15, Q17 = 0 → result is **capped at FIX** regardless 
 ```
 Total = (Q1-Q17 yes count, with N/A=1) - (AP deductions) - (stack deductions)
 
-≥ 14  PASS — continue (unless critical gate triggers → FIX)
+>= 14  PASS — continue (unless critical gate triggers -> FIX)
 9-13  FIX — identify worst dimension, improve it, re-score
 < 9   BLOCK — major gaps, rewrite before continuing
 ```
@@ -162,13 +180,13 @@ Score EACH question individually — never group (e.g., "Q1-Q6: 5/6" is FORBIDDE
 
 ```
 Self-eval: Q1=1 Q2=1 Q3=0 Q4=1 Q5=1 Q6=1 Q7=1 Q8=0 Q9=1 Q10=1 Q11=1 Q12=0 Q13=1 Q14=1 Q15=1 Q16=1 Q17=1
-  Score: 14/17 - 0 deductions = 14 → PASS
-  Critical gate: Q7=1 Q11=1 Q13=1 Q15=1 Q17=1 → PASS
+  Score: 14/17 - 0 deductions = 14 -> PASS
+  Critical gate: Q7=1 Q11=1 Q13=1 Q15=1 Q17=1 -> PASS
 ```
 
 The individual scores are required so you (and the user) can see exactly which dimensions failed. Grouped scores hide the specific gaps and make fixes harder to target.
 
-Example: `Q1=1 Q2=1 Q3=1 Q4=1 Q5=0 Q6=1 Q7=1 Q8=1 Q9=1 Q10=1 Q11=1 Q12=1 Q13=1 Q14=1 Q15=1 Q16=0 Q17=0 = 14/17 → FIX [CRITICAL: Q17=0]`
+Example: `Q1=1 Q2=1 Q3=1 Q4=1 Q5=0 Q6=1 Q7=1 Q8=1 Q9=1 Q10=1 Q11=1 Q12=1 Q13=1 Q14=1 Q15=1 Q16=0 Q17=0 = 14/17 -> FIX [CRITICAL: Q17=0]`
 
 If FIX or BLOCK: fix the issues, then re-run the checklist.
 
@@ -176,835 +194,7 @@ If FIX or BLOCK: fix the issues, then re-run the checklist.
 
 ---
 
-### Step 5: When user gives feedback → append new patterns and update the lookup table
-
----
-
-## Good Patterns — Replicate These
-
-### G-1: State Machine Coverage
-- **When:** Code implements a state machine, interceptor, middleware, or multi-step workflow
-- **Do:** One dedicated test per state/transition. Name tests after the state: `it('replays cached response when duplicate key with same payload')`
-- **Why:** Proves every path through the machine is exercised. Missing state = missing test.
-- **Source:** review 2026-02-15, idempotency interceptor — all 5 states + passthrough covered
-
-### G-2: Assert Behavior, Not Structure
-- **When:** Always
-- **Do:**
-  - `toEqual(exactValue)` over `toMatchObject(partial)` — proves the full shape
-  - `not.toHaveBeenCalled()` to prove something was prevented (e.g., handler NOT called on cache replay)
-  - `toHaveBeenCalledTimes(1)` + `toHaveBeenCalledWith(...)` together — proves both "did it happen" and "was it correct"
-- **Anti-pattern:** `toMatchObject` when you know the full expected value — hides unexpected extra fields
-- **Source:** review 2026-02-15, idempotency interceptor — `toEqual` with exact values, `not.toHaveBeenCalled` proving cache prevented execution
-
-### G-3: Realistic Test Data — Use Real Functions
-- **When:** Code under test uses a helper function (hasher, serializer, formatter)
-- **Do:** Import and use the real function in test setup instead of hardcoding its output. E.g., `computeSubmitPayloadHash(payload)` in test instead of `'abc123'`.
-- **Why:** If the helper changes behavior, the test breaks — which is what you want. Hardcoded values create a gap between test and reality.
-- **Source:** review 2026-02-15, idempotency interceptor — used real hash function in replay/conflict tests
-
-### G-4: Clean Factory Helpers with Overrides
-- **When:** Test file has 3+ tests that need similar setup objects
-- **Do:** Create `createX(overrides?)` factories that return defaults merged with overrides. Fresh mocks per test (inline or in `beforeEach`).
-- **Example:** `const config = createConfig({ ttl: 600 })` — default TTL overridden for one test
-- **Anti-pattern:** Copy-pasting setup objects across tests, or one shared mutable mock
-- **Source:** review 2026-02-15, idempotency interceptor — `createConfig`, `createContext`, `createHandler` — clean, composable
-
-### G-5: Pure Functions = Zero Mocks
-- **When:** Function under test is a pure transformation (input → output, no side effects)
-- **Do:** Import real function, pass real data, assert on output with `toEqual`. No mocks at all.
-- **Why:** Mocks on pure functions add complexity without value. Real input/output tests are deterministic, fast, and catch real bugs.
-- **Example:** `buildAnswerMapFromResponses(responses, questionIds)` → test null→undefined, empty→undefined, Decimal→number — all with `toEqual`
-- **Source:** review 2026-02-15, buildAnswerMapFromResponses — 9/10, zero mocks, complete edge case coverage
-
-### G-6: Security Boundary / Multi-Tenant Guard
-- **When:** Function has authorization/ownership checks (orgId, userId, role)
-- **Do:**
-  - Test cross-org rejection: call with `organizationId: 'other-org'` → throws Access Denied
-  - Verify the guarded action was NOT executed: `mockService.dangerousAction.not.toHaveBeenCalled()`
-  - Test that the check happens BEFORE the action (order matters)
-- **Why:** Security regression = data leak. These tests are cheap to write and critical to have.
-- **Source:** review 2026-02-15, cache invalidation — cross-org Access Denied + verify invalidate NOT called
-
-### G-7: Destructive Action Confirmation Flow
-- **When:** UI has destructive actions (delete, archive, close) that require user confirmation
-- **Do:**
-  - Non-destructive action → immediate call (no dialog)
-  - Destructive action → confirmation dialog opens
-  - Confirm → action executes
-  - Cancel → action NOT executed (`not.toHaveBeenCalled`)
-  - Test dialog text matches severity (e.g., "cannot be undone" for irreversible)
-- **Source:** review 2026-02-15, StatusManager — 9/10, destructive vs non-destructive transitions, confirm + cancel paths
-
-### G-8: Permission-Based Conditional Rendering
-- **When:** UI shows/hides elements based on user permissions or roles
-- **Do:**
-  - Permission granted → element visible + functional
-  - Permission denied → `queryByX` returns `null` (element absent, not just hidden/disabled)
-  - Verify the data/content still renders (user can SEE but not ACT)
-- **Source:** review 2026-02-15, StatusManager — canEditSurveyStatus=false → buttons null, status text visible
-
-### G-9: ORM/Query Building Assertions
-- **When:** Service builds database queries (Prisma, TypeORM, Sequelize, Django ORM)
-- **Do:**
-  - Assert exact `where` clause structure (not just `expect.any(Object)`)
-  - Assert `orderBy`, `take`, `skip` for pagination
-  - Assert `include`/`select` structure for at least one key method
-  - Test search filter → `{ contains: term, mode: 'insensitive' }`
-  - Test default sorting vs explicit sorting
-- **Source:** review 2026-02-15, TemplateService — 8.5/10, exact Prisma where/orderBy verified per test
-
-### G-10: Per-Test Mock Override via vi.fn()
-- **When:** React component depends on a hook/context with multiple possible states
-- **Do:** Mock the hook with `vi.fn()` at module level, then override per test with `mockReturnValue`. Never use static module-level mock with fixed return value.
-- **Anti-pattern:** `vi.mock('./hooks', () => ({ useHook: () => fixedValue }))` — locks you into one state, can't test other states without refactoring the test
-- **Pattern:**
-  ```typescript
-  vi.mock('./hooks', () => ({ useHook: vi.fn() }));
-  // per test:
-  vi.mocked(useHook).mockReturnValue({ status: 'loading' });
-  ```
-- **Source:** review 2026-02-15, SaveIndicator 4/10 (static mock, 1/4 states) vs TemplateTab 8/10 (vi.fn, all states)
-
-### G-11: Boundary/Limit Testing — All Paths
-- **When:** System enforces a limit (record count, file size, rate limit, quota)
-- **Do:**
-  - Test below limit → allowed
-  - Test exactly at limit → allowed
-  - Test above limit → rejected with specific error message (include numbers)
-  - Test across ALL code paths that enforce the limit (not just one)
-- **Why:** Limits often have off-by-one bugs. Testing one format but not others misses format-specific bypass.
-- **Example:** Export service 500k limit tested across CSV, JSON, XLSX, CSV stream, JSON stream — all 5 formats
-- **Source:** review 2026-02-15, ExportService — 9.5/10, boundary tests on every format
-
-### G-12: Format Compliance Testing
-- **When:** Code generates output in a standard format (CSV, JSON, XLSX, XML)
-- **Do:** Test the spec's edge cases, not just happy path:
-  - **CSV (RFC 4180):** commas in values → quoted, quotes in values → doubled (`""World""`), newlines → quoted, empty fields → empty string
-  - **XLSX:** binary signature (PK zip: `0x50, 0x4B`), worksheet name, header bold, frozen panes, data types
-  - **JSON:** valid parse, nested structures, null handling, encoding
-  - **Streaming:** header only on empty, chunk accumulation via `collectStream` helper, valid parse of accumulated output
-- **Source:** review 2026-02-15, ExportService — CSV RFC edge cases + XLSX binary/structural verification
-
-### G-13: Cross-Format Consistency
-- **When:** Same business logic applies across multiple output formats (CSV, JSON, XLSX, stream variants)
-- **Do:** Test the shared logic (batching, filtering, column mapping) in EVERY format, not just one.
-- **Anti-pattern:** Testing batching only in CSV and assuming XLSX works the same
-- **Pattern:** Create a test matrix: `[format] × [behavior]` — batch size, record limit, empty data, column ordering
-- **Source:** review 2026-02-15, ExportService — batching tested in CSV, JSON, XLSX, and both stream variants
-
-### G-14: Fallback Chain Testing
-- **When:** Function has sequential fallback logic (try A → try B → try C → default)
-- **Do:** Test each step with all previous values missing:
-  - A present → use A
-  - A missing, B present → use B
-  - A+B missing, C present → use C
-  - All missing → default/null/error
-- **Why:** Each link in the chain is a potential bug. Fallback to wrong level = wrong data shown to user.
-- **Source:** review 2026-02-15, getSurveyColumns — text → qid → id → null fallback chain, each step tested
-
-### G-15: Legacy Format Transformation Assertions
-- **When:** Code transforms between legacy and modern formats (PHP↔TS, v1↔v2 API, int↔UUID)
-- **Do:**
-  - Field renaming: `sort → sortOrder`, `page_id → pageId` (exact assertions)
-  - Type conversion: `1 → true`, `0 → false`, `'3.14' → 3.14` (PHP int booleans, string numbers)
-  - Structure changes: flat → nested, array → map
-  - Routing: batch vs single operation (with negative assertions — batch called + single NOT called)
-  - Verify BOTH directions if adapter is bidirectional
-- **Source:** review 2026-02-15, TRPCAdapters — 9/10, snake→camel, int→bool, entity_type→targetType, complex logic transform
-
-### G-16: Stream Testing with Real Streams
-- **When:** Code produces streaming output (Node.js ReadableStream, PassThrough, Response stream)
-- **Do:**
-  - Use real `PassThrough` stream, NOT mock stream — collect chunks via helper: `const chunks: Buffer[] = []; stream.on('data', c => chunks.push(c)); await finished(stream); return Buffer.concat(chunks).toString();`
-  - Parse accumulated output to verify it's valid (JSON.parse for JSON stream, split lines for CSV)
-  - Test empty data → header only (CSV) or empty array (JSON)
-  - Test single item → no trailing comma / correct structure
-  - Test multi-item → verify all items present
-- **Anti-pattern:** Mocking the stream and just checking `.pipe()` was called — proves nothing about actual output
-- **Source:** review 2026-02-15, ExportService — 9.5/10, collectStream helper, PassThrough → parse → verify
-
-### G-17: Binary/Structural Output Verification
-- **When:** Code generates binary format files (XLSX, PDF, ZIP, images)
-- **Do:**
-  - Verify binary signature (XLSX = PK zip: `0x50, 0x4B` first bytes)
-  - Parse with real library (ExcelJS for XLSX, pdf-parse for PDF) — not just "file exists"
-  - Assert structural elements: worksheet name, header row values, data row values
-  - Assert formatting: bold headers, frozen panes, column widths, cell types
-- **Why:** "File was created" doesn't catch corrupt output. Users get broken downloads in production.
-- **Source:** review 2026-02-15, ExportService — XLSX PK signature + ExcelJS parse + worksheet name + bold + frozen panes
-
-### G-18: Accessibility Assertions as First-Class Tests
-- **When:** Interactive React component (table headers, form controls, navigation)
-- **Do:**
-  - Dedicated accessibility test section (not sprinkled in other tests)
-  - `aria-sort="ascending"` on active sort column, `aria-sort="none"` on inactive
-  - `tabIndex="0"` on focusable interactive elements
-  - `role` attributes matching semantic purpose (columnheader, checkbox, button)
-  - `aria-label` / `aria-checked` / `aria-expanded` for screen reader context
-- **Why:** Accessibility bugs are invisible to sighted developers but break the app for screen reader users. Explicit assertions prevent regressions.
-- **Source:** review 2026-02-15, OrderTableHeader — 9/10, dedicated a11y section with aria-sort, tabIndex, role verification
-
-### G-19: Keyboard Navigation Parity
-- **When:** UI element responds to click AND keyboard (Enter/Space)
-- **Do:**
-  - Test click → callback with correct args
-  - Test Enter key → same callback with same args
-  - Test Space key → same callback with same args (if applicable)
-  - Use different elements per test to prove keyboard handling is universal, not hardcoded to one column/button
-- **Why:** Keyboard-only users (accessibility, power users) need parity. Testing only click misses broken `onKeyDown` handlers.
-- **Source:** review 2026-02-15, OrderTableHeader — sort via click, Enter, Space on different columns
-
-### G-20: Combinatorial Input Coverage (Truth Table)
-- **When:** Function has N boolean/enum parameters that combine to produce different outputs (e.g., `buildJustification(hasChange, r1, r2, r3)`)
-- **Do:**
-  - List all meaningful input combinations as a truth table
-  - Test each combination: all-false, each-one-true, all-true, mixed
-  - Name tests after the combination: `it('returns R1+R3 justification when R2 is empty')`
-  - For N booleans: test at least 2N+1 combinations (not full 2^N, but all single-true + all-true + all-false + key mixes)
-- **Why:** Combinatorial bugs (wrong `&&`/`||`, missing case) hide when you only test happy path + one edge case.
-- **Source:** review 2026-02-15, QC Pipeline — buildJustification 8 tests covering all R1/R2/R3 combinations, wyczerpujące
-
-### G-22: Roundtrip/Inverse Testing
-- **When:** Code has paired serialize/deserialize, encode/decode, compress/decompress, or map/unmap functions
-- **Do:**
-  - Test identity: `deserialize(serialize(input))` === `input` for each supported type
-  - Test unicode preservation (polish, CJK, emoji, RTL)
-  - Test empty values (empty string, empty collection, null values in map)
-  - Test type boundaries (string↔number key conversion, BigInt, Date)
-- **Why:** Roundtrip tests catch asymmetric bugs where one direction works but the other loses data. Single-direction tests miss encoding/decoding mismatches.
-- **Source:** review 2026-02-15, Translation utils — serializeTranslationMap → deserializeTranslationMap inverse test, unicode preservation, key type conversion
-
-### G-23: Modular Test Suite Architecture (for large test files)
-- **When:** Test file would exceed 250 lines, OR component/module has 10+ distinct behaviors to test
-- **Do:**
-  - Create orchestrator file: `*.test.ts` with mock setup + `describe` + registered suites
-  - Create suite files: `*.happy-path.test.ts`, `*.edge-cases.test.ts`, etc. — each exports `registerXTests(ctx)`
-  - Share typed context: `interface TestContext { mockDb: ..., mockApi: ..., mockLogger: ... }`
-  - Keep vi.mock in orchestrator (Vitest hoisting requires it there)
-  - `beforeEach(vi.clearAllMocks)` in orchestrator applies to all suites
-- **Why:** 1000+ LOC test files are unnavigable. Modular suites with shared context keep tests organized without duplicating mock setup.
-- **Source:** review 2026-02-15, Export generator orchestrator — 12 registered suites, typed ExportGeneratorComprehensiveTestContext, clean separation
-
-### G-24: Suite-Specific Minimal Setup
-- **When:** Test file has 5+ describe blocks or uses modular suite architecture (G-23)
-- **Do:**
-  - Happy-path suite: full setup (project + entries + context + analysis + glossary)
-  - Focused suites: ONLY what they test (filtering = project + entries, context=null, analysis=null)
-  - Each suite's `beforeEach` is independent — no shared mutable state across suites
-- **Why:** Full setup in every suite creates false dependencies — a test "passes" because analysis data happens to be present, not because the code handles null analysis. Minimal setup proves the code works with only the required data.
-- **Anti-pattern:** Copy-pasting the happy-path setup into every suite and wondering why 40 tests break when one fixture changes.
-- **Source:** review 2026-02-15, Export generator comprehensive — happy-path uses full data, filtering/questionnaire/html use only project+entries
-
-### G-25: Controlled Promise for Async Loading States
-- **When:** Component shows loading/disabled state during async operation (save, delete, fetch)
-- **Do:**
-  - Create controlled promise: `let resolveSave!: Function; const savePromise = new Promise(r => { resolveSave = r; });`
-  - Mock returns the unresolved promise: `onSave.mockReturnValue(savePromise)`
-  - Trigger action → assert button is disabled / spinner shows (DURING async)
-  - Resolve: `resolveSave()` → assert button re-enabled / spinner gone (AFTER async)
-- **Why:** Testing only before/after misses the loading state entirely. Users see the loading state — it must work. `await` in test skips over it instantly.
-- **Source:** review 2026-02-15, DictionaryTab 9/10 — controlled Promises test disabled state DURING save/delete/add
-
-### G-26: Step Advancement Helpers for Multi-Step Flows
-- **When:** UI has wizard/stepper (2+ steps) where later steps require completing earlier ones
-- **Do:**
-  - Create `advanceToStep2()`, `advanceToStep3()` helpers that perform all clicks/inputs to reach that step
-  - Each step's tests call only the helper they need — no repeated setup
-  - Test each step independently: render, advance, assert
-  - Test back navigation: advance to step 3 → go back → state preserved
-- **Why:** Without helpers, each step-3 test repeats 20+ lines of step-1 and step-2 interactions. Helpers keep tests focused on what they actually test.
-- **Source:** review 2026-02-15, HolisticReviewModal 9/10 — advanceToReviewStep(), advanceToImportStep(), advanceToApplyStep()
-
-### G-27: Dual Mode/Variant Testing
-- **When:** Component has visual modes (standard/compact, desktop/mobile, text/icon-only) that show same functionality differently
-- **Do:**
-  - Test BOTH modes with same scenarios: buttons exist, callbacks fire, state changes reflected
-  - Verify mode-specific rendering: standard → text labels, minimalistic → icons only
-  - Verify mode-specific behavior if any (e.g., mobile → hamburger menu, desktop → sidebar)
-- **Why:** Mode-specific bugs are common — a button works in standard mode but is missing in compact mode because the conditional rendering is wrong.
-- **Source:** review 2026-02-15, AgentReviewActions 9.5/10 — standard (text buttons) vs minimalistic (icon-only), both modes tested with full state combinations
-
-### G-28: it.each Parameterization for Same-Behavior Variants
-- **When:** 3+ tests differ only in a single enum/status value but assert identical behavior (e.g., multiple HTTP statuses that all return 200)
-- **Do:**
-  - Extract into `it.each(['submitted', 'under_review', 'approved', 'paid'])('returns 200 when status is %s', ...)`
-  - Keep unique-behavior tests separate (don't force-parameterize tests with different assertions)
-  - Use descriptive `%s` / `%i` / `%j` placeholders so test names are readable in output
-- **Why:** Copy-pasted tests with one value changed are hard to maintain and hide the intent ("all these behave the same"). `it.each` communicates that intent explicitly.
-- **Source:** review 2026-02-16, proofreading public route — 4 nearly identical status tests → `it.each` reduces to 1
-
-### G-30: Structural Pattern Assertions (regex/SQL/URL)
-- **When:** Code generates dynamic patterns — regex, SQL LIKE expressions, URL patterns, query strings
-- **Do:**
-  - Use `toMatch(/structural-regex/)` to verify the pattern has correct operators/delimiters without hardcoding the exact string
-  - Import the real helper function (e.g., `escapeLikePattern`) in the test instead of hardcoding the expected output
-  - Assert structure, not exact value: `expect(firstCall[2]).toMatch(/\[\^[>&]\]/)` verifies tag boundary regex without coupling to specific content
-- **Why:** Exact string matching is fragile for generated patterns. Structural assertions catch real bugs (wrong operator, missing boundary) while tolerating legitimate content changes.
-- **Source:** review 2026-02-16, project-search — `escapeLikePattern` imported in test + `toMatch` for regex structure verification
-
-### G-29: Symmetric Positive/Negative Coverage
-- **When:** Component/function has boolean conditions or feature flags that show/hide behavior
-- **Do:**
-  - For every "shows X when Y" test, add "does NOT show X when not-Y"
-  - For every "calls handler when condition" test, add "does NOT call handler when no condition"
-  - Name pairs symmetrically: `it('shows clear button when query is not empty')` + `it('does not show clear button when query is empty')`
-- **Why:** Testing only the positive path misses regressions where the condition is accidentally removed (element always shows). The negative test catches that.
-- **Source:** review 2026-02-16, SearchInput 9/10 — exemplary symmetric coverage of all variants (loading/not, meta/no-meta, minimalistic/standard)
-
-### G-21: Crash-Resume Defensive Testing
-- **When:** Pipeline/workflow can be interrupted and resumed from partial state (partial progress, checkpoint/resume, crash recovery)
-- **Do:**
-  - Test resume with null result (never started)
-  - Test resume with null sub-fields (started but crashed mid-way: `final_report: null`)
-  - Test resume with empty arrays (started, no entries yet)
-  - Test resume with partial data (some entries filled, others null)
-  - Verify each case returns sensible defaults, not crashes
-- **Why:** Long-running pipelines crash. The resume path must handle every possible partial state, not just "completed" or "not started".
-- **Source:** review 2026-02-15, QC Pipeline — loadExistingResults tests null result, null final_report, empty entries, partial data
-
----
-
-## Gap Patterns — Check These
-
-### P-1: Input Boundaries — Multi-field params
-- **When:** Function accepts an object with 3+ fields, OR 3+ separate parameters
-- **Tests:**
-  - Each field/param as `null`
-  - Each field/param as `undefined`
-  - String params as empty string `""`
-  - Entire params object as `null` / `undefined`
-  - Document expected behavior (throw? return false? return default?)
-- **Source:** review 2026-02-15, `paypal-signature.ts` — 10-field params object had zero null tests
-
-### P-2: Delegation to External API
-- **When:** Function calls an external service and maps the response to a return value
-- **Tests:**
-  - Exact response mapping: what API returns → what function returns (not just true/false, but WHY true/false)
-  - Unexpected API response (unknown status, empty body, HTML instead of JSON)
-  - API timeout / network error
-  - API returns success with unexpected shape
-- **Source:** review 2026-02-15, `paypal-signature.ts` — no test for how `status === 'SUCCESS'` maps to boolean
-
-### P-3: Boolean Return Functions
-- **When:** Function returns `boolean`
-- **Tests:**
-  - At least 1 test for each path that returns `true`
-  - At least 1 test for each path that returns `false`
-  - If function has try/catch that returns `false` on error → test that the catch path returns `false` (not `undefined`)
-- **Source:** review 2026-02-15, `paypal-signature.ts` — catch returns false but not explicitly tested
-
-### P-4: Repeated Test Boilerplate
-- **When:** Same setup/helper pattern appears 3+ times in a test file
-- **Action:** Extract into a helper function (e.g., `async function runWithTimers(fn)`)
-- **Source:** review 2026-02-15, `paypal-signature.test.ts` — `vi.advanceTimersByTimeAsync(0)` repeated 8x
-
-### P-5: Mock Argument Verification — CalledWith, not just CalledTimes
-- **When:** Test mocks an external store (Redis, DB, KV, queue) or external service call
-- **Tests:**
-  - `toHaveBeenCalledWith(expectedKey, expectedValue, ...)` — not just `toHaveBeenCalledTimes(1)`
-  - Verify the key format/pattern (e.g., `expect.stringContaining('session-1')`)
-  - Verify TTL / expiration values match config
-  - Verify serialized value shape (what exactly is stored?)
-  - Verify cleanup calls (`.del`) target the correct key
-- **Why:** `CalledTimes(1)` proves the call happened but not that it did the right thing. Key format change, TTL change, or wrong value serialization all pass `CalledTimes` silently.
-- **Source:** review 2026-02-15, idempotency interceptor — `redis.set` and `redis.setex` verified by count only, no key/TTL/value check
-
-### P-6: Infrastructure Failure — Fail-open vs Fail-closed
-- **When:** Function depends on infrastructure (Redis, DB, queue, cache) that can be unavailable
-- **Tests:**
-  - Infrastructure throws error (connection refused, timeout) → does function fail-open (proceed) or fail-closed (block)?
-  - Infrastructure returns garbage (unparseable JSON, HTML error page, empty string)
-  - Infrastructure returns null/undefined unexpectedly
-  - Document the expected behavior explicitly in test name: `it('fails open when Redis is down')`
-- **Why:** "Redis is down" is a real production scenario. If the test doesn't cover it, nobody knows if the system degrades gracefully or crashes.
-- **Source:** review 2026-02-15, idempotency interceptor — no test for Redis unavailable, unknown if fail-open or fail-closed
-
-### P-7: Config Branch Coverage
-- **When:** Function accepts a config/options object with boolean flags or mode switches
-- **Tests:**
-  - Test both `true` and `false` for each boolean flag
-  - Test default behavior when flag is omitted
-  - Test interaction between flags if multiple exist
-- **Source:** review 2026-02-15, idempotency interceptor — `requireKey: true` never tested, only `false` path exercised
-
-### P-8: Hash/Serialization Stability
-- **When:** Function produces a hash, digest, or serialized output from structured input
-- **Tests:**
-  - Same input → same output (deterministic)
-  - Input with reordered keys/arrays → same output (order-independent, if expected)
-  - Minimal change in input → different output (sensitivity)
-  - Test the function in isolation, not just as a helper in other tests
-- **Source:** review 2026-02-15, idempotency interceptor — `computeSubmitPayloadHash` used in tests but never tested for order stability
-
-### P-9: Discriminating Mock Return Values
-- **When:** Mock maps multiple different inputs to the same output (e.g., `uuidToInt` always returns `123`)
-- **Problem:** If every entity gets id `123`, test can't distinguish page from question from rule. Wrong entity used = test still passes.
-- **Fix:** Make mock return different values per input:
-  ```typescript
-  uuidToInt: vi.fn((uuid: string) => {
-    const map: Record<string, number> = { 'p-1': 10, 'q-1': 20, 'r-1': 30 };
-    return map[uuid] ?? 0;
-  })
-  ```
-- **Test:** Then assert `expect(result.id).toBe(10)` (page), `expect(result.questions[0].id).toBe(20)` (question)
-- **Source:** review 2026-02-15, transformPage — 6.5/10, uuidToInt always 123 hid entity mapping bugs
-
-### P-10: React Testing Weak Patterns (3 traps)
-- **When:** Writing React component tests with Testing Library
-- **Trap 1 — toBeTruthy() on queries:** `expect(screen.getByText('X')).toBeTruthy()` is redundant — `getByText` already throws if not found. Use `toBeInTheDocument()` or just call `screen.getByText('X')` alone.
-- **Trap 2 — Static module mock:** `vi.mock('./hook', () => ({ useHook: () => fixedValue }))` locks you into one state. Use `vi.fn()` + per-test `mockReturnValue` (see G-10).
-- **Trap 3 — Date.now() in mock data:** Without `vi.useFakeTimers()` + `vi.setSystemTime()`, time-relative displays ("2 min ago") are flaky.
-- **Source:** review 2026-02-15, SaveIndicator 4/10 (all 3 traps), LogicRulePanel 7/10 (trap 1), TemplateTab 8/10 (trap 1 only)
-
-### P-11: Partial Structure Assertions — expect.any() Hiding Shape
-- **When:** Test uses `expect.any(Object)` or `expect.objectContaining` on important nested structures (includes, select, where clauses)
-- **Problem:** `include: expect.any(Object)` passes even if include is completely wrong. Critical for ORM queries where include determines what data is loaded.
-- **Fix:** At least one test per method should assert the FULL structure:
-  ```typescript
-  expect(prisma.findFirst).toHaveBeenCalledWith({
-    where: { id: 'x', organizationId: 'org-1' },
-    include: { createdBy: { select: { id: true, name: true } }, _count: { select: { surveys: true } } },
-  });
-  ```
-- **Acceptable:** `expect.any(Object)` on non-critical includes AFTER one test already verifies the full shape
-- **Source:** review 2026-02-15, TemplateService — 8× `expect.any(Object)` on includes
-
-### P-12: Incomplete Interaction Flows
-- **When:** Test opens a dialog/modal/form but doesn't test the submit action
-- **Problem:** Proves the UI triggers but not that the action completes. "Dialog opens" is half a test.
-- **Required flow:** trigger → dialog opens → fill/confirm → action called with correct args → success/error feedback
-- **Check:** For every dialog/modal open assertion, there MUST be a corresponding submit test
-- **Source:** review 2026-02-15, TemplateTab — "Create Template" opens dialog but save submit untested; LogicRulePanel — edit click untested
-
-### P-13: Duplicate/Conflicting Input Data
-- **When:** Function processes a collection (array of objects, map of records)
-- **Tests:**
-  - Two items with same key/ID — which wins? (first? last? merge? error?)
-  - Empty collection → expected behavior
-  - Single item → no off-by-one
-- **Why:** Databases can return duplicates from joins. APIs can send repeated items. The test should document the dedup behavior.
-- **Source:** review 2026-02-15, buildAnswerMapFromResponses — no test for duplicate questionId in responses
-
-### P-14: Negative Side-Effect Verification
-- **When:** Function conditionally calls a side effect (e.g., `expire` only on first hit, `invalidate` only on success)
-- **Tests:**
-  - Positive: side effect called in correct conditions (`expire` when count === 1)
-  - **Negative: side effect NOT called in other conditions** (`expire` NOT called when count > 1)
-- **Why:** Without the negative test, removing the conditional (always calling the side effect) doesn't break any test
-- **Source:** review 2026-02-15, BurstGuard — `expire` tested on first hit but no test proving it's skipped on subsequent hits
-
-### P-15: Pagination Beyond Page 1
-- **When:** Service implements pagination (skip/take, offset/limit, cursor)
-- **Tests:**
-  - Default page (page 1, default limit)
-  - Page > 1 — verify `skip` math: `(page - 1) * limit`
-  - Limit cap — verify max limit enforced
-  - Return metadata: `{ page, totalPages, total }` with correct values
-- **Source:** review 2026-02-15, TemplateService — only page 1 tested, no test for `skip: 40` on page 3
-
-### P-16: Unmapped/Unknown ID Handling
-- **When:** System maps between ID formats (UUID↔int, slug↔id, legacy↔modern)
-- **Tests:**
-  - Known ID → correct mapping
-  - Unknown/unmapped ID → what happens? (throw? return undefined? return 0?)
-  - Stale ID (was mapped, then mapping cleared) → behavior documented
-- **Why:** Legacy systems pass stale IDs. APIs send unknown IDs. The mapping layer should have defined behavior, not silent corruption.
-- **Source:** review 2026-02-15, TRPCAdapters — no test for int ID that was never seeded via seedUuid()
-
-### P-17: Loading State Scoping
-- **When:** Component shows loading/disabled state for a specific entity (order, item, row)
-- **Tests:**
-  - `loadingId="order-1"` → button for order-1 is disabled
-  - `loadingId="order-1"` → button for order-OTHER is **still enabled** (scoping test)
-  - `loadingId=undefined` → all buttons enabled (default state)
-- **Why:** Global loading state breaks UX — user can't interact with other items while one is processing. Test BOTH matching and non-matching entity.
-- **Source:** review 2026-02-15, OrderTypeBadge — resendingOrderId tested for matching order, but missing test for non-matching order staying enabled
-
-### P-18: Incomplete Enum/Status Coverage
-- **When:** Component/function handles a string/number enum (status, type, method)
-- **Tests:**
-  - Test EVERY known enum value (not just terminal states success/failed — include intermediate: pending, processing, queued)
-  - Test unknown/unexpected value: `reward_method: "unknown"`, `status: "new_value_from_api"` → graceful fallback
-  - Test null/undefined → fallback or error
-- **Why:** APIs evolve — new enum values arrive. Missing intermediate state test = surprise blank UI in production. Unknown value test = crash prevention.
-- **Source:** review 2026-02-15, OrderTypeBadge — tested success/failed/returned/blocked but missing pending; no test for unknown reward_method
-
-### P-19: Semantic Queries over CSS Class Selectors
-- **When:** Test detects elements by CSS class (`.querySelector('.text-green-600')`, `.querySelector('.bg-red-500')`)
-- **Problem:** Tailwind class changes (green-600 → green-500), wrapper div changes, or class reorganization breaks tests for wrong reasons.
-- **Fix:** Prefer in order:
-  1. `getByRole('img', { name: /check/ })` — semantic
-  2. `getByLabelText('Email sent')` — aria
-  3. `getByTestId('status-icon-success')` — explicit (add to component if needed)
-  4. `.querySelector('.text-green-600')` — last resort (add comment: "fragile, needs data-testid")
-- **When CSS is OK:** Verifying Tailwind styling intentionally (badge color test, active state style) — that's testing styling, not detecting elements.
-- **Source:** review 2026-02-15, OrderTypeBadge — icon detection via `.querySelector('.text-green-600')`, fragile to color changes
-
-### P-20: Dead/Self-Referential Tests (🔴 when functions)
-- **When:** Test defines local constants, objects, OR functions and asserts against them — not importing from production code
-- **Severity levels:**
-  - 🟡 **Constants/objects:** `const X = { MAX: 600 }; expect(X.MAX).toBe(600)` — test proves nothing but damage is limited
-  - 🔴 **Copied functions:** `function serialize(map) { return Object.fromEntries(map); }` with comment `// will be extracted from lines 122-144` — test LOOKS comprehensive (roundtrip, unicode, edge cases) but verifies the COPY, not production code. Gives false sense of security. If production code changes, test still passes.
-- **Detection:** If removing the test changes nothing about production code coverage → it's dead.
-- **Fix:** Replace local definitions with imports from production module. If module doesn't exist yet (pre-refactoring), mark tests as `// TODO: replace with import after extraction` and flag as NOT VERIFIED in review.
-- **Source:** review 2026-02-15, QC Pipeline (constants, 🟡) + Translation utils 6.5/10 (copied functions, 🔴 — 11 tests on local serializeTranslationMap that don't verify production code)
-
-### P-21: Mock Component Prop Drift
-- **When:** React test mocks child components with inline JSX: `vi.mock('./Header', () => ({ Header: vi.fn(({ onCopy }) => <div>...</div>) }))`
-- **Problem:** If real `Header` renames `onCopy` to `onCopyProject`, mock still destructures old prop name — test passes but production breaks. Mock and reality drift apart silently.
-- **Fix:** After rendering, verify the mock was called with expected props:
-  ```typescript
-  expect(Header).toHaveBeenCalledWith(
-    expect.objectContaining({ onCopy: expect.any(Function) }),
-    expect.anything() // ref
-  );
-  ```
-  This catches prop renames because `objectContaining({ onCopy: ... })` fails when prop is now `onCopyProject`.
-- **Source:** review 2026-02-15, Project Page orchestrator — 20+ mock components, none verified via CalledWith
-
-### P-23: Weak Assertions on Known Data
-- **When:** Test has deterministic setup (known number of entries, known mock returns) but uses weak assertions
-- **Problem patterns:**
-  - `toBeGreaterThan(0)` when test creates exactly 3 entries → should be `toBe(3)`
-  - `toBeTruthy()` when exact value is known → should be `toBe(expectedValue)`
-  - `toHaveLength(expect.any(Number))` when array content is deterministic
-- **When weak IS OK:** Smoke tests ("doesn't crash with 1000 entries"), non-deterministic data, testing existence not value
-- **Fix:** In tests with known setup data, assert exact values. Reserve `toBeGreaterThan` for genuine lower-bound checks.
-- **Source:** review 2026-02-15, Export generator — happy-path creates 1 pattern but asserts `toBeGreaterThan(0)` instead of `toBe(1)`. Integration test does it right: `toBe(5)`.
-
-### P-24: Contradictory Test Assertions Across Suites
-- **When:** Multiple test files/suites cover the same function/feature
-- **Problem:** Suite A says `reviewRound option is ignored`. Suite B says `reviewRound overrides history`. Both pass — one is wrong.
-- **Detection:** During review, search for the same feature tested in multiple places. Compare assertions — if they claim opposite behavior, flag immediately.
-- **Fix:** Run the production code to determine actual behavior. Delete the wrong test. Add comment to surviving test: `// verified: reviewRound DOES override history (not ignored)`
-- **Source:** review 2026-02-15, Export generator — original test vs comprehensive test contradicted on reviewRound behavior
-
-### P-25: Hardcoded Mock Call Indices
-- **When:** Test accesses specific mock call by index: `mockFetch.mock.calls[2][1].body`
-- **Problem:** If call order changes (new call added before, conditional call removed), index shifts and test breaks for wrong reason — or worse, silently asserts against wrong call.
-- **Fix:** Find the call by characteristic, not position:
-  ```typescript
-  const importCall = mockFetch.mock.calls.find(
-    ([url]) => url.includes('/import')
-  );
-  expect(JSON.parse(importCall![1].body)).toMatchObject({ reviewRound: 2 });
-  ```
-- **When index IS OK:** Sequential protocol tests where call order IS the thing being tested (e.g., "auth happens before data fetch")
-- **Source:** review 2026-02-15, HolisticReviewModal 9/10 — `mockFetch.mock.calls[2][1].body` fragile to call order changes
-
-### P-26: Test Name Claims Unverified Behavior
-- **When:** Test name describes specific behavior but body doesn't actually verify it
-- **Variants:**
-  - **Empty body:** `it('should handle delete on non-existent project', () => { /* comment only */ })` — zero assertions
-  - **Wrong assertions:** `it('should handle rapid filter changes')` but test doesn't verify debouncing, just makes 2 calls
-  - **Smoke only:** `it('should handle 1000 entries', () => { ... expect(result).toBeGreaterThan(0) })` — name implies performance/correctness, assertion only checks "didn't crash"
-- **Fix:** Test name must match what assertions prove. If you can't write the assertion yet, use `it.todo('should handle rapid filter changes')` — honest about the gap.
-- **Source:** review 2026-02-15, ProjectsPage 8/10 — "handle delete on non-existent project" (empty), "handle rapid filter changes" (no debounce verification)
-
-### P-27: Silent False-Positive via try/catch in Assertions
-- **When:** Test uses try/catch to verify that a function throws an error
-- **Problem:** If the function does NOT throw, execution skips the catch block entirely — test passes with zero assertions. Silent false-positive.
-  ```typescript
-  // WRONG — passes silently if validateUpdate doesn't throw:
-  try {
-    await service.validateUpdate(1, { field: 'value' });
-  } catch (e) {
-    expect(e.message).toContain('1 translated segment');
-  }
-  ```
-- **Fix:** Use `rejects.toThrow` or catch-then-assert with explicit fail:
-  ```typescript
-  // CORRECT — fails if no error thrown:
-  await expect(service.validateUpdate(1, { field: 'value' }))
-    .rejects.toThrow('1 translated segment');
-
-  // ALT — explicit catch with fail guard:
-  const error = await service.validateUpdate(1, { field: 'value' }).catch(e => e);
-  expect(error).toBeInstanceOf(Error);
-  expect(error.message).toContain('1 translated segment');
-  ```
-- **NestJS variant** (seen 3x in review):
-  ```typescript
-  // WRONG — passes if controller does NOT throw:
-  try {
-    await controller.findOne(id, reqHeader);
-  } catch (err) {
-    expect(err.response.statusCode).toEqual(400);
-  }
-
-  // CORRECT:
-  await expect(controller.findOne(id, reqHeader))
-    .rejects.toThrow(BadRequestException);
-  ```
-- **Metric:** Tests using try/catch pattern averaged 3.5/10 (N=92).
-- **Source:** review 2026-02-16, project-services + review 2026-02-21, LocalStrategy, OfferController #19
-
-### P-28: Phantom Mocks (Untested Mock Setup)
-- **When:** `beforeEach` sets up a mock (e.g., `mockDemoLink.findUnique.mockResolvedValue(null)`) but no test in the suite exercises that code path
-- **Problem:** The mock signals that a code path exists (demo links, fallback behavior, optional feature) but the path is invisible — zero coverage. If the real code breaks for that path, no test catches it.
-- **Detection:** For each mock in `beforeEach`, search the test suite for at least one test that depends on it. If no test changes or asserts against it → phantom mock.
-- **Fix:** Either write a test that exercises the path, or remove the mock (dead setup = noise).
-- **Source:** review 2026-02-16, proofreading public route — `proofreadingDemoLink.findUnique` mocked to null in beforeEach, zero tests for demo link path
-
-### P-29: Type Hack Proliferation in Mocks (`as never`/`as any`)
-- **When:** Multiple tests use `as never` or `as any` to satisfy Prisma/DB/complex types when mocking
-- **Problem:** Scattered `as never` casts are noisy, hide type mismatches, and make tests fragile. If the real type changes, the cast swallows the error.
-- **Fix:** Centralize in a typed mock helper:
-  ```typescript
-  // Factory returns typed partial — cast is in ONE place:
-  function createSessionRecord(overrides?: Partial<ProofreadingSession>) {
-    return { id: 'sess-1', status: 'pending', ...overrides } as ProofreadingSession;
-  }
-
-  // Or generic helper for any Prisma mock:
-  function mockDBReturn<T>(mock: ReturnType<typeof vi.fn>, value: Partial<T>) {
-    mock.mockResolvedValue(value as T);
-  }
-  ```
-- **Source:** review 2026-02-16, proofreading public route — `as never` in 6+ places, reduced to 1 via factory
-
-### P-31: Inconsistent Edge Case Coverage Across Sibling Methods
-- **When:** Module has 3+ similar methods (e.g., `searchById`, `searchByText`, `searchByTags`) that share a common interface or pattern
-- **Problem:** Some methods have edge case tests (empty input, null, boundary) while others don't. Creates a false sense of complete coverage.
-- **Detection:** Create a matrix of `[method × edge case]`. If any cell is empty for a method that logically should handle that case → gap.
-- **Fix:** Fill the matrix. If `searchById` has an empty-query test, `searchByText` and `searchByTags` should too. Either test the behavior or document why it's intentionally different.
-- **Source:** review 2026-02-16, project-search — searchById and searchByTags have empty query tests, searchByText doesn't
-
-### P-32: Untested Query Builder Variants (flag × SQL operator)
-- **When:** Function builds different SQL/queries based on boolean flag combinations (e.g., `caseSensitive × wholeSegment` → 4 variants with different operators: `~` vs `~*`, `LIKE` vs `ILIKE`)
-- **Problem:** Each flag combination produces fundamentally different SQL. Testing only one combination leaves 3 others unverified — a wrong operator in one branch silently corrupts results.
-- **Tests:**
-  - `caseSensitive=false, wholeSegment=false` → `~*` (case-insensitive regex)
-  - `caseSensitive=true, wholeSegment=false` → `~` (case-sensitive regex)
-  - `caseSensitive=false, wholeSegment=true` → `ILIKE` (case-insensitive exact)
-  - `caseSensitive=true, wholeSegment=true` → `LIKE` (case-sensitive exact)
-  - Use `it.each` (see G-28) to keep it DRY
-- **Related:** G-20 (combinatorial coverage), P-7 (config branch coverage) — this is the specific DB/query-builder variant
-- **Source:** review 2026-02-16, project-search — searchByText has 4 query variants, zero tested
-
-### P-30: fireEvent vs userEvent for Input Components
-- **When:** Testing input components (text fields, search, forms) with `@testing-library/react`
-- **Problem:** `fireEvent.change(input, { target: { value: 'x' } })` sets the value in one shot. It skips keystroke-by-keystroke simulation, so it misses bugs in: debounced inputs, controlled components with per-keystroke validation, `onChange` handlers that depend on previous value.
-- **Fix:** Use `@testing-library/user-event` for realistic input:
-  ```typescript
-  import userEvent from '@testing-library/user-event';
-  const user = userEvent.setup();
-  await user.type(input, 'new value');  // fires keyDown, keyPress, input, keyUp per char
-  await user.clear(input);              // realistic clear
-  ```
-- **When fireEvent IS OK:** Testing a single change event (dropdown select, checkbox toggle) where keystroke simulation is irrelevant.
-- **Source:** review 2026-02-16, SearchInput 9/10 — fireEvent works but misses potential debounce bugs
-
-### P-22: Zero-Denominator Edge Case
-- **When:** Function computes average, percentage, ratio, or any division where denominator comes from input (count, total, length)
-- **Tests:**
-  - Zero denominator → verify result is 0 (not NaN or Infinity)
-  - Empty collection → verify aggregation returns sensible default
-  - Assert the exact value: `expect(result.confidence).toBe(0)` — not just "doesn't throw"
-- **Why:** `Math.round(0/0 * 100)` = `NaN`. `100/0` = `Infinity`. Both propagate silently through JSON serialization and UI, showing "NaN%" to users.
-- **Source:** review 2026-02-15, Translation utils — mergeEvalResults([], 0) → confidence = NaN, test didn't check the value
-
-### P-33: Input Echo Assertions (Asserting Input, Not Output)
-- **When:** Test assertion checks a value that was directly passed as input, not computed by the function
-- **Problem:**
-  ```typescript
-  const request = { from: 18, to: 65, gender: "both" };
-  const [result] = await controller.GetAutoGenerateQuota(request);
-  expect(result.from).toEqual(18);  // ← this is the INPUT, not computed
-  ```
-  Passes even if controller returns `{ from: request.from }` without any computation.
-- **Fix:** Assert COMPUTED values: `expect(result.population).toBe(expectedPop)`, `expect(result.brackets[0].quota).toBe(calculatedQuota)`
-- **Related:** Q17 (computed output check) — this is the specific anti-pattern Q17 catches
-- **Source:** review 2026-02-21, OfferQuotaController 2/10 — 4 tests, all asserting `result.from === 18` (input echo)
-
-### P-34: Fixture:Assertion Ratio Smell
-- **When:** Test file has >5x more lines of fixture data than assertion lines
-- **Problem:** 850 lines of inline data + 5 lines of assertions = the test is documentation, not verification. Massive data creates illusion of coverage.
-- **Thresholds (calibrated on N=92):**
-  - <3:1 — healthy (avg 7.8/10)
-  - 3:1 to 10:1 — warning, consider factory extraction (avg 5.5/10)
-  - 10:1 to 50:1 — critical, almost certainly undertested (avg 2.5/10)
-  - >50:1 — Auto Tier-D (avg 2.0/10)
-- **Fix:** Factory functions with overrides (G-4), programmatic generation, or JSON fixture files
-- **Source:** review 2026-02-21, OfferQuota 850:5 ratio (2/10), OfferController 500:50 ratio (3/10)
-
-### P-35: Self-Referential Contract Tests (Dict-in, Dict-out)
-- **When:** Test builds a response dict/object manually and asserts its structure
-- **Problem:**
-  ```python
-  response = {"status": "ok", "questions": []}
-  assert isinstance(response["questions"], list)  # always True
-  ```
-  Tests dict construction, not production code. If real endpoint returns None, test still passes.
-- **Fix:** Call actual production function: `question_list = build_question_list(real_meta)`
-- **When hardcoded IS OK:** Documenting expected contract shape (but label it `TestContractShape`)
-- **Source:** review 2026-02-21, Datalab Agent 3 — ~60% tests build dicts and assert structure
-
-### P-36: Overly Generous Performance Thresholds
-- **When:** Performance test threshold is 100x actual expected time
-- **Problem:** `assert t < 10000ms` for 50ms operation. 10x regression still passes.
-- **Fix:** Benchmark actual P95, set threshold at 3-5x P95. Always print actual time.
-- **Source:** review 2026-02-21, Datalab Agent 7 — 10s threshold for ~200ms operation
-
-### P-37: Module-Level Side Effects in Test Files
-- **When:** Test file has `open()`, `json.load()`, `sys.modules` at module level
-- **Problem:** Missing file → entire module fails to import → all tests skip with confusing error. Global mutable state leaks.
-- **Fix:** Move to `conftest.py` fixtures with `scope="session"`. Use `pytest.skip()` for optional fixtures.
-- **Source:** review 2026-02-21, Datalab Agent 2+7 — module-level `_meta = json.load(open(...))` and `sys.modules` stubs
-
-### P-38: Missing Public Method Coverage
-- **When:** Production file has N public methods/exported functions, test file covers fewer than N
-- **Problem:** Untested public methods have zero regression safety. Especially dangerous for CRUD endpoints where `create()` exists in production but test file only covers `update()` and `delete()`. Refactoring or adding validation to untested method breaks silently.
-- **Required tests:** At least 1 `it()` block per public method (happy path minimum). For CONTROLLER/SERVICE: list all route handlers / exported methods, verify each has a test.
-- **Detection:** Compare `export function`/`async method()` in production file vs `describe`/`it` blocks in test file. Any public method with zero matching test = P-38 gap.
-- **Source:** code-audit feedback 2026-02-21, offer.controller — `create()` endpoint had zero test coverage while `createVersion()` and `createOption()` were fully tested
-
-### P-39: Rendering-Only Tests as Pre-Refactoring Safety Net (AI Agent Trap)
-- **When:** Writing pre-refactoring tests for React components (ETAP-1B or any test-first workflow)
-- **Problem:** AI agents (and developers) default to rendering/visibility tests: `getByText('Submit')`, `getByRole('button')`, `toBeInTheDocument()`. These prove the component renders but NOT that user flows work. A refactoring that breaks the submit handler, search logic, or calendar interaction passes all rendering tests. **Contract test that doesn't cover core user flows = false safety net.**
-- **Detection (mechanical check):** Count `it()` blocks by type:
-  - **Rendering tests:** assertions are `toBeInTheDocument`, `toBeVisible`, `getByText` without subsequent interaction
-  - **Flow tests:** assertions follow a user interaction chain: click/type → state change → callback/API called with args → success/error feedback
-  - If rendering > 60% and flow < 30% → P-39 triggered
-- **Minimum User Flow Coverage by Component Type:**
-
-  | Component Type | Minimum Flows to Test |
-  |----------------|----------------------|
-  | **Form** | submit with valid data → callback args, submit with invalid → error shown, clear/reset, field validation feedback |
-  | **Search/Filter** | type query → results filtered, clear query → results reset, empty results state, debounce (if applicable) |
-  | **Modal/Dialog** | open → fill → submit → callback + close, open → cancel → no callback, validation errors inside modal |
-  | **List/Table** | sort → order changes, paginate → correct page data, select item → detail/callback, empty state |
-  | **Date/Calendar** | select date → callback with date value, range selection, invalid date handling, clear date |
-  | **Rating/Slider** | select value → callback with value, boundary values (min/max), change value → UI reflects new state |
-  | **Tabs/Navigation** | switch tab → correct content shown, tab state persisted (if applicable), deep link to tab |
-  | **CRUD** | create → success + list updates, edit → save + values persisted, delete → confirm → removed |
-  | **Toast/Notification** | trigger action → toast appears with correct message, toast auto-dismiss or manual close |
-  | **Dropdown/Select** | open → select option → callback with value, search within dropdown (if applicable), multi-select |
-
-- **Fix:** For each component being tested, identify its type(s) from the table above. Write at least 1 test per minimum flow. A rendering test (`getByText('Submit').toBeInTheDocument()`) does NOT count as a submit flow test.
-- **Rule of thumb:** If removing the event handler wouldn't fail any test → the test suite is rendering-only.
-- **Source:** review 2026-02-22, Cursor refactoring — 10 components tested, all had rendering coverage but 0 submit flows, 0 search flows, 0 calendar interaction. Tests scored 7/10 visually but provided zero regression safety for the actual refactoring.
-
----
-
-## Good Patterns (continued) — Cross-Project Patterns
-
-### G-31: Call Order Verification
-- **When:** Code executes operations in a required sequence (collect before delete, auth before action, init before process)
-- **Do:**
-  - Track order via array: `const callOrder: string[] = []; mockFn.mockImplementation(async () => { callOrder.push('name'); })`
-  - Assert relative positions: `expect(callOrder.indexOf('collect')).toBeLessThan(callOrder.indexOf('delete'))`
-- **Why:** Race conditions where operations execute out of order are invisible to CalledWith/CalledTimes checks. Only order verification catches them.
-- **Source:** review 2026-02-21, risk-sync.service — reindexAllRisks verified findMany BEFORE deleteAll via callOrder array
-
-### G-32: Admin/Non-Admin Symmetry (Guard Pattern)
-- **When:** Endpoint/method has authorization check (role, ownership, permission)
-- **Do:** For EACH guarded operation, write 3 tests:
-  1. Authorized user → success + verify result
-  2. Unauthorized user → throws permission error (exact message)
-  3. Unauthorized user → service method `not.toHaveBeenCalled()` (proves guard is BEFORE logic)
-- **Owner check variant** (when auth = ownership, not role):
-  4. Non-owner user → throws "You are not creator of this offer!" (or equivalent)
-  5. Non-owner user → mutation service `not.toHaveBeenCalled()`
-- **Why:** Test #3/#5 is critical — without it, someone could move the auth check after the mutation and tests 1-2 still pass. Verifies guard ordering.
-- **Source:** review 2026-02-21, ProjectScopeController 8/10 — every CRUD endpoint × 3; OfferController #4.4, #18.2 — owner check variant
-
-### G-33: SmartMock / Proxy Factory for Mega-Controllers
-- **When:** Controller/class has 10+ injected dependencies
-- **Do:**
-  ```typescript
-  function createSmartMock<T extends object>(baseMocks: Partial<T> = {}): T {
-    const cache = new Map<string | symbol, jest.Mock>();
-    return new Proxy(baseMocks as T, {
-      get(target, prop) {
-        if (prop in target) return target[prop as keyof T];
-        if (!cache.has(prop)) cache.set(prop, jest.fn().mockResolvedValue(undefined));
-        return cache.get(prop);
-      },
-    });
-  }
-  ```
-  - Mock only what you test, Proxy auto-creates the rest
-  - Eliminates 500+ lines of `useValue: { method1: jest.fn(), method2: jest.fn() }`
-- **Why:** 18-provider manual mock setup is the #1 contributor to test bloat in NestJS projects. SmartMock reduces setup from 200 lines to 20 while maintaining type safety.
-- **Source:** review 2026-02-21, OfferController refactored test — SmartMock Proxy cut setup from 500 to ~80 lines
-
-### G-34: Direct Instantiation over TestingModule (NestJS)
-- **When:** NestJS controller/service has 10+ providers AND test doesn't need NestJS-specific features (pipes, guards, interceptors at module level)
-- **Do:** `controller = new Controller(dep1, dep2, dep3, ...)` instead of `Test.createTestingModule({...}).compile()`
-- **Combine with G-33:** SmartMock for each dependency
-- **Why:** TestingModule compilation with 20+ providers adds latency per test run and forces you to declare every mock upfront. Direct instantiation is faster and lets SmartMock handle unused methods.
-- **When NOT to use:** When testing guards, interceptors, pipes, or validation that requires the NestJS DI pipeline
-- **Source:** review 2026-02-21, OfferController refactored test — bypassed 47-provider TestingModule
-
-### G-35: Type Boundary Assertions (Framework Crossing)
-- **When:** Code passes data between two frameworks/libraries (Polars↔Pandas, NumPy↔Torch, ORM↔raw SQL)
-- **Do:**
-  - Assert `isinstance(result, pl.DataFrame)` AND `not isinstance(result, pd.DataFrame)` at every boundary
-  - Name tests after the boundary: `test_build_export_dataframe_returns_pandas`
-  - Test BOTH directions: `to_pandas()` produces Pandas, `from_pandas()` produces Polars
-  - Verify framework-specific attributes exist/don't exist: `.height` (Polars-only), `.loc` (Pandas-only)
-- **Why:** Framework confusion is the #1 runtime error in dual-framework codebases. `df.fillna()` on Polars silently fails. `df.height` on Pandas → AttributeError.
-- **Source:** review 2026-02-21, Datalab Agent 2 — systematic `isinstance` + `not isinstance` at every service boundary
-
-### G-36: Contract Tests Tracing Client Crash Points
-- **When:** Backend API serves frontend that accesses response with `.forEach()`, `Object.entries()`, `.map()`
-- **Do:**
-  - Create `assert_array_not_null(value, path)` and `assert_dict_not_none(value, path)` helpers
-  - Document each client access pattern in docstring with file:line reference
-  - Test that every collection field is NEVER null (always `[]` or `{}`)
-  - Test JSON serializability of every response
-  - **CRITICAL:** Call actual production function, not just build dict and assert
-- **Anti-pattern:** Building a dict literal and asserting its fields are lists — tests dict construction, not production code (see P-35).
-- **Source:** review 2026-02-21, Datalab Agent 3 — `assert_array_not_null` + JS line references
-
-### G-37: Static Analysis as Tests (AST/Regex Scanning)
-- **When:** Codebase has recurring bug patterns detectable by scanning source files
-- **Do:**
-  - `ast.parse()` all source files → catch SyntaxError
-  - Regex scan with context: check if match is in comment, string, or active code
-  - Build safe-lists for known-good patterns (`PANDAS_SAFE_FILES`, parameterized SQL)
-  - Backward trace to determine variable type (scan 50 lines back for assignment)
-  - **Zero false positives** — better to miss a bug than cry wolf
-- **Categories:** Framework confusion (Polars/Pandas), SQL injection, security config, path traversal, dangerous imports
-- **Source:** review 2026-02-21, Datalab Agent 5 — Polars/Pandas confusion detector, SQL injection audit, security config
-
-### G-38: Preserve Semantics Testing
-- **When:** Operation conditionally modifies data — should NOT clear existing values where condition is False
-- **Do:**
-  - First operation: set value A where condition X
-  - Second operation: set value A where condition Y (disjoint from X)
-  - Assert BOTH X and Y rows have value A after both operations
-  - Name: `test_multiple_preserve_existing`
-- **Why:** "Last write wins" bugs are silent — second set_value clears first, test passes if you only check the second.
-- **Source:** review 2026-02-21, Datalab RecodeService — `TestSetValuePreserve` verified two set_value calls don't interfere
-
-### G-39: Deprecated Method Regression Test
-- **When:** Method is deprecated but still callable (backward compatibility)
-- **Do:**
-  - Call deprecated method → assert it returns deprecation warning
-  - Assert data is NOT modified (method is no-op)
-  - Assert no errors produced (graceful degradation)
-- **Source:** review 2026-02-21, Datalab RecodeService — `recode()` deprecated, returns warning, doesn't modify data
-
-### G-40: Author/Era Mapping Heuristic (Audit Pattern)
-- **When:** Auditing a large module (50+ test files) across multiple directories
-- **Do:**
-  - Map test quality to directory/file naming convention, not to module complexity
-  - Identify distinct "generations" by shared patterns:
-    - **Generation A signs:** `makeX()` factories, `CalledWith`, error propagation, `not.toHaveBeenCalled()`
-    - **Generation B signs:** `spyOn(self)`, `toBeTruthy()`, `__privateMethod()`, 200+ LOC inline fixture
-  - Score generations separately — averaging across them hides the bimodal distribution
-  - Prioritize Generation B for rewrite, use Generation A as reference implementation
-- **Why:** Module-level averages (e.g., "Offer module: 6/10") are misleading when the module has 42 files at 8.4/10 and 8 files at 2.6/10. The 8 bad files create false security.
-- **Evidence:**
-  ```
-  offer/services/*.spec.ts      → 4 files, avg 8.6/10  (modern)
-  offer/unit-test/*.spec.ts     → 5 files, avg 2.8/10  (legacy)
-  Same module. Same domain. 3x quality difference.
-  ```
-- **Source:** review 2026-02-21, Offer Module 92-file audit — clear two-author pattern
+### Step 5: When user gives feedback -> append new patterns and update the lookup table
 
 ---
 
@@ -1030,14 +220,35 @@ Empirical correlations from 92-file cross-project analysis (N=20 initial, N=92 c
 | `isinstance` + `not isinstance` at boundaries (Python) | 8.7/10 | Strong dual-framework testing |
 | Real data fixtures (>50 rows, Python) | 8.5/10 | Strong integration quality |
 | Test builds dict literal and asserts structure (Python) | 7.0/10 | Self-referential — check P-35 |
+| `reducer({ initialState: {} }, action)` — wrong initial state | 3.0/10 | P-40: loading=false is default, not transition |
+| `expect(state.loading).toEqual(false)` as only assertion | 3.5/10 | P-41: data never verified — check state content |
+| `faker.number.int` for selecting DOM element index | 4.0/10 | P-42: non-deterministic selection |
+| `typeof dispatchSpy.mock.calls[0][0] === 'function'` | 4.5/10 | Use vi.mock thunk (G-43) for exact payload |
+| `expect(screen).toBeDefined()` | 1.0/10 | AP9: screen always defined — tests nothing |
+| `getByTestId:getByRole` ratio > 3:1 | 4.2/10 | P-43: accessibility-blind — replace testId with semantic queries |
+| 0 `.rejected` tests in slice file | 4.5/10 | P-44: error paths unverified — add at least 1 rejected test per thunk |
+| Empty state: only `not.toBeInTheDocument()` | 5.0/10 | P-45: shallow empty state — assert placeholder renders too |
+| Form tests: 0 error-recovery tests | 4.8/10 | P-46: validation error stuck — test error clears after fix |
+| `vi.mock(module)` without `importActual` | 4.2/10 | Breaks selectors/reducers — use G-44 selective mock instead |
+| `preloadedState` used in setup | 8.1/10 | G-45: deterministic store seeding — strong quality predictor |
+| `toMatchSnapshot()` on full JSX container | 2.5/10 | P-53: likely false coverage — snapshot of 2000-line tree, zero regression safety |
+| Multiple `await dispatch()` sequential without isolation | 3.5/10 | P-55: potential flaky ordering — resolution order depends on MSW delay |
+| Mock typed as `as any` / plain object literal without interface | 3.2/10 | P-56: drift risk — service signature change won't surface as test error |
+| No `afterEach` cleanup for `process.env` / `window` globals | 3.8/10 | P-57: ordering leak risk — test B passes only after test A ran first |
+| Regression tests without ticket reference in name | 4.5/10 | G-54 missing: high deletion risk in cleanup — looks like arbitrary edge case |
+| >20 `vi.mock()`/`jest.mock()` in single file | 3.5/10 | P-62: over-mocking — likely copy-paste setup, many mocks unused |
+| `if (await *.isVisible())` in E2E test | 3.0/10 | P-63: silent conditional — test passes when feature broken |
+| <6 `it()`/`test()` per API endpoint | 5.5/10 | P-65: under-tested — missing edge cases (auth, validation, empty, boundary) |
+| Inline selectors in Playwright spec (no page object) | 4.0/10 | G-56 missing: any UI change = multi-file edit |
+| Hardcoded password/email string in test file | N/A | P-64: security — move to env vars |
 
 **Fixture:Assertion Ratio thresholds (calibrated on N=92):**
 
 | Ratio | Avg Score | Example |
 |-------|-----------|---------|
 | < 3:1 | 7.8/10 | offer-clone.service (makeOffer factory, 8.5/10) |
-| 3:1 – 10:1 | 5.5/10 | offer-client-brief.controller (4/10) |
-| 10:1 – 50:1 | 2.5/10 | offer-public.controller (748 LOC, ~15 assertions) |
+| 3:1 -- 10:1 | 5.5/10 | offer-client-brief.controller (4/10) |
+| 10:1 -- 50:1 | 2.5/10 | offer-public.controller (748 LOC, ~15 assertions) |
 | > 50:1 | 2.0/10 | offer-quota.controller (1634 LOC, 5 assertions) — Auto Tier-D |
 
 These are HEURISTICS, not rules. A file with 0 CalledWith could still be Tier A if testing pure functions. Always run full Q1-Q17 for definitive scoring.
@@ -1050,14 +261,15 @@ When user gives feedback about test quality (e.g., "test was missing X", "this p
 
 ### 1. Create the pattern entry
 
-- Good pattern → `G-{next}`, gap pattern → `P-{next}`
+- Good pattern -> `G-{next}`, gap pattern -> `P-{next}`
 - Include: When, Do/Tests, Why (1 sentence), Source (date + file + what happened)
 - Keep it concise — 5-8 lines max
+- **File placement:** general patterns -> `test-patterns-catalog.md`, domain-specific -> `test-patterns-{domain}.md`
 
-### 2. Update the lookup table (Step 2 in "How to use")
+### 2. Update the lookup table (Step 2 in this file)
 
 Decide which code types the new pattern applies to and add its ID to the table.
-If it applies to ALL types → add to the "Always apply" line instead.
+If it applies to ALL types -> add to the "Always apply" line instead.
 
 ### 3. Check if a new code type is needed
 

@@ -130,6 +130,37 @@ cp "$TOOLKIT_DIR/scripts/setup-antigravity-all.sh" "$CLAUDE_DIR/scripts/setup-an
 chmod +x "$CLAUDE_DIR/scripts/setup-antigravity-all.sh"
 echo "  + ~/.claude/scripts/setup-antigravity-all.sh"
 
+# --- 8. OpenAI Codex CLI integration ---
+bash "$TOOLKIT_DIR/scripts/build-codex-skills.sh" "$TOOLKIT_DIR"
+
+CODEX_DIR="$HOME/.codex"
+
+# Install rules from dist (unicode-normalized, paths adapted)
+mkdir -p "$CODEX_DIR/rules"
+for f in "$TOOLKIT_DIR"/dist/codex/rules/*.md; do
+  [ -f "$f" ] && ln -sf "$f" "$CODEX_DIR/rules/$(basename "$f")"
+done
+
+# Install protocol files from dist (unicode-normalized, paths adapted)
+for f in "$TOOLKIT_DIR"/dist/codex/protocols/*.md; do
+  [ -f "$f" ] && ln -sf "$f" "$CODEX_DIR/$(basename "$f")"
+done
+
+# Install skills
+mkdir -p "$CODEX_DIR/skills"
+for skill_dir in "$TOOLKIT_DIR"/dist/codex/skills/*/; do
+  [ -d "$skill_dir" ] || continue
+  ln -sfn "$skill_dir" "$CODEX_DIR/skills/$(basename "$skill_dir")" 2>/dev/null || true
+done
+
+# Install conditional-rules + refactoring-examples (symlink from ~/.claude/ if exist)
+for extra_dir in conditional-rules refactoring-examples; do
+  if [ -d "$CLAUDE_DIR/$extra_dir" ] && [ ! -e "$CODEX_DIR/$extra_dir" ]; then
+    ln -sfn "$CLAUDE_DIR/$extra_dir" "$CODEX_DIR/$extra_dir" 2>/dev/null || true
+  fi
+done
+echo "  + ~/.codex/ (rules, protocols, skills, refactoring-examples)"
+
 echo ""
 echo "Done. Installed to $CLAUDE_DIR"
 echo ""
@@ -142,6 +173,7 @@ echo "  ~/.claude/skills/       (Claude Code)"
 echo "  ~/.cursor/skills/       (Cursor — native agent orchestration)"
 echo "  ~/.cursor/agents/       (Cursor — sub-agents)"
 echo "  ~/.gemini/antigravity/  (Google Antigravity)"
+echo "  ~/.codex/               (OpenAI Codex CLI — rules, protocols, skills)"
 echo ""
 echo "All tools auto-update when you edit skills in this repo."
 echo ""

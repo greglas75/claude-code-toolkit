@@ -17,7 +17,7 @@ Before starting ANY work, read ALL files below. Confirm each with check or X:
 2. check/X  ~/.cursor/refactoring-protocol.md       -- full ETAP-1A -> 1B -> 2 protocol
 3. check/X  ~/.cursor/rules/code-quality.md         -- CQ1-CQ20 production code checklist
 4. check/X  ~/.cursor/rules/testing.md              -- Q1-Q17 test self-eval checklist
-5. check/X  ~/.cursor/test-patterns.md              -- G-*/P-* patterns, AP anti-patterns
+5. check/X  ~/.cursor/test-patterns.md              -- Q1-Q17 protocol, lookup table -> routes to catalog/domain files
 ```
 
 **If ANY file cannot be read, STOP. Do not proceed with a partial rule set.**

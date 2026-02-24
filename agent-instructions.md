@@ -43,6 +43,10 @@ All `_agent/` paths are symlinks. If a skill references `~/.claude/`, resolve as
 - `~/.claude/skills/` -> `_agent/skills/`
 - `~/.claude/review-protocol.md` -> `_agent/review-protocol.md`
 - `~/.claude/test-patterns.md` -> `_agent/test-patterns.md`
+- `~/.claude/test-patterns-catalog.md` -> `_agent/test-patterns-catalog.md`
+- `~/.claude/test-patterns-redux.md` -> `_agent/test-patterns-redux.md`
+- `~/.claude/test-patterns-nestjs.md` -> `_agent/test-patterns-nestjs.md`
+- `~/.claude/test-patterns-yii2.md` -> `_agent/test-patterns-yii2.md`
 
 ## Backlog
 

@@ -23,7 +23,7 @@ setup() {
   done
 
   # Root-level protocols and patterns (referenced by skills via ~/.claude/ paths)
-  for f in review-protocol.md refactoring-protocol.md test-patterns.md refactoring-god-class.md; do
+  for f in review-protocol.md refactoring-protocol.md test-patterns.md test-patterns-catalog.md test-patterns-redux.md test-patterns-nestjs.md test-patterns-yii2.md refactoring-god-class.md; do
     [ -f "$HOME/.claude/$f" ] && ln -sf "$HOME/.claude/$f" "$dir/_agent/$f"
   done
 
@@ -74,6 +74,7 @@ setup "$DEV/Prefetch"            "-Users-greglas-DEV-Prefetch"
 setup "$DEV/RDesigner"           "-Users-greglas-DEV-RDesigner"
 setup "$DEV/Rewards-API"         "-Users-greglas-DEV-Rewards-API"
 setup "$DEV/TGM Panel website"   "-Users-greglas-DEV-TGM-Panel-website"
+setup "$DEV/Offer Module"        "-Users-greglas-DEV-Offer-Module"
 setup "$DEV/coding-ui"           "-Users-greglas-DEV-coding-ui"
 setup "$DEV/country-data"        "-Users-greglas-DEV-country-data"
 setup "$DEV/tgm-privacy-portal"  "-Users-greglas-DEV-tgm-privacy-portal"
@@ -93,8 +94,8 @@ setup "$DEV/Mobi 2/survey-designer-ui"           "-Users-greglas-DEV-Mobi-2"
 setup "$DEV/Mobi 2/tgmdev-tgm-mailing-service-dbcb7129e3da" "-Users-greglas-DEV-Mobi-2"
 
 # Offer Module
-setup "$DEV/Offer Module/tgmdev-tgm.offer.be-48af8308d459" "-Users-greglas-DEV-Offer-Module"
-setup "$DEV/Offer Module/tgmdev-tgm.offer.fe-0eee0eed4af9" "-Users-greglas-DEV-Offer-Module"
+setup "$DEV/Offer Module/tgmdev-tgm.offer.be" "-Users-greglas-DEV-Offer-Module"
+setup "$DEV/Offer Module/tgmdev-tgm.offer.fe" "-Users-greglas-DEV-Offer-Module"
 
 # Portal & Access
 setup "$DEV/Portal & Access/tgmdev-tgm-portal-f10dcd17fd36" "-Users-greglas-DEV-Portal---Access"

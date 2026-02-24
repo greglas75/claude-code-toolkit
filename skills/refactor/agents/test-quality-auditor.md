@@ -16,6 +16,22 @@ You are spawned by the `/refactor` skill after ETAP-1B completes. You do NOT mod
 
 ## Your Job
 
+### Step 0: Quick-Fail Pre-Scan (do FIRST — before Q1-Q17)
+
+Grep each test file for these patterns. Any found = report immediately + score Q17=0 for that file:
+
+| Pattern | Symptom | Q impact |
+|---------|---------|----------|
+| `expect(screen).toBeDefined()` | Always-true — screen is always defined | Q17=0, AP9 |
+| `expect(input).toHaveValue(` followed within 3 lines by the same value typed via `userEvent.type` | UI echo — tests React binding, not logic | Q17=0, AP10 |
+| `expect(payload.id).toEqual(id)` or `expect(lastAction.payload.id).toEqual(` where `id` comes from mock/fixture setup | MSW echo — verifies mock, not transformation | Q17=0, AP10 |
+| `expect(typeof ` + `).toBe('function')` on a dispatched action | Opaque dispatch check | Q17=0 |
+| `if (` + `length === 0) return` or any bare `return` inside `it(` body | Silent skip — test passes without asserting | Q17=0, AP2 |
+| `reducer({ initialState: {} },` | Wrong initial state shape — loading=false is default, not transition | Q15=0, P-40 |
+| `expect(state.loading).toEqual(false)` with no other state assertions in that test | Loading-only — data in store never verified | Q15=0, P-41 |
+
+**If any pattern found:** List them in the report before running the full Q1-Q17 checklist. These are FAIL regardless of total score.
+
 ### Step 1: Verify 11 Hard Gates
 
 Check ALL test files written/modified during ETAP-1B against these blocking conditions:

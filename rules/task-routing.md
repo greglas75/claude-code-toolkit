@@ -11,7 +11,7 @@ Before starting implementation, route the task to the correct workflow.
 | Refactoring | Extract, split, move, rename, simplify | `/refactor` | CONTRACT + ETAP workflow |
 | Code review | After coding, before push | `/review` | Audit + confidence gate + backlog |
 | Code quality audit | Mass audit of production files | `/code-audit` | CQ1-CQ20 + CAP1-CAP13, tiered report |
-| Test quality audit | Mass audit of test files | `/test-audit` | Q1-Q17 + AP1-AP18, tiered report |
+| Test quality audit | Mass audit of test files | `/test-audit` | Q1-Q17 + AP/P-* patterns, tiered report |
 | API audit | Endpoint integrity check | `/api-audit` | 10 dimensions (D1-D10), cross-cutting analysis |
 | Tech debt management | View/manage backlog items | `/backlog` | Add, list, fix, wontfix items |
 | Simple bug fix | <3 files, clear cause | Direct coding | Follow testing + CQ rules |

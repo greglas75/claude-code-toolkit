@@ -14,6 +14,11 @@ At the start of every session, determine the project's tech stack. This controls
 | `package.json` with `react` in deps | React → apply `react-nextjs.md` |
 | `package.json` with `next` in deps | Next.js → apply `react-nextjs.md` |
 | `pyproject.toml`, `requirements.txt`, `setup.py`, or `.py` files | Python → apply `python.md` |
+| `composer.json` with `yiisoft/yii2` in require | Yii2 → apply `php-yii2.md` |
+| `composer.json` with `yiisoft/yii-*` or `yiisoft/yii` in require | Yii3 → apply `php-yii2.md` (base PHP rules) |
+| `composer.json` with `laravel/framework` in require | Laravel → apply `php-yii2.md` (base PHP rules) |
+| `codeception.yml` or `codeception.yaml` | Codeception test runner |
+| `phpunit.xml` or `phpunit.xml.dist` | PHPUnit test runner |
 | `vitest.config.*` or `vitest` in devDeps | Vitest (test runner) |
 | `jest.config.*` or `jest` in devDeps | Jest (test runner) |
 | `wrangler.toml` | Cloudflare Workers |
@@ -45,12 +50,17 @@ These are loaded ON-DEMAND (not in `~/.claude/rules/`):
 | File | Loaded when | Location |
 |------|-------------|----------|
 | `python.md` | Python detected | `~/.claude/conditional-rules/python.md` — read if Python stack |
+| `php-yii2.md` | PHP/Yii2 detected | `~/.claude/conditional-rules/php-yii2.md` — read if Yii2/PHP stack |
+| `test-patterns-yii2.md` | PHP/Yii2 + writing tests | `~/.claude/test-patterns-yii2.md` — Yii2+Codeception pattern library |
 | Build workflow | `/build` invoked | `~/.claude/skills/build/SKILL.md` — structured feature dev |
 | Review rules | `/review` invoked | `~/.claude/skills/review/rules.md` — read by skill |
 | Review protocol | `/review` invoked | `~/.claude/review-protocol.md` — detailed checklists, report templates |
 | Refactoring rules | `/refactor` invoked | `~/.claude/skills/refactor/rules.md` — read by skill |
 | Refactoring protocol | `/refactor` invoked | `~/.claude/refactoring-protocol.md` — CONTRACT + ETAP stages |
-| Test patterns | `/test-audit`, `/review`, `/refactor` | `~/.claude/test-patterns.md` — G-*/P-* pattern library |
+| Test patterns (core) | `/test-audit`, `/review`, `/refactor` | `~/.claude/test-patterns.md` — Q1-Q17, lookup table, scoring |
+| Test patterns (catalog) | Core lookup routes here | `~/.claude/test-patterns-catalog.md` — G-1–G-40, P-1–P-46 |
+| Test patterns (Redux) | Code type = REDUX-SLICE | `~/.claude/test-patterns-redux.md` — G-41–G-45, P-40, P-41, P-44 |
+| Test patterns (NestJS) | Code type = CONTROLLER + NestJS | `~/.claude/test-patterns-nestjs.md` — G-33–G-34, NestJS-G1–G2, NestJS-AP1, NestJS-P1–P3, security S1-S7, templates |
 | Code audit | `/code-audit` invoked | `~/.claude/skills/code-audit/SKILL.md` — CQ1-CQ20 mass audit |
 | Test audit | `/test-audit` invoked | `~/.claude/skills/test-audit/SKILL.md` — Q1-Q17 mass audit |
 | API audit | `/api-audit` invoked | `~/.claude/skills/api-audit/SKILL.md` — endpoint integrity |

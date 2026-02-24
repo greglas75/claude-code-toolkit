@@ -29,7 +29,7 @@ A plan without Test Strategy is incomplete -- do not approve it.
 
 ### New React Component
 - Render test (mounts without error)
-- **User flow tests (NOT just rendering)** -- for each interactive element, test the FULL flow: user action -> state change -> callback/API called with correct args -> success/error feedback. "Button visible" is NOT a flow test. See P-39 in `~/.cursor/test-patterns.md` for per-component-type minimum flows (form submit, search filter, modal confirm, etc.)
+- **User flow tests (NOT just rendering)** -- for each interactive element, test the FULL flow: user action -> state change -> callback/API called with correct args -> success/error feedback. "Button visible" is NOT a flow test. See P-39 in `~/.cursor/test-patterns-catalog.md` for per-component-type minimum flows (form submit, search filter, modal confirm, etc.)
 - Props/state variation tests
 - Error state test
 - Accessibility: interactive elements have ARIA labels, keyboard navigation works (see `react-nextjs.md` WCAG 2.1 AA)
@@ -110,6 +110,137 @@ feature-name.spec.ts           # Playwright E2E
 - `jest -u` / blind snapshot updates without reviewing diffs
 - Tests that depend on execution order
 
+## Quick-Fail Forbidden Patterns (auto-fail Q17 critical gate)
+
+Before submitting any test, scan for these specific patterns. Each one = Q17=0 = critical gate FAIL.
+
+**1. Always-true assertions (AP9)**
+```typescript
+// FORBIDDEN -- screen is always defined, this tests nothing
+expect(screen).toBeDefined();
+// FIX: assert actual content
+expect(screen.getByText('Industry Name')).toBeInTheDocument();
+```
+
+**2. UI input echo (AP10 sub-type)**
+```typescript
+// FORBIDDEN -- you typed 'moon', you check 'moon' -- tests React, not your code
+await userEvent.type(input, 'moon');
+expect(input).toHaveValue('moon');
+// FIX: assert what HAPPENED after submit
+expect(fetchProfiles).toHaveBeenCalledWith({ searchParams: { first_name: 'moon' } });
+```
+
+**3. MSW mock echo (AP10 sub-type)**
+```typescript
+// FORBIDDEN -- MSW was set up to return { id: 29 }, you check id === 29
+expect(payload.id).toEqual(id);  // id comes from mock setup
+// FIX: assert transformed data -- fields the code computed
+expect(payload.industry_name).toBe('Finance');
+expect(state.industries).toEqual(INDUSTRY_FIXTURES);
+```
+
+**4. Opaque dispatch verification**
+```typescript
+// FORBIDDEN -- proves "a thunk was dispatched" not "the correct one with correct payload"
+expect(typeof dispatchedAction).toBe('function');
+// FIX: vi.mock the thunk slice, use CalledWith
+expect(fetchProfiles).toHaveBeenCalledWith({ searchParams: expect.objectContaining({ first_name: 'moon' }) });
+```
+
+**5. Silent test skip (AP2)**
+```typescript
+// FORBIDDEN -- test PASSES when it skips, gives false confidence
+if (checkboxes.length === 0) return;
+// FIX: fail loud
+expect(checkboxes.length).toBeGreaterThan(0);
+```
+
+**6. Redux wrong initial state (P-40)**
+```typescript
+// FORBIDDEN -- { initialState: {} } is not the real slice state
+const state = reducer({ initialState: {} }, action);
+expect(state.loading).toEqual(false);  // always false -- not a real transition
+// FIX: use createInitialState() with real shape (see test-patterns-redux.md G-41)
+const state = reduceFrom({ type: addProfile.fulfilled.type, payload });
+expect(state.profiles).toContainEqual(expect.objectContaining({ id: 29 }));
+```
+
+**7. Loading-only Redux assertions (P-41)**
+```typescript
+// FORBIDDEN -- loading flipped but data never verified
+expect(state.loading).toEqual(false);  // that's it
+// FIX: verify data actually landed in the store
+expect(state.loading).toBe(false);
+expect(state.profiles).toEqual(PROFILE_FIXTURES);
+expect(state.filters).toEqual({ name: 'Moon' });
+```
+
+## Batch Diagnosis -- Grep Before You Fix
+
+Before deciding what to fix, scan the codebase to quantify what's actually broken.
+Run these in order -- highest signal first based on empirical data across real projects.
+
+```bash
+# P-41: Loading-only Redux assertions -- most prevalent pattern in agent-written slice tests
+# Hits here = slice tests that pass but never verify data in store
+grep -rn "expect(state.loading).toBe(false)\|expect(state.loading).toEqual(false)" src/ --include="*.test.*" | grep -v "#"
+
+# G-43 needed: Opaque dispatch -- form tests that prove "something was dispatched" not "which thunk + payload"
+grep -rn "expect(typeof dispatchedAction).toBe('function')" src/ --include="*.test.*"
+
+# AP9/AP10: Always-true + weak assertions
+grep -rn "toBeDefined()\|toBeTruthy()" src/ --include="*.test.*"
+
+# P-42: Non-deterministic faker selection
+grep -rn "faker.number.int.*min.*max.*length" src/ --include="*.test.*"
+
+# AP2: Silent test skip
+grep -rn "if.*length.*=== 0.*return\|if.*\.length === 0) return" src/ --include="*.test.*"
+
+# P-40: Wrong Redux initial state
+grep -rn "reducer({ initialState: {}" src/ --include="*.test.*"
+
+# MSW echo: payload.id check where id comes from fixture setup (check output manually)
+grep -rn "expect(payload\.id)\.toEqual\|expect(lastAction\.payload\.id)\.toEqual" src/ --include="*.test.*"
+
+# P-43: getByTestId dominance -- count ratio vs getByRole (accessibility gap)
+grep -rn "getByTestId\|queryByTestId" src/ --include="*.test.*" | wc -l
+grep -rn "getByRole\|queryByRole" src/ --include="*.test.*" | wc -l
+# If testId:role > 3:1 -> accessibility-blind suite -- replace with semantic queries (P-43)
+
+# P-44: Missing rejected state coverage in slice tests
+grep -rn "\.rejected\.type\|\.rejected," src/ --include="*.test.*" | wc -l
+# Low count (< 1 per thunk) -> add rejected tests for each async thunk
+
+# P-45: Shallow empty state -- only absence check, no placeholder assertion
+grep -rn "not\.toBeInTheDocument\|queryByText.*null" src/ --include="*.test.*" | wc -l
+grep -rn "No.*found\|empty.*state\|no results" src/ --include="*.test.*" -i | wc -l
+# If first >> second -> empty state UI never verified (P-45)
+
+# P-46: Validation error recovery gap -- forms test error shown but not cleared
+grep -rn "is required\|is invalid\|Please enter" src/ --include="*.test.*" | wc -l
+grep -rn "not\.toBeInTheDocument.*required\|queryByText.*required" src/ --include="*.test.*" | wc -l
+# If first >> second -> validation recovery missing (P-46)
+```
+
+**Interpret results:**
+
+| Pattern | Count | Action |
+|---------|-------|--------|
+| `state.loading` loading-only | >10 | Batch-fix all `*Slice.test.*` in one agent run -- identical template error |
+| `typeof dispatchedAction` | >3 | Batch-fix all `*Form.test.*` in one agent run -- apply vi.mock thunk pattern (G-43) |
+| `toBeDefined/toBeTruthy` | >10 | Likely AP14 territory -- check if SOLE assertion or just supplemental |
+| `faker.number.int` on DOM elements | Any | Replace with `checkboxes[1] ?? checkboxes[0]` + expect.length > 0 |
+| `initialState: {}` | Any | Replace with `createInitialState()` factory (G-41) |
+| `getByTestId:getByRole` > 3:1 | Any | Batch-replace testId queries with semantic queries (P-43) |
+| rejected coverage < 1 per thunk | Any | Add rejected test per thunk to each slice file (P-44) |
+| empty-state absence >> placeholder | >5 gap | Add placeholder assertion to each empty-state test (P-45) |
+| error-shown >> error-cleared | >5 gap | Add recovery flow to each form test (P-46) |
+
+**Grouping for batch fix:** Collect all files with same pattern -> one agent per group.
+E.g. 22 slice tests with loading-only -> one agent, one prompt, one fix template.
+
 ## Refactoring & Tests
 
 1. **Before:** run existing tests (baseline must pass)
@@ -155,7 +286,7 @@ Self-eval: Q1=1 Q2=1 Q3=0 Q4=1 Q5=1 Q6=1 Q7=1 Q8=0 Q9=1 Q10=1 Q11=1 Q12=0 Q13=1 
   Score: 14/17 -> PASS | Critical gate: Q7=1 Q11=1 Q13=1 Q15=1 Q17=1 -> PASS
 ```
 
-Full patterns (good patterns G-*, gap patterns P-*, stack adjustments): `~/.cursor/test-patterns.md`
+Full patterns: `~/.cursor/test-patterns.md` (core protocol + lookup table -> routes to `test-patterns-catalog.md`, `test-patterns-redux.md`, `test-patterns-nestjs.md`)
 
 ## Before Finishing Any Task
 

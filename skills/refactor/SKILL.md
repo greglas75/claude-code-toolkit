@@ -17,7 +17,7 @@ Before starting ANY work, read ALL files below. Confirm each with ✅ or ❌:
 2. ✅/❌  ~/.claude/refactoring-protocol.md       — full ETAP-1A → 1B → 2 protocol
 3. ✅/❌  ~/.claude/rules/code-quality.md         — CQ1-CQ20 production code checklist
 4. ✅/❌  ~/.claude/rules/testing.md              — Q1-Q17 test self-eval checklist
-5. ✅/❌  ~/.claude/test-patterns.md              — G-*/P-* patterns, AP anti-patterns
+5. ✅/❌  ~/.claude/test-patterns.md              — Q1-Q17 protocol, lookup table → routes to catalog/domain files
 ```
 
 **If ANY file is ❌ → STOP. Do not proceed with a partial rule set.**
@@ -81,6 +81,28 @@ Output: `STACK: [language] | RUNNER: [test runner] | EXAMPLE: [loaded file]`
 
 ## Phase 1: Type Detection
 
+### Test File Auto-Detection (before keyword matching)
+
+If the target file is a test file (`.test.*`, `.spec.*`, `__tests__/*`):
+→ Auto-set type = `IMPROVE_TESTS`
+→ Skip keyword-based detection below
+→ Stage 1 uses Q1-Q17 as primary audit (not production code checklist)
+→ Read `~/.claude/test-patterns.md` for lookup table → load matched patterns from catalog/domain files
+
+Display:
+```
+TEST FILE DETECTED: [file] → type = IMPROVE_TESTS
+This means:
+  - ETAP 1A: Q1-Q17 self-eval → assertion gaps + structural issues
+  - ETAP 1B: Structural cleanup (DRY, helpers, factories)
+  - ETAP 2: Assertion strengthening (payload verification, validation, interactions)
+
+Both phases required — structural-only refactoring is INCOMPLETE.
+OK? (Yes / Change to [type])
+```
+
+### Keyword-Based Detection (production files)
+
 Analyze the task description to detect refactoring type:
 
 | Keywords | Detected Type |
@@ -142,6 +164,8 @@ Definitions at `~/.claude/skills/refactor/agents/`.
 
 ## Phase 2: Sub-Agent Spawn (parallel, background)
 
+**Skip this phase for IMPROVE_TESTS type** — no production code analysis needed. Go directly to Phase 3.
+
 Spawn two sub-agents in background using the Task tool:
 
 **Agent 1: Dependency Mapper** — uses `~/.claude/skills/refactor/agents/dependency-mapper.md`
@@ -190,6 +214,14 @@ Read ~/.claude/refactoring-god-class.md
 ```
 
 Execute in order:
+
+**For IMPROVE_TESTS type** (test file refactoring):
+1. **ETAP-1A** — Q1-Q17 self-eval → gap classification (STRUCTURAL vs ASSERTION) → CONTRACT → HARD STOP
+2. **ETAP-1B** — Structural cleanup (DRY, helpers, constants) → commit
+3. **ETAP-2** — Assertion strengthening (payload verification, missing scenarios, interaction tests) → re-score → commit
+4. **HARD GATE:** score must improve ≥ 2 points AND all ASSERTION gaps resolved
+
+**For all other types** (production code refactoring):
 1. **ETAP-1A** (Analyze & Scope Freeze)
    - Stages 0 → 0.5 → 1 → 2 → **2.5 (Parallelism Analysis)** → 3 → HARD STOP
    - Incorporate Dependency Mapper + Existing Code Scanner results

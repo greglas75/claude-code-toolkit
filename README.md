@@ -55,7 +55,10 @@ Deep reference documents loaded on demand by skills:
 
 | File | Lines | Used by |
 |------|-------|---------|
-| `test-patterns.md` | ~1000 | `/test-audit`, testing rules — 27 Good Patterns + 38 Gap Patterns |
+| `test-patterns.md` | ~260 | Core protocol: Q1-Q17, lookup table, scoring, AP1-AP18, red flags |
+| `test-patterns-catalog.md` | ~880 | General patterns: G-1–G-40, P-1–P-46 (grep by ID) |
+| `test-patterns-redux.md` | ~190 | Redux: G-41–G-45, P-40, P-41, P-44 |
+| `test-patterns-nestjs.md` | ~90 | NestJS: G-33, G-34, NestJS-AP15, NestJS-P47 |
 | `refactoring-protocol.md` | ~700 | `/refactor` — CONTRACT format, ETAP stages, quality gates |
 | `review-protocol.md` | ~400 | `/review` — severity classification, fix tracking |
 
@@ -147,7 +150,10 @@ claude-code-toolkit/
 ├── conditional-rules/
 │   ├── python.md
 │   └── skill-management.md
-├── test-patterns.md            # Full pattern library (G-*/P-*)
+├── test-patterns.md            # Core protocol (Q1-Q17, lookup table, scoring)
+├── test-patterns-catalog.md    # General patterns (G-1–G-40, P-1–P-46)
+├── test-patterns-redux.md      # Redux patterns (G-41–G-45, P-40, P-41, P-44)
+├── test-patterns-nestjs.md     # NestJS patterns (G-33, G-34, NestJS-AP15, NestJS-P47)
 ├── refactoring-protocol.md     # CONTRACT + ETAP protocol
 ├── review-protocol.md          # Review protocol
 ├── install.sh                  # Installer (symlink or copy)

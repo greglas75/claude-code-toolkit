@@ -1,4 +1,4 @@
-# Code Review Rules (Always Active)
+ocen f# Code Review Rules (Always Active)
 
 These rules govern all code reviews via `/review`.
 Full protocol with detailed checklists, red-flag patterns, and report templates is at `~/.cursor/review-protocol.md` -- read it on-demand when `/review` starts.
