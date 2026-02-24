@@ -203,6 +203,8 @@ For EACH pair of (test file, production file), extract:
 | **P-65** | Route handler -- what auth, validation, error paths does the endpoint have? |
 | **AP10** | Production service/controller -- what does each public method return? What args does it pass downstream? |
 | **NestJS-P3** | Production service -- which injected dependencies does the method call? What does the external dep return? What does the service compute from it? |
+| **AP2** | No production file needed -- fix is always mechanical (remove if-guard, add direct assertion) |
+| **Q7-API** | Production wrapper -- which HTTP methods used? Does wrapper transform errors? Per-status handling? |
 
 Attach this context to each fixer agent's prompt. Without it, the agent writes generic assertions that don't match the real state shape.
 

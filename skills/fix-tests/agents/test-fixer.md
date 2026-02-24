@@ -1,6 +1,6 @@
 ---
 name: test-fixer
-description: "Repairs a batch of test files for a single pattern (P-41, G-43, P-40, P-43, P-44, P-45, P-46, AP10, AP14, NestJS-P3). Spawned by /fix-tests. Reads production files for context, applies mechanical fix, self-evals Q1-Q17."
+description: "Repairs a batch of test files for a single pattern (P-41, G-43, P-40, P-43, P-44, P-45, P-46, AP2, AP10, AP14, NestJS-P3, Q7-API). Spawned by /fix-tests. Reads production files for context, applies mechanical fix, self-evals Q1-Q17."
 model: sonnet
 tools:
   - Read
@@ -212,6 +212,62 @@ it('clears [fieldName] error after user provides valid input', async () => {
   expect(screen.queryByText('[error message text]')).not.toBeInTheDocument();
 });
 ```
+
+### AP2: Conditional Assertion → Hard Assertion
+
+**Trigger:** `if (condition) { expect(...) }` or Python `if results: assert ...` inside test body. Silently passes when condition is false.
+
+**Fix — always mechanical, no production file needed:**
+```typescript
+// BEFORE:
+if (results.length > 0) { expect(results[0].name).toBe('Alice'); }
+
+// AFTER:
+expect(results.length).toBeGreaterThan(0);
+expect(results[0].name).toBe('Alice');
+```
+```typescript
+// BEFORE (RTL):
+const btn = screen.queryByRole('button');
+if (btn) { expect(btn).toBeDisabled(); }
+
+// AFTER:
+const btn = screen.getByRole('button');  // throws if missing
+expect(btn).toBeDisabled();
+```
+```python
+# BEFORE:
+if results:
+    assert results[0]["name"] == "Alice"
+# AFTER:
+assert len(results) > 0
+assert results[0]["name"] == "Alice"
+```
+
+**SKIP when:** condition is intentional optional behavior with a comment explaining why.
+
+### Q7-API: API Wrapper Error Tests
+
+**Trigger:** `*.api.test.ts` / `*.client.test.ts` file with `mockResolvedValue` success tests but zero `mockRejectedValue` / `rejects` tests.
+
+**Read production file first** — determine if wrapper transforms errors or passes through.
+
+**Fix — add per exported async function:**
+```typescript
+// Passthrough wrapper:
+it('rejects when getUsers request fails', async () => {
+  mockHttp.get.mockRejectedValue(new Error('Network error'));
+  await expect(getUsers()).rejects.toThrow('Network error');
+});
+
+// Error-transforming wrapper:
+it('throws UnauthorizedError on 401', async () => {
+  mockHttp.get.mockRejectedValue({ response: { status: 401 } });
+  await expect(getUsers()).rejects.toBeInstanceOf(UnauthorizedError);
+});
+```
+
+One rejection test per exported function minimum. If wrapper has per-status-code handling → one test per status code branch.
 
 ### AP14: toBeDefined/toBeTruthy Sole Assertion
 
