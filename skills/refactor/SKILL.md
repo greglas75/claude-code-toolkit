@@ -360,7 +360,21 @@ Append to `refactoring-session/metrics.jsonl`:
 }
 ```
 
-### Tag (commits already done per-phase in Stage 4E)
+### Pre-Tag Review
+
+Before tagging, run `/review` on all commits made during this refactor session.
+Use the commit count from metrics (`"commits": N`) to scope the review:
+
+```
+/review HEAD~[N]
+```
+
+This reviews only the refactoring commits — not the whole codebase.
+
+**If review finds BLOCKING issues:** fix → commit fix → re-run review.
+**If review finds warnings only:** proceed to tag. Add warnings to backlog.
+
+### Tag (after review passes)
 
 Stage 4E creates one commit per phase during ETAP-2. Phase 5 only adds a tag on the final commit:
 
@@ -383,12 +397,12 @@ REFACTORING COMPLETE
 Type: [TYPE]
 File: [path] — [before] → [after] lines (-[X]%)
 Tests: [N] written, [N] passing
+Review: PASS | [N warnings → added to backlog]
 Commit: [hash] — [message]
 Tag: [tag name] (rollback: git reset --hard [tag])
 Execution: [SOLO / TEAM (N agents, M parallel tasks)]
 
 Next steps:
-  /review              → Review the refactored code before push
   /docs update [file]  → Update docs if API or module structure changed
   Push                 → git push origin [branch]
   Continue             → /refactor to start next task

@@ -290,19 +290,41 @@ EXECUTE VERIFICATION
 
 **THIS IS REQUIRED.** Zero issues may be silently discarded.
 
-### 5.2: Auto-Commit + Tag
+### 5.2: Stage + Pre-Commit Review
 
-After verification passes, automatically commit and tag:
+Stage exactly the files created/modified in this build (no more, no less):
 
-1. `git add [list of created/modified files — specific names, not -A]`
-2. `git commit -m "build: [feature description]"`
-3. `git tag build-[YYYY-MM-DD]-[short-slug]` (e.g., `build-2026-02-22-offer-export`)
+```
+git add [explicit list of created/modified files — never -A or .]
+```
+
+Then run `/review` scoped to staged changes only:
+
+```
+/review staged
+```
+
+This reviews ONLY the staged files — not the whole codebase.
+
+**If review finds BLOCKING issues:** unstage (`git reset HEAD [file]`), fix, re-stage, re-run review.
+**If review finds warnings only:** proceed to commit. Add warnings to backlog.
+
+### 5.3: Auto-Commit + Tag
+
+After review passes, execute these commands **without asking for confirmation** — the user pre-approved auto-commit by invoking `/build`:
+
+```
+git commit -m "build: [feature description]"
+git tag build-[YYYY-MM-DD]-[short-slug]
+```
+
+(e.g. tag: `build-2026-02-22-offer-export`)
 
 This creates a clean rollback point. User can `git reset --hard <tag>` if needed.
 
 **Do NOT push.** Push is a separate user decision.
 
-### 5.3: Output
+### 5.4: Output
 
 ```
 BUILD COMPLETE
@@ -312,12 +334,12 @@ Files created: [N]
 Files modified: [N]
 Tests written: [N], all passing
 Verification: tests PASS | types PASS | lint PASS
+Review: PASS | [N warnings → added to backlog]
 Backlog: [N items persisted | "none"]
 Commit: [hash] — [message]
 Tag: [tag name] (rollback: git reset --hard [tag])
 
 Next steps:
-  /review             → Review the new code before push
   /docs readme [path] → Write README for the new module (if new service/module created)
   /docs api [path]    → Document the new endpoints (if new endpoints added)
   Push                → git push origin [branch]
