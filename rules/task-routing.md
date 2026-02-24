@@ -2,6 +2,22 @@
 
 Before starting implementation, route the task to the correct workflow.
 
+## QUALITY GATE — Read This First
+
+**STOP. Before writing ANY code, verify these gates. Violations = rejected PR.**
+
+| # | Gate | Trigger | Action |
+|---|------|---------|--------|
+| G1 | **New code → tests** | Any new `.ts`/`.tsx`/`.py`/`.php` file | Write tests BEFORE or WITH the code. Zero exceptions. |
+| G2 | **3+ files → /build** | Feature touches 3+ files | Use `/build` command, NOT direct coding. |
+| G3 | **CQ self-eval** | Any production code written | Run CQ1-CQ20 from `code-quality.md`. Print score. |
+| G4 | **Test self-eval** | Any test code written | Run Q1-Q17 from `test-patterns.md`. Print score. |
+| G5 | **Pre-commit hook** | `git commit` | Hook blocks if new source file has no test. |
+
+**If you skip any gate, the pre-commit hook (G5) will block your commit.**
+
+---
+
 ## Routing Table
 
 | Task Type | Signal | Command | Why |

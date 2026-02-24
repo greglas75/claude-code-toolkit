@@ -1,0 +1,44 @@
+# Project: [PROJECT_NAME]
+
+## Tech Stack
+
+| Layer | Tech |
+|-------|------|
+| Language | TypeScript / Python / PHP |
+| Framework | Next.js / NestJS / Yii2 |
+| Test runner | Vitest / Jest / pytest / Codeception |
+| DB | Prisma / Sequelize / ActiveRecord |
+
+<!-- Delete rows that don't apply. Stack detection uses this table. -->
+
+## Quality Enforcement
+
+**Every task that produces code MUST end with a Completion Checklist.**
+
+Before finishing ANY implementation task, output this checklist verbatim and fill it in:
+
+```
+## Completion Checklist
+- [ ] New source files: [list them]
+- [ ] Test files created: [list them, or "N/A — no new source files"]
+- [ ] CQ self-eval: [score/20, or "N/A — tests only"]
+- [ ] Test self-eval: [score/17, or "N/A — no tests written"]
+- [ ] Critical gates passed: [YES/NO + which failed]
+- [ ] All tests pass: [YES/NO]
+```
+
+**If any line is missing or "TODO" — task is NOT complete. Go back and fix.**
+
+Rules:
+- New source file without test file = BLOCKED (pre-commit hook enforces this)
+- CQ score < 14 or critical gate fail = FIX before finishing
+- Test score < 14 or critical gate fail (Q7/Q11/Q13/Q15/Q17) = FIX before finishing
+- Feature touching 3+ files without `/build` = WRONG WORKFLOW, restart
+
+## Project Conventions
+
+<!-- Add project-specific conventions below -->
+
+## Known Issues
+
+<!-- Link to backlog: memory/backlog.md -->

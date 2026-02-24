@@ -1219,3 +1219,109 @@
   ```
 - **Why:** Without cleanup, tests affect each other. Order-dependent tests = flaky CI.
 - **Source:** audit 2026-02-24, PromptVault -- tests create data without cleanup
+
+### P-67: API Wrapper Happy-Path Only (No Error Tests)
+- **When:** Thin HTTP wrapper function (`*.api.ts`, `*.client.ts`) has tests covering only `mockResolvedValue` success path — zero `mockRejectedValue` / error path tests
+- **Problem:**
+  ```typescript
+  // api.test.ts — only success:
+  it('fetches users', async () => {
+    mockHttp.get.mockResolvedValue({ data: USERS });
+    const result = await getUsers();
+    expect(result).toEqual(USERS);
+  });
+  // Missing: what does getUsers() do when the HTTP call fails?
+  // Consumer code that wraps getUsers() in try/catch gets zero regression safety.
+  ```
+- **Detection:** `grep -l "mockResolvedValue" [file] | xargs grep -L "mockRejectedValue"` — file has resolved tests but zero rejected tests.
+- **Fix:** For each exported function that has a success test, add:
+  ```typescript
+  it('throws when [endpoint] fails', async () => {
+    mockHttp.get.mockRejectedValue(new Error('Network error'));
+    await expect(getUsers()).rejects.toThrow('Network error');
+  });
+  // If wrapper has error transformation logic, assert the transformed error:
+  it('wraps server 403 as AuthError', async () => {
+    mockHttp.get.mockRejectedValue({ response: { status: 403, data: 'Forbidden' } });
+    await expect(getUsers()).rejects.toThrow(AuthError);
+  });
+  ```
+- **Priority:** Each function needs at minimum 1 rejection test. If the wrapper transforms errors (catches and re-throws), test all transformation branches too.
+- **Batch signal:** All `*.api.test.ts` / `*.api.spec.ts` in a directory failing this pattern = same one-line fix per file. Spawn batch agent.
+- **Source:** audit 2026-02-24, TGM HelpDesk -- 8 `*.api.test.ts` files, all zero `mockRejectedValue` (auth, admin, messages, settings, users, emailRules, kb, reports)
+
+### G-58: Time-Dependent Branch Testing (vi.useFakeTimers)
+- **When:** Code has a time-dependent branch (debounce, throttle, setTimeout, polling interval, retry delay) requiring timer manipulation to test
+- **Do:** Use `vi.useFakeTimers()` / `jest.useFakeTimers()` to control time, always restore in `afterEach`:
+  ```typescript
+  describe('useModelForm — debounce branch', () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());  // MANDATORY — leaked fake timers break subsequent async tests
+
+    it('does not call onChange before debounce elapses', () => {
+      const { result } = renderHook(() => useModelForm({ debounceMs: 300, onChange: mockOnChange }));
+      act(() => result.current.handleChange('new value'));
+      expect(mockOnChange).not.toHaveBeenCalled();  // timer still running
+    });
+
+    it('calls onChange with latest value after debounce elapses', () => {
+      const { result } = renderHook(() => useModelForm({ debounceMs: 300, onChange: mockOnChange }));
+      act(() => result.current.handleChange('new value'));
+      act(() => vi.advanceTimersByTime(300));
+      expect(mockOnChange).toHaveBeenCalledWith('new value');
+      expect(mockOnChange).toHaveBeenCalledTimes(1);  // collapsed, not per-keystroke
+    });
+
+    it('collapses rapid changes into single call with final value', () => {
+      const { result } = renderHook(() => useModelForm({ debounceMs: 300, onChange: mockOnChange }));
+      act(() => {
+        result.current.handleChange('a');
+        result.current.handleChange('ab');
+        result.current.handleChange('abc');
+        vi.advanceTimersByTime(300);
+      });
+      expect(mockOnChange).toHaveBeenCalledTimes(1);
+      expect(mockOnChange).toHaveBeenCalledWith('abc');
+    });
+  });
+
+  // Always test the debounceMs=0 / synchronous branch separately (no fake timers needed):
+  it('calls onChange synchronously when debounceMs=0', () => {
+    const { result } = renderHook(() => useModelForm({ debounceMs: 0, onChange: mockOnChange }));
+    act(() => result.current.handleChange('new value'));
+    expect(mockOnChange).toHaveBeenCalledWith('new value');  // immediate
+  });
+  ```
+- **Why:** The `debounceMs > 0` branch is invisible to tests that don't control time — zero tests exercise it even though it exists. `vi.useFakeTimers` makes it deterministic and fast (no real waiting).
+- **Minimum tests:** (1) not-called before timeout, (2) called after timeout with latest value, (3) collapse rapid changes, (4) synchronous path when debounce disabled
+- **Source:** audit 2026-02-24, TGM Survey Platform -- useModelForm.test.ts Q11=0 due to `debounceMs > 0` branch entirely untested (scored 15/17)
+
+### P-66: Transform / Enum Switch Branch Coverage Gap
+- **When:** ADAPTER/TRANSFORM function has switch/if-else on enum, string literal union, or boolean flag, but tests only cover the default/`'none'`/`false` branch
+- **Problem:**
+  ```typescript
+  // Production — 3 branches, only 1 branch tested:
+  function transformQuestion(q: Question) {
+    return {
+      required: q.isRequired ? 'mandatory' : 'optional',          // only true tested
+      randomize: q.randomize !== 'none' ? shuffleOptions(q) : q,  // only 'none' tested
+      action: q.action === 'disqualify' ? addFlag(q) : q,         // only 'continue' tested
+    };
+  }
+  ```
+- **Detection:** For each `ternary/switch/if-else` in the transform function, enumerate all enum values in the type signature. Any value not covered by a test = P-66 gap.
+- **Fix:** Add one test per untested branch value:
+  ```typescript
+  it('marks question as optional when isRequired=false', () => {
+    expect(transform(makeQuestion({ isRequired: false })).required).toBe('optional');
+  });
+  it('shuffles options when randomize is not none', () => {
+    const result = transform(makeQuestion({ randomize: 'random' }));
+    expect(result.options).not.toEqual(makeQuestion().options);
+  });
+  it('adds disqualify flag when action is disqualify', () => {
+    expect(transform(makeQuestion({ action: 'disqualify' })).disqualifyFlag).toBe(true);
+  });
+  ```
+- **Related:** Q11 (branch coverage) — this is the specific form Q11 takes in ADAPTER/TRANSFORM code. Use `it.each` (G-28) when 3+ enum values share the same fix shape.
+- **Source:** audit 2026-02-24, TGM Survey Platform -- transformQuestion (isRequired=false), transformIncoming (randomize, action), transformSurveyForDesigner (status='closed', logicRules populated) — all Q11=0 from this single pattern

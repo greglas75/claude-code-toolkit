@@ -1,6 +1,6 @@
 ---
 name: test-fixer
-description: "Repairs a batch of test files for a single pattern (P-41, G-43, P-40, P-43, P-44, P-45, P-46). Spawned by /fix-tests. Reads production files for context, applies mechanical fix, self-evals Q1-Q17."
+description: "Repairs a batch of test files for a single pattern (P-41, G-43, P-40, P-43, P-44, P-45, P-46, AP10, AP14, NestJS-P3). Spawned by /fix-tests. Reads production files for context, applies mechanical fix, self-evals Q1-Q17."
 ---
 
 You are a **Test Repair Specialist** -- you fix a specific pattern in a batch of test files without touching anything else.
@@ -204,6 +204,91 @@ it('clears [fieldName] error after user provides valid input', async () => {
   expect(screen.queryByText('[error message text]')).not.toBeInTheDocument();
 });
 ```
+
+### AP14: toBeDefined/toBeTruthy Sole Assertion
+
+**Trigger:** `expect(x).toBeDefined()` or `expect(x).toBeTruthy()` is the ONLY assertion in a test, or constitutes >50% of assertions in a file.
+
+**Read production file first** -- you need to know what the actual value is before replacing the assertion.
+
+**Fix priority:**
+```typescript
+// REPLACE:
+expect(registry.getComponent('text')).toBeDefined();
+
+// WITH (use first that applies):
+expect(registry.getComponent('text')).toBe(TextQuestionComponent);       // exact identity
+expect(registry.getComponent('text')).toEqual({ type: 'text', ... });    // data structure
+expect(registry.getComponent('text')).toMatchObject({ render: expect.any(Function) });  // shape
+// NEVER leave toBeDefined() as sole assertion after fix
+```
+
+**For registry/factory bulk cases:**
+- Read the registration code to know what each key maps to
+- Replace each `getComponent('x').toBeDefined()` with `getComponent('x').toBe(XComponent)`
+- If you can't determine the exact value from the source -> mark NEEDS_REVIEW with reason
+
+**SKIP when:** `toBeDefined()` is supplemental alongside a more specific assertion in the SAME test -- it's already covered by the content assertion.
+
+### AP10: Tautological Delegation
+
+**Trigger:** ALL assertions in a test are `toHaveBeenCalled()` / `toHaveBeenCalledTimes(1)` -- no argument content check, no return value assertion.
+
+**Fix:** Add `toHaveBeenCalledWith(expect.objectContaining({...}))` for what was passed downstream, plus assertion on the return value (must be COMPUTED, not echo of mock return):
+
+```typescript
+// BEFORE:
+it('calls dataService.process', async () => {
+  await service.run(INPUT);
+  expect(mockDataService.process).toHaveBeenCalled();
+});
+
+// AFTER:
+it('calls dataService.process with normalized input and returns transformed result', async () => {
+  mockDataService.process.mockResolvedValue(RAW_RESULT);
+  const result = await service.run(INPUT);
+  expect(mockDataService.process).toHaveBeenCalledWith(
+    expect.objectContaining({ field: INPUT.field, normalized: true })  // what was PASSED
+  );
+  expect(result.count).toBe(RAW_RESULT.items.length);  // what was COMPUTED (not echoed)
+});
+```
+
+Also add one error-path test per public method (Q7 fix bundled with AP10):
+```typescript
+it('propagates error when dataService.process fails', async () => {
+  mockDataService.process.mockRejectedValue(new Error('Service unavailable'));
+  await expect(service.run(INPUT)).rejects.toThrow('Service unavailable');
+});
+```
+
+**SKIP when:** method is genuine passthrough with no transformation -- then AP10 doesn't apply but add `toHaveBeenCalledWith` to verify the passthrough is correct.
+
+### NestJS-P3: Self-Mock on Own Service
+
+**Trigger:** `jest.spyOn(service, 'methodName')` where the test is for that same `service` class.
+
+**Fix -- 3 steps:**
+
+1. Read the production file: what external injected dependency does `methodName` call internally?
+2. Remove the spyOn. Mock the external dep instead:
+```typescript
+// REMOVE:
+jest.spyOn(service, 'getDataChanged').mockResolvedValue(MOCK_DIFF);
+
+// ADD (mock the real external dep):
+mockGoogleService.fetchData.mockResolvedValue(GOOGLE_DATA);
+```
+3. Assert on COMPUTED output, not just that the dep was called:
+```typescript
+const result = await service.importData(req);
+expect(mockGoogleService.fetchData).toHaveBeenCalledWith(req.sheetId);
+expect(result.newCount).toBe(MOCK_DIFF.filter(d => d.isNew).length);  // computed
+```
+
+**Also add:** one `.rejects.toThrow()` test per public method (Q7 gap that always appears with NestJS-P3).
+
+**SKIP condition:** if removing the spy requires understanding complex internal logic that can't be inferred from production file alone -> mark NEEDS_REVIEW with note "requires domain knowledge of diff algorithm".
 
 ---
 

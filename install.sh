@@ -124,11 +124,21 @@ for agent in "$TOOLKIT_DIR"/dist/cursor/agents/*.md; do
 done
 echo "  + ~/.cursor/ (rules, protocols, skills, agents)"
 
-# --- 7. Per-project setup script ---
+# --- 7. Per-project setup script + pre-commit hook ---
 mkdir -p "$CLAUDE_DIR/scripts"
 cp "$TOOLKIT_DIR/scripts/setup-antigravity-all.sh" "$CLAUDE_DIR/scripts/setup-antigravity-all.sh"
 chmod +x "$CLAUDE_DIR/scripts/setup-antigravity-all.sh"
+cp "$TOOLKIT_DIR/scripts/pre-commit-test-gate.sh" "$CLAUDE_DIR/scripts/pre-commit-test-gate.sh"
+chmod +x "$CLAUDE_DIR/scripts/pre-commit-test-gate.sh"
 echo "  + ~/.claude/scripts/setup-antigravity-all.sh"
+echo "  + ~/.claude/scripts/pre-commit-test-gate.sh"
+
+# --- 7b. CLAUDE.md template ---
+cp "$TOOLKIT_DIR/templates/CLAUDE.md.template" "$CLAUDE_DIR/templates/CLAUDE.md.template" 2>/dev/null || {
+  mkdir -p "$CLAUDE_DIR/templates"
+  cp "$TOOLKIT_DIR/templates/CLAUDE.md.template" "$CLAUDE_DIR/templates/CLAUDE.md.template"
+}
+echo "  + ~/.claude/templates/CLAUDE.md.template"
 
 # --- 8. OpenAI Codex CLI integration ---
 bash "$TOOLKIT_DIR/scripts/build-codex-skills.sh" "$TOOLKIT_DIR"

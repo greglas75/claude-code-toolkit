@@ -54,6 +54,9 @@ If `~/.cursor/` is not accessible, resolve from `_agent/` in project root:
 | `--pattern P-63` | Replace E2E silent conditionals with assertions |
 | `--pattern P-64` | Move hardcoded credentials to env vars |
 | `--pattern P-65` | Add missing test cases to under-tested API routes |
+| `--pattern AP10` | Upgrade tautological delegation (toHaveBeenCalled-only) to CalledWith + return value |
+| `--pattern NestJS-P3` | Remove self-mock spyOn on own service, test computed output instead |
+| `--pattern AP14` | Replace `toBeDefined()`/`toBeTruthy()` sole assertions with content assertions |
 | `--triage` | Run Batch Diagnosis greps, report counts, ask user which to fix |
 | `[path]` | Limit scope to specific directory (default: `src/`) |
 | `--dry-run` | Show what would be changed, don't write files |
@@ -106,11 +109,32 @@ for f in $(find [path] -name "route.test.*" -type f); do
   count=$(grep -c "it(\|test(" "$f" 2>/dev/null || echo 0)
   echo "$f: $count tests"
 done
+
+# AP10: Tautological delegation (toHaveBeenCalled as sole assertion -- no CalledWith, no return value)
+# Step 1: files with toHaveBeenCalled but no CalledWith (raw indicator)
+grep -rln "\.toHaveBeenCalled\(\)\|\.toHaveBeenCalledTimes(1)" [path] --include="*.test.*" | \
+  xargs -I{} sh -c 'grep -l "toHaveBeenCalledWith\|toHaveBeenLastCalledWith" {} >/dev/null 2>&1 || echo {}'
+# Step 2: verify manually -- if ALL assertions in file are toHaveBeenCalled -> AP10
+
+# NestJS-P3: Self-mock (spyOn on own service/controller)
+grep -rn "spyOn(service\|spyOn(controller\|jest\.spyOn.*service\|jest\.spyOn.*controller" [path] --include="*.test.*" --include="*.spec.*" | grep -v "node_modules"
+
+# AP14: toBeDefined/toBeTruthy as SOLE assertion (files where it's the majority pattern)
+# Step 1: count files with high density
+for f in $(find [path] -name "*.test.*" -o -name "*.spec.*" | grep -v node_modules); do
+  total=$(grep -c "expect(" "$f" 2>/dev/null || echo 0)
+  weak=$(grep -c "\.toBeDefined()\|\.toBeTruthy()" "$f" 2>/dev/null || echo 0)
+  [ "$total" -gt 0 ] && ratio=$((weak * 100 / total)) || ratio=0
+  [ "$ratio" -gt 40 ] && echo "$f: $weak/$total assertions are toBeDefined/toBeTruthy ($ratio%)"
+done
 ```
 
 Report format:
 ```
 Triage results:
+  AP10 (delegation-only): [N] files (no CalledWith) -> [ACTION: Fix / Skip]
+  NestJS-P3 (self-mock):  [N] hits in [M] files -> [ACTION: Fix / Skip]
+  AP14 (toBeDefined sole): [N] files with >50% AP14 -> [ACTION: Fix / Skip]
   P-41 (loading-only):   [N] hits in [M] files -> [ACTION: Fix / Skip]
   G-43 (opaque dispatch): [N] hits in [M] files -> [ACTION: Fix / Skip]
   P-40 (wrong init state): [N] hits in [M] files -> [ACTION: Fix / Skip]
@@ -162,6 +186,8 @@ For EACH pair of (test file, production file), extract:
 | **P-63** | E2E spec -- which elements use conditional isVisible() guards? |
 | **P-64** | Fixtures/config -- which credentials are hardcoded? (no production file needed) |
 | **P-65** | Route handler -- what auth, validation, error paths does the endpoint have? |
+| **AP10** | Production service/controller -- what does each public method return? What args does it pass downstream? |
+| **NestJS-P3** | Production service -- which injected dependencies does the method call? What does the external dep return? What does the service compute from it? |
 
 Attach this context to each fixer agent's prompt. Without it, the agent writes generic assertions that don't match the real state shape.
 
@@ -403,6 +429,123 @@ const testUser = {
 ```
 
 Also add `.env.test` or `.env.e2e` to the project with the values, and add the env var names to `.env.example`.
+
+### AP14: toBeDefined/toBeTruthy Sole Assertion -> Content Check
+
+Context needed: the production code/registration to know what the actual value is.
+
+**Trigger:** `expect(x).toBeDefined()` or `expect(x).toBeTruthy()` is the ONLY assertion for a test. The value could be anything truthy and the test still passes.
+
+**Fix -- determine what the actual value should be, then assert it:**
+```typescript
+// BEFORE -- proves something exists, not what it is:
+expect(registry.getComponent('text')).toBeDefined();
+expect(result.items).toBeTruthy();
+
+// AFTER -- asserts the actual identity/content:
+expect(registry.getComponent('text')).toBe(TextQuestionComponent);
+expect(result.items).toEqual([ITEM_1, ITEM_2]);
+// OR if exact value unknown but shape is verifiable:
+expect(registry.getComponent('text')).toMatchObject({ type: 'text', render: expect.any(Function) });
+expect(result.items).toHaveLength(2);
+expect(result.items[0]).toHaveProperty('id');
+```
+
+**Priority order for replacement:**
+1. `toBe(ExactValue)` -- when value is a specific constant/component/enum
+2. `toEqual(fixture)` -- when value is a data structure you can reproduce
+3. `toMatchObject({...})` -- when verifying shape with key fields
+4. `toHaveLength(N)` + `toContainEqual(...)` -- when verifying collections
+
+**SKIP when:** `toBeDefined()` is SUPPLEMENTAL alongside a more specific assertion in the same test -- don't remove it, just note it's already covered.
+
+**Batch note:** In registry/factory patterns (settingsRegistry, componentRegistry), each `getComponent('type')` call should assert the specific registered component class, not just existence. Read the registry to find what's registered.
+
+### AP10: Tautological Delegation -- Upgrade to CalledWith + Return Value
+
+Context needed: production service/controller to know what each method returns and what args it passes to its dependencies.
+
+**Trigger:** Test only asserts `toHaveBeenCalled()` or `toHaveBeenCalledTimes(1)` -- never checks argument content or return value. Every test follows the pattern: "call method -> verify mock called once -> done."
+
+**Critical distinction from G-43:** G-43 is Redux dispatch opaque type check. AP10 is SERVICE/CONTROLLER delegation where return value and argument content are never verified.
+
+Fix -- for each tautological test, add both:
+1. `toHaveBeenCalledWith(expect.objectContaining({...}))` -- verify WHAT was passed downstream
+2. Assertion on return value -- verify WHAT was returned to the caller
+
+```typescript
+// BEFORE -- tautological delegation:
+it('should call dataService.process', async () => {
+  mockDataService.process.mockResolvedValue(RESULT);
+  await service.run(INPUT);
+  expect(mockDataService.process).toHaveBeenCalled();  // sole assertion
+});
+
+// AFTER -- verify content + result:
+it('processes input with correct args and returns transformed result', async () => {
+  mockDataService.process.mockResolvedValue(RAW_RESULT);
+  const result = await service.run(INPUT);
+  // What was passed downstream?
+  expect(mockDataService.process).toHaveBeenCalledWith(
+    expect.objectContaining({ field: INPUT.field, normalized: true })
+  );
+  // What was returned (computed from RAW_RESULT)?
+  expect(result.status).toBe('processed');  // NOT equal to RAW_RESULT.status -- it was transformed
+});
+```
+
+**Watch for Q17:** the return value assertion must verify a COMPUTED value, not an echo of RAW_RESULT. If service just passes through the dep's return unchanged, assert it's the correct passthrough with `toEqual(RAW_RESULT)` AND add a separate test for error propagation.
+
+**SKIP when:** the method genuinely is a pure delegation (adapter) with no transformation -- then `toEqual(RAW_RESULT)` is correct and the test should add `toHaveBeenCalledWith` but is not AP10.
+
+### NestJS-P3: Self-Mock -> Test External Dep + Computed Output
+
+Context needed: production service to identify which injected external dependency the mocked-own-method delegates to, and what the service computes from the external dep's return value.
+
+**Trigger:** `jest.spyOn(service, 'ownMethod').mockResolvedValue(X)` in a test for the same service class.
+
+Fix -- 3 steps per file:
+
+**Step 1:** Identify what `ownMethod` internally calls (read production file):
+```typescript
+// In production: service.getDataChanged() calls this.googleService.fetchData() and diffService.compare()
+```
+
+**Step 2:** Replace spyOn with mock on the EXTERNAL injected dep:
+```typescript
+// REMOVE:
+jest.spyOn(service, 'getDataChanged').mockResolvedValue(MOCK_DIFF);
+
+// ADD (mock the real external deps):
+mockGoogleService.fetchData.mockResolvedValue(GOOGLE_DATA);
+mockDiffService.compare.mockResolvedValue(MOCK_DIFF);
+```
+
+**Step 3:** Add assertion on COMPUTED output (not just that the external mock was called):
+```typescript
+// BEFORE (tautological):
+expect(mockSpyGetDataChanged).toHaveBeenCalledWith(req);
+
+// AFTER (computed):
+const result = await service.importData(req);
+expect(mockGoogleService.fetchData).toHaveBeenCalledWith(req.sheetId);
+expect(result.newRecords).toBe(MOCK_DIFF.filter(d => d.isNew).length);  // computed from diff
+expect(result.updatedRecords).toBe(MOCK_DIFF.filter(d => !d.isNew).length);
+```
+
+**Also add (for Q7):** One error-path test per public method:
+```typescript
+it('throws when external service fails', async () => {
+  mockGoogleService.fetchData.mockRejectedValue(new Error('Google API down'));
+  await expect(service.importData(req)).rejects.toThrow('Google API down');
+  // Or if service wraps the error:
+  await expect(service.importData(req)).rejects.toThrow('Import failed');
+});
+```
+
+**Batch note (from 2026-02-24 audit):** task-schedule services all follow the same 6-method structure (import/sheet/diff/add/update/logError). Same fix template applies to all. Each file also needs:
+- Direct test for the `getDataChanged`/diff method with real inputs (null req, empty req, new records, unchanged records)
+- `logError` method test (untested in all files)
 
 ### P-65: API Route Test Density -- Add Missing Cases
 

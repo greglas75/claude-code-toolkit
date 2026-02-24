@@ -39,6 +39,13 @@ setup() {
   # Agent instructions (tells IDE agents what's available and how to use it)
   ln -sf "$HOME/.claude/agent-instructions.md" "$dir/_agent/AGENT_INSTRUCTIONS.md"
 
+  # Pre-commit hook (test gate — blocks commit without tests for new source files)
+  if [ -d "$dir/.git/hooks" ] && [ -f "$HOME/.claude/scripts/pre-commit-test-gate.sh" ]; then
+    if [ ! -f "$dir/.git/hooks/pre-commit" ]; then
+      ln -sf "$HOME/.claude/scripts/pre-commit-test-gate.sh" "$dir/.git/hooks/pre-commit"
+    fi
+  fi
+
   # memory/backlog.md
   local has_mem=""
   if [ -f "$memory_src/backlog.md" ]; then
