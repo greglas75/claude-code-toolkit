@@ -388,9 +388,10 @@ Tag: [tag name] (rollback: git reset --hard [tag])
 Execution: [SOLO / TEAM (N agents, M parallel tasks)]
 
 Next steps:
-  /review   → Review the refactored code
-  Push      → git push origin [branch]
-  Continue  → /refactor to start next task
+  /review              → Review the refactored code before push
+  /docs update [file]  → Update docs if API or module structure changed
+  Push                 → git push origin [branch]
+  Continue             → /refactor to start next task
 ```
 
 ---
