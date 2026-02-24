@@ -83,4 +83,48 @@ Top files:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
+---
+
+## Prioritization (when asked to rank or plan)
+
+When user asks "what should we fix first?" or `/backlog prioritize`, score each OPEN item:
+
+```
+Priority Score = (Impact + Risk) × (6 - Effort)
+```
+
+| Dimension | 1 | 3 | 5 |
+|-----------|---|---|---|
+| **Impact** | Rarely slows us down | Sometimes blocks dev | Slows team every day |
+| **Risk** | Nice-to-have | Regressions possible | Security/data loss risk |
+| **Effort** | Days | Week | Month+ |
+
+Score range: 2 (low priority) → 50 (do immediately).
+
+Output as ranked table:
+```
+PRIORITIZED BACKLOG
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+| Rank | ID   | Score | Impact | Risk | Effort | Problem               |
+|------|------|-------|--------|------|--------|-----------------------|
+| 1    | B-2  | 40    | 5      | 5    | 2      | Race condition payout |
+| 2    | B-1  | 24    | 4      | 4    | 3      | catch(err: any)       |
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## Tech Debt Categories
+
+When classifying new items (for filtering/planning):
+
+| Category | Examples |
+|----------|----------|
+| **Code** | Duplicated logic, magic numbers, poor abstractions, any-types |
+| **Architecture** | Wrong data store, monolith boundaries, missing service split |
+| **Test** | Low coverage, flaky tests, missing integration tests |
+| **Dependency** | Outdated libraries, CVEs, unmaintained packages |
+| **Documentation** | Missing runbooks, outdated READMEs, tribal knowledge |
+| **Infrastructure** | Manual deploys, no monitoring, missing IaC |
+
+Assign category when adding items. Enables `/backlog list category:test` filtered views.
+
 $ARGUMENTS
