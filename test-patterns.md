@@ -43,7 +43,7 @@ Look at the function/component and pick ALL matching types:
 | **SERVICE** | G-2, G-4, G-9, G-11, G-23, G-24, G-25, G-28, G-30, G-31, G-38, G-39, G-53, G-54, G-58 | P-1, P-4, P-5, P-11, P-22, P-23, P-25, P-27, P-28, P-29, P-31, P-32, P-37, P-56, P-57 |
 | **REDIS/CACHE** | G-2, G-4 | P-1, P-5, P-6, P-14, P-29 |
 | **ORM/DB** | G-9, G-28, G-30 | P-5, P-11, P-15, P-29, P-32 |
-| **API-CALL** | G-3, G-15, G-28, G-29, G-36, G-55 | P-1, P-2, P-6, P-16, P-25, P-27, P-28, P-31, P-35, P-56 |
+| **API-CALL** | G-3, G-15, G-28, G-29, G-36, G-55 | P-1, P-2, P-6, P-16, P-25, P-27, P-28, P-31, P-35, P-56, P-67 |
 | **GUARD/AUTH** | G-6, G-8, G-11, G-20, G-28, G-29, G-32 | P-1, P-6, P-7, P-14, P-28 |
 | **STATE-MACHINE** | G-1, G-7, G-21, G-28 | P-7, P-13, P-18 |
 | **ORCHESTRATOR** | G-2, G-20, G-21, G-23, G-24, G-25, G-31 | P-5, P-14, P-20, P-21, P-22, P-23, P-24, P-25, P-28 |
@@ -64,7 +64,7 @@ Look at the function/component and pick ALL matching types:
 
 | File | Contains | When to load |
 |------|----------|--------------|
-| `~/.claude/test-patterns-catalog.md` | G-1 -- G-40, G-51 -- G-58, P-1 -- P-46, P-53 -- P-57, P-62 -- P-66 (general + E2E) | Always — grep matched pattern IDs |
+| `~/.claude/test-patterns-catalog.md` | G-1 -- G-40, G-51 -- G-58, P-1 -- P-46, P-53 -- P-57, P-62 -- P-67 (general + E2E) | Always — grep matched pattern IDs |
 | `~/.claude/test-patterns-redux.md` | G-41 -- G-45, P-40, P-41, P-44 | Code type includes REDUX-SLICE |
 | `~/.claude/test-patterns-nestjs.md` | G-33, G-34, NestJS-G1, NestJS-G2, NestJS-AP1, NestJS-P1–P3, security S1–S7, templates | Code type includes CONTROLLER + NestJS stack |
 
@@ -236,6 +236,8 @@ Empirical correlations from 92-file cross-project analysis (N=20 initial, N=92 c
 | Mock typed as `as any` / plain object literal without interface | 3.2/10 | P-56: drift risk — service signature change won't surface as test error |
 | No `afterEach` cleanup for `process.env` / `window` globals | 3.8/10 | P-57: ordering leak risk — test B passes only after test A ran first |
 | Regression tests without ticket reference in name | 4.5/10 | G-54 missing: high deletion risk in cleanup — looks like arbitrary edge case |
+| `*.api.test.ts` with zero `mockRejectedValue` | 4.0/10 | P-67: error resilience never tested — consumer try/catch has no regression safety |
+| `if (condition) { expect(...) }` in test body | 2.5/10 | AP2: conditional assertion silently skips when condition is false — test always passes |
 | >20 `vi.mock()`/`jest.mock()` in single file | 3.5/10 | P-62: over-mocking — likely copy-paste setup, many mocks unused |
 | `if (await *.isVisible())` in E2E test | 3.0/10 | P-63: silent conditional — test passes when feature broken |
 | <6 `it()`/`test()` per API endpoint | 5.5/10 | P-65: under-tested — missing edge cases (auth, validation, empty, boundary) |
