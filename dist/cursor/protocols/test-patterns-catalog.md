@@ -1220,6 +1220,36 @@
 - **Why:** Without cleanup, tests affect each other. Order-dependent tests = flaky CI.
 - **Source:** audit 2026-02-24, PromptVault -- tests create data without cleanup
 
+### P-67: API Wrapper Happy-Path Only (No Error Tests)
+- **When:** Thin HTTP wrapper function (`*.api.ts`, `*.client.ts`) has tests covering only `mockResolvedValue` success path -- zero `mockRejectedValue` / error path tests
+- **Problem:**
+  ```typescript
+  // api.test.ts -- only success:
+  it('fetches users', async () => {
+    mockHttp.get.mockResolvedValue({ data: USERS });
+    const result = await getUsers();
+    expect(result).toEqual(USERS);
+  });
+  // Missing: what does getUsers() do when the HTTP call fails?
+  // Consumer code that wraps getUsers() in try/catch gets zero regression safety.
+  ```
+- **Detection:** `grep -l "mockResolvedValue" [file] | xargs grep -L "mockRejectedValue"` -- file has resolved tests but zero rejected tests.
+- **Fix:** For each exported function that has a success test, add:
+  ```typescript
+  it('throws when [endpoint] fails', async () => {
+    mockHttp.get.mockRejectedValue(new Error('Network error'));
+    await expect(getUsers()).rejects.toThrow('Network error');
+  });
+  // If wrapper has error transformation logic, assert the transformed error:
+  it('wraps server 403 as AuthError', async () => {
+    mockHttp.get.mockRejectedValue({ response: { status: 403, data: 'Forbidden' } });
+    await expect(getUsers()).rejects.toThrow(AuthError);
+  });
+  ```
+- **Priority:** Each function needs at minimum 1 rejection test. If the wrapper transforms errors (catches and re-throws), test all transformation branches too.
+- **Batch signal:** All `*.api.test.ts` / `*.api.spec.ts` in a directory failing this pattern = same one-line fix per file. Spawn batch agent.
+- **Source:** audit 2026-02-24, TGM HelpDesk -- 8 `*.api.test.ts` files, all zero `mockRejectedValue` (auth, admin, messages, settings, users, emailRules, kb, reports)
+
 ### G-58: Time-Dependent Branch Testing (vi.useFakeTimers)
 - **When:** Code has a time-dependent branch (debounce, throttle, setTimeout, polling interval, retry delay) requiring timer manipulation to test
 - **Do:** Use `vi.useFakeTimers()` / `jest.useFakeTimers()` to control time, always restore in `afterEach`:

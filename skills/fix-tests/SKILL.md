@@ -207,6 +207,8 @@ For EACH pair of (test file, production file), extract:
 | **P-65** | Route handler — what auth, validation, error paths does the endpoint have? |
 | **AP10** | Production service/controller — what does each public method return? What args does it pass downstream? |
 | **NestJS-P3** | Production service — which injected dependencies does the method call? What does the external dep return? What does the service compute from it? |
+| **AP2** | No production file needed — fix is always mechanical (remove if-guard, add direct assertion) |
+| **Q7-API** | Production wrapper — which HTTP methods used? Does wrapper transform errors? Per-status handling? |
 
 Attach this context to each fixer agent's prompt. Without it, the agent writes generic assertions that don't match the real state shape.
 
@@ -448,6 +450,88 @@ const testUser = {
 ```
 
 Also add `.env.test` or `.env.e2e` to the project with the values, and add the env var names to `.env.example`.
+
+### AP2: Conditional Assertion → Hard Assertion
+
+Context needed: none (mechanical — the fix is always the same pattern).
+
+**Trigger:** `if (condition) { expect(...) }` or `if (x) return` inside test body. When `condition` is false, the test body is skipped and the test **passes silently** — with zero assertions verified.
+
+**Python variant:** `if results: assert ...` — skips when results is empty.
+
+**Fix:** Remove the conditional. Assert the condition directly, then assert the content:
+
+```typescript
+// BEFORE — silent skip when results is empty:
+if (results.length > 0) {
+  expect(results[0].name).toBe('Alice');
+}
+
+// AFTER — fails loud when results is empty:
+expect(results.length).toBeGreaterThan(0);  // explicit: we expect data here
+expect(results[0].name).toBe('Alice');
+```
+
+```python
+# BEFORE — silent skip when results is empty:
+if results:
+    assert results[0]["name"] == "Alice"
+
+# AFTER — fails loud:
+assert len(results) > 0, "Expected at least one result"
+assert results[0]["name"] == "Alice"
+```
+
+**`if (element)` pattern in RTL:**
+```typescript
+// BEFORE:
+const btn = screen.queryByRole('button');
+if (btn) { expect(btn).toBeDisabled(); }
+
+// AFTER:
+const btn = screen.getByRole('button');  // throws if missing — no silent skip
+expect(btn).toBeDisabled();
+```
+
+**SKIP when:** the condition is genuinely optional behavior (`if (feature flag enabled) ...`) — but then add a comment explaining why the conditional is intentional, not a test gap.
+
+### Q7-API: API Wrapper Error Tests — Add mockRejectedValue
+
+Context needed: production API wrapper file — which HTTP methods does each function call? Does the wrapper transform errors?
+
+**Trigger:** `*.api.test.ts` / `*.api.spec.ts` / `*.client.test.ts` file has success tests but zero `mockRejectedValue` / `rejects` / `catch` tests.
+
+**Fix — add one rejection test per exported async function:**
+
+```typescript
+// For each function that has a success test, add:
+it('rejects when [functionName] request fails', async () => {
+  mockHttp.get.mockRejectedValue(new Error('Network error'));
+  await expect(getUsers()).rejects.toThrow('Network error');
+});
+
+// If wrapper transforms errors (catches + re-throws):
+it('wraps 401 response as UnauthorizedError', async () => {
+  mockHttp.get.mockRejectedValue({ response: { status: 401 } });
+  await expect(getUsers()).rejects.toBeInstanceOf(UnauthorizedError);
+  // OR if it converts to a message:
+  await expect(getUsers()).rejects.toThrow('Unauthorized');
+});
+
+// If wrapper has specific error handling (e.g., returns null on 404):
+it('returns null when resource not found (404)', async () => {
+  mockHttp.get.mockRejectedValue({ response: { status: 404 } });
+  const result = await getUser('unknown-id');
+  expect(result).toBeNull();
+});
+```
+
+**Read the wrapper first** to know:
+1. Does it catch errors and transform them? → test the transformation
+2. Does it let errors propagate? → test with generic `rejects.toThrow`
+3. Does it have per-status-code handling? → test each status code path
+
+**Batch note:** In `*.api.test.ts` files, all functions follow the same pattern. One agent can process all 5-8 files in a directory with the same template.
 
 ### AP14: toBeDefined/toBeTruthy Sole Assertion → Content Check
 

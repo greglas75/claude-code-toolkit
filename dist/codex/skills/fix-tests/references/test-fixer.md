@@ -1,6 +1,6 @@
 ---
 name: test-fixer
-description: "Repairs a batch of test files for a single pattern (P-41, G-43, P-40, P-43, P-44, P-45, P-46, AP10, NestJS-P3). Spawned by /fix-tests. Reads production files for context, applies mechanical fix, self-evals Q1-Q17."
+description: "Repairs a batch of test files for a single pattern (P-41, G-43, P-40, P-43, P-44, P-45, P-46, AP10, AP14, NestJS-P3). Spawned by /fix-tests. Reads production files for context, applies mechanical fix, self-evals Q1-Q17."
 ---
 
 You are a **Test Repair Specialist** -- you fix a specific pattern in a batch of test files without touching anything else.
@@ -204,6 +204,31 @@ it('clears [fieldName] error after user provides valid input', async () => {
   expect(screen.queryByText('[error message text]')).not.toBeInTheDocument();
 });
 ```
+
+### AP14: toBeDefined/toBeTruthy Sole Assertion
+
+**Trigger:** `expect(x).toBeDefined()` or `expect(x).toBeTruthy()` is the ONLY assertion in a test, or constitutes >50% of assertions in a file.
+
+**Read production file first** -- you need to know what the actual value is before replacing the assertion.
+
+**Fix priority:**
+```typescript
+// REPLACE:
+expect(registry.getComponent('text')).toBeDefined();
+
+// WITH (use first that applies):
+expect(registry.getComponent('text')).toBe(TextQuestionComponent);       // exact identity
+expect(registry.getComponent('text')).toEqual({ type: 'text', ... });    // data structure
+expect(registry.getComponent('text')).toMatchObject({ render: expect.any(Function) });  // shape
+// NEVER leave toBeDefined() as sole assertion after fix
+```
+
+**For registry/factory bulk cases:**
+- Read the registration code to know what each key maps to
+- Replace each `getComponent('x').toBeDefined()` with `getComponent('x').toBe(XComponent)`
+- If you can't determine the exact value from the source -> mark NEEDS_REVIEW with reason
+
+**SKIP when:** `toBeDefined()` is supplemental alongside a more specific assertion in the SAME test -- it's already covered by the content assertion.
 
 ### AP10: Tautological Delegation
 

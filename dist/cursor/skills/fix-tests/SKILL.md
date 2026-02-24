@@ -57,6 +57,8 @@ If `~/.cursor/` is not accessible, resolve from `_agent/` in project root:
 | `--pattern AP10` | Upgrade tautological delegation (toHaveBeenCalled-only) to CalledWith + return value |
 | `--pattern NestJS-P3` | Remove self-mock spyOn on own service, test computed output instead |
 | `--pattern AP14` | Replace `toBeDefined()`/`toBeTruthy()` sole assertions with content assertions |
+| `--pattern AP2` | Replace conditional assertions `if (x) { expect }` with hard assertions |
+| `--pattern Q7-API` | Add `mockRejectedValue` error tests to API wrapper files with zero error coverage |
 | `--triage` | Run Batch Diagnosis greps, report counts, ask user which to fix |
 | `[path]` | Limit scope to specific directory (default: `src/`) |
 | `--dry-run` | Show what would be changed, don't write files |
@@ -127,6 +129,17 @@ for f in $(find [path] -name "*.test.*" -o -name "*.spec.*" | grep -v node_modul
   [ "$total" -gt 0 ] && ratio=$((weak * 100 / total)) || ratio=0
   [ "$ratio" -gt 40 ] && echo "$f: $weak/$total assertions are toBeDefined/toBeTruthy ($ratio%)"
 done
+
+# AP2: Conditional assertions (if-guarded expect -- silent skip when condition false)
+grep -rn "if (" [path] --include="*.test.*" --include="*.spec.*" | grep "expect\|assert" | grep -v "node_modules"
+# Python variant:
+grep -rn "^    if " [path] --include="test_*.py" | grep -v "node_modules"
+
+# Q7-API: API wrapper files with zero error tests
+for f in $(find [path] -name "*.api.test.*" -o -name "*.api.spec.*" -o -name "*.client.test.*" | grep -v node_modules); do
+  rejected=$(grep -c "mockRejectedValue\|rejects\|\.reject\b" "$f" 2>/dev/null || echo 0)
+  [ "$rejected" -eq 0 ] && echo "$f: 0 error tests"
+done
 ```
 
 Report format:
@@ -135,6 +148,8 @@ Triage results:
   AP10 (delegation-only): [N] files (no CalledWith) -> [ACTION: Fix / Skip]
   NestJS-P3 (self-mock):  [N] hits in [M] files -> [ACTION: Fix / Skip]
   AP14 (toBeDefined sole): [N] files with >50% AP14 -> [ACTION: Fix / Skip]
+  AP2 (conditional assert):  [N] hits -> [ACTION: Fix / Skip]
+  Q7-API (no rejection):  [N] api wrapper files with 0 mockRejectedValue -> [ACTION: Fix / Skip]
   P-41 (loading-only):   [N] hits in [M] files -> [ACTION: Fix / Skip]
   G-43 (opaque dispatch): [N] hits in [M] files -> [ACTION: Fix / Skip]
   P-40 (wrong init state): [N] hits in [M] files -> [ACTION: Fix / Skip]
@@ -429,6 +444,88 @@ const testUser = {
 ```
 
 Also add `.env.test` or `.env.e2e` to the project with the values, and add the env var names to `.env.example`.
+
+### AP2: Conditional Assertion -> Hard Assertion
+
+Context needed: none (mechanical -- the fix is always the same pattern).
+
+**Trigger:** `if (condition) { expect(...) }` or `if (x) return` inside test body. When `condition` is false, the test body is skipped and the test **passes silently** -- with zero assertions verified.
+
+**Python variant:** `if results: assert ...` -- skips when results is empty.
+
+**Fix:** Remove the conditional. Assert the condition directly, then assert the content:
+
+```typescript
+// BEFORE -- silent skip when results is empty:
+if (results.length > 0) {
+  expect(results[0].name).toBe('Alice');
+}
+
+// AFTER -- fails loud when results is empty:
+expect(results.length).toBeGreaterThan(0);  // explicit: we expect data here
+expect(results[0].name).toBe('Alice');
+```
+
+```python
+# BEFORE -- silent skip when results is empty:
+if results:
+    assert results[0]["name"] == "Alice"
+
+# AFTER -- fails loud:
+assert len(results) > 0, "Expected at least one result"
+assert results[0]["name"] == "Alice"
+```
+
+**`if (element)` pattern in RTL:**
+```typescript
+// BEFORE:
+const btn = screen.queryByRole('button');
+if (btn) { expect(btn).toBeDisabled(); }
+
+// AFTER:
+const btn = screen.getByRole('button');  // throws if missing -- no silent skip
+expect(btn).toBeDisabled();
+```
+
+**SKIP when:** the condition is genuinely optional behavior (`if (feature flag enabled) ...`) -- but then add a comment explaining why the conditional is intentional, not a test gap.
+
+### Q7-API: API Wrapper Error Tests -- Add mockRejectedValue
+
+Context needed: production API wrapper file -- which HTTP methods does each function call? Does the wrapper transform errors?
+
+**Trigger:** `*.api.test.ts` / `*.api.spec.ts` / `*.client.test.ts` file has success tests but zero `mockRejectedValue` / `rejects` / `catch` tests.
+
+**Fix -- add one rejection test per exported async function:**
+
+```typescript
+// For each function that has a success test, add:
+it('rejects when [functionName] request fails', async () => {
+  mockHttp.get.mockRejectedValue(new Error('Network error'));
+  await expect(getUsers()).rejects.toThrow('Network error');
+});
+
+// If wrapper transforms errors (catches + re-throws):
+it('wraps 401 response as UnauthorizedError', async () => {
+  mockHttp.get.mockRejectedValue({ response: { status: 401 } });
+  await expect(getUsers()).rejects.toBeInstanceOf(UnauthorizedError);
+  // OR if it converts to a message:
+  await expect(getUsers()).rejects.toThrow('Unauthorized');
+});
+
+// If wrapper has specific error handling (e.g., returns null on 404):
+it('returns null when resource not found (404)', async () => {
+  mockHttp.get.mockRejectedValue({ response: { status: 404 } });
+  const result = await getUser('unknown-id');
+  expect(result).toBeNull();
+});
+```
+
+**Read the wrapper first** to know:
+1. Does it catch errors and transform them? -> test the transformation
+2. Does it let errors propagate? -> test with generic `rejects.toThrow`
+3. Does it have per-status-code handling? -> test each status code path
+
+**Batch note:** In `*.api.test.ts` files, all functions follow the same pattern. One agent can process all 5-8 files in a directory with the same template.
 
 ### AP14: toBeDefined/toBeTruthy Sole Assertion -> Content Check
 

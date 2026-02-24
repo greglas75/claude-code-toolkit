@@ -411,6 +411,23 @@ await expect(controller.findOne(id)).rejects.toThrow(BadRequestException);
 ### P-33: Input Echo Assertions
 **NestJS context:** Very common -- test passes a DTO and asserts `result.fieldFromDto === dto.field`. Always assert computed values: the ID assigned by DB, the timestamp added by service, the derived status enum.
 
+### Q5: `as any` Mocks -- Accepted Trade-off in Vitest + NestJS
+**NestJS + Vitest context:** `Test.createTestingModule()` fails with Vitest due to DI lifecycle incompatibilities. This forces `as any` / `as unknown as ServiceType` casts on mock providers -- scoring Q5=0 across all test files using TestingModule.
+
+**This is a known trade-off, not a defect.** Do NOT fix by adding more type casts.
+
+**Real fix:** Apply G-33 (SmartMock Proxy) + G-34 (direct instantiation) to eliminate TestingModule entirely. When using direct instantiation, TypeScript resolves mock types through the class constructor -- no `as any` needed:
+```typescript
+// TestingModule + Vitest -> forces as any:
+{ provide: OfferService, useValue: { find: jest.fn() } as any }  // Q5=0
+
+// Direct instantiation -> properly typed:
+const offerService = createSmartMock<OfferService>({ find: jest.fn() });  // Q5=1
+const controller = new OfferController(offerService, ...);
+```
+
+**Signal:** If a NestJS test file has Q5=0 due to `as any` mock casts -> it's using TestingModule (NestJS-P1). Apply G-33+G-34 to eliminate both problems at once.
+
 ### P-56: Mock Drift / Interface Divergence
 **NestJS-specific note:** TypeScript types protect compile-time only. A mock typed as `Partial<OfferService>` will not catch when the real service adds a required field that the mock omits. At runtime, `result.status` is `undefined` in the test but has a value in production.
 

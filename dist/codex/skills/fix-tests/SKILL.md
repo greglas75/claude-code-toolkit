@@ -55,6 +55,9 @@ If `~/.codex/` is not accessible, resolve from `_agent/` in project root:
 | `--pattern P-65` | Add missing test cases to under-tested API routes |
 | `--pattern AP10` | Upgrade tautological delegation (toHaveBeenCalled-only) to CalledWith + return value |
 | `--pattern NestJS-P3` | Remove self-mock spyOn on own service, test computed output instead |
+| `--pattern AP14` | Replace `toBeDefined()`/`toBeTruthy()` sole assertions with content assertions |
+| `--pattern AP2` | Replace conditional assertions `if (x) { expect }` with hard assertions |
+| `--pattern Q7-API` | Add `mockRejectedValue` error tests to API wrapper files with zero error coverage |
 | `--triage` | Run Batch Diagnosis greps, report counts, ask user which to fix |
 | `[path]` | Limit scope to specific directory (default: `src/`) |
 | `--dry-run` | Show what would be changed, don't write files |
@@ -116,6 +119,26 @@ grep -rln "\.toHaveBeenCalled\(\)\|\.toHaveBeenCalledTimes(1)" [path] --include=
 
 # NestJS-P3: Self-mock (spyOn on own service/controller)
 grep -rn "spyOn(service\|spyOn(controller\|jest\.spyOn.*service\|jest\.spyOn.*controller" [path] --include="*.test.*" --include="*.spec.*" | grep -v "node_modules"
+
+# AP14: toBeDefined/toBeTruthy as SOLE assertion (files where it's the majority pattern)
+# Step 1: count files with high density
+for f in $(find [path] -name "*.test.*" -o -name "*.spec.*" | grep -v node_modules); do
+  total=$(grep -c "expect(" "$f" 2>/dev/null || echo 0)
+  weak=$(grep -c "\.toBeDefined()\|\.toBeTruthy()" "$f" 2>/dev/null || echo 0)
+  [ "$total" -gt 0 ] && ratio=$((weak * 100 / total)) || ratio=0
+  [ "$ratio" -gt 40 ] && echo "$f: $weak/$total assertions are toBeDefined/toBeTruthy ($ratio%)"
+done
+
+# AP2: Conditional assertions (if-guarded expect -- silent skip when condition false)
+grep -rn "if (" [path] --include="*.test.*" --include="*.spec.*" | grep "expect\|assert" | grep -v "node_modules"
+# Python variant:
+grep -rn "^    if " [path] --include="test_*.py" | grep -v "node_modules"
+
+# Q7-API: API wrapper files with zero error tests
+for f in $(find [path] -name "*.api.test.*" -o -name "*.api.spec.*" -o -name "*.client.test.*" | grep -v node_modules); do
+  rejected=$(grep -c "mockRejectedValue\|rejects\|\.reject\b" "$f" 2>/dev/null || echo 0)
+  [ "$rejected" -eq 0 ] && echo "$f: 0 error tests"
+done
 ```
 
 Report format:
@@ -123,6 +146,9 @@ Report format:
 Triage results:
   AP10 (delegation-only): [N] files (no CalledWith) -> [ACTION: Fix / Skip]
   NestJS-P3 (self-mock):  [N] hits in [M] files -> [ACTION: Fix / Skip]
+  AP14 (toBeDefined sole): [N] files with >50% AP14 -> [ACTION: Fix / Skip]
+  AP2 (conditional assert):  [N] hits -> [ACTION: Fix / Skip]
+  Q7-API (no rejection):  [N] api wrapper files with 0 mockRejectedValue -> [ACTION: Fix / Skip]
   P-41 (loading-only):   [N] hits in [M] files -> [ACTION: Fix / Skip]
   G-43 (opaque dispatch): [N] hits in [M] files -> [ACTION: Fix / Skip]
   P-40 (wrong init state): [N] hits in [M] files -> [ACTION: Fix / Skip]
@@ -176,6 +202,8 @@ For EACH pair of (test file, production file), extract:
 | **P-65** | Route handler -- what auth, validation, error paths does the endpoint have? |
 | **AP10** | Production service/controller -- what does each public method return? What args does it pass downstream? |
 | **NestJS-P3** | Production service -- which injected dependencies does the method call? What does the external dep return? What does the service compute from it? |
+| **AP2** | No production file needed -- fix is always mechanical (remove if-guard, add direct assertion) |
+| **Q7-API** | Production wrapper -- which HTTP methods used? Does wrapper transform errors? Per-status handling? |
 
 Attach this context to each fixer agent's prompt. Without it, the agent writes generic assertions that don't match the real state shape.
 
@@ -417,6 +445,119 @@ const testUser = {
 ```
 
 Also add `.env.test` or `.env.e2e` to the project with the values, and add the env var names to `.env.example`.
+
+### AP2: Conditional Assertion -> Hard Assertion
+
+Context needed: none (mechanical -- the fix is always the same pattern).
+
+**Trigger:** `if (condition) { expect(...) }` or `if (x) return` inside test body. When `condition` is false, the test body is skipped and the test **passes silently** -- with zero assertions verified.
+
+**Python variant:** `if results: assert ...` -- skips when results is empty.
+
+**Fix:** Remove the conditional. Assert the condition directly, then assert the content:
+
+```typescript
+// BEFORE -- silent skip when results is empty:
+if (results.length > 0) {
+  expect(results[0].name).toBe('Alice');
+}
+
+// AFTER -- fails loud when results is empty:
+expect(results.length).toBeGreaterThan(0);  // explicit: we expect data here
+expect(results[0].name).toBe('Alice');
+```
+
+```python
+# BEFORE -- silent skip when results is empty:
+if results:
+    assert results[0]["name"] == "Alice"
+
+# AFTER -- fails loud:
+assert len(results) > 0, "Expected at least one result"
+assert results[0]["name"] == "Alice"
+```
+
+**`if (element)` pattern in RTL:**
+```typescript
+// BEFORE:
+const btn = screen.queryByRole('button');
+if (btn) { expect(btn).toBeDisabled(); }
+
+// AFTER:
+const btn = screen.getByRole('button');  // throws if missing -- no silent skip
+expect(btn).toBeDisabled();
+```
+
+**SKIP when:** the condition is genuinely optional behavior (`if (feature flag enabled) ...`) -- but then add a comment explaining why the conditional is intentional, not a test gap.
+
+### Q7-API: API Wrapper Error Tests -- Add mockRejectedValue
+
+Context needed: production API wrapper file -- which HTTP methods does each function call? Does the wrapper transform errors?
+
+**Trigger:** `*.api.test.ts` / `*.api.spec.ts` / `*.client.test.ts` file has success tests but zero `mockRejectedValue` / `rejects` / `catch` tests.
+
+**Fix -- add one rejection test per exported async function:**
+
+```typescript
+// For each function that has a success test, add:
+it('rejects when [functionName] request fails', async () => {
+  mockHttp.get.mockRejectedValue(new Error('Network error'));
+  await expect(getUsers()).rejects.toThrow('Network error');
+});
+
+// If wrapper transforms errors (catches + re-throws):
+it('wraps 401 response as UnauthorizedError', async () => {
+  mockHttp.get.mockRejectedValue({ response: { status: 401 } });
+  await expect(getUsers()).rejects.toBeInstanceOf(UnauthorizedError);
+  // OR if it converts to a message:
+  await expect(getUsers()).rejects.toThrow('Unauthorized');
+});
+
+// If wrapper has specific error handling (e.g., returns null on 404):
+it('returns null when resource not found (404)', async () => {
+  mockHttp.get.mockRejectedValue({ response: { status: 404 } });
+  const result = await getUser('unknown-id');
+  expect(result).toBeNull();
+});
+```
+
+**Read the wrapper first** to know:
+1. Does it catch errors and transform them? -> test the transformation
+2. Does it let errors propagate? -> test with generic `rejects.toThrow`
+3. Does it have per-status-code handling? -> test each status code path
+
+**Batch note:** In `*.api.test.ts` files, all functions follow the same pattern. One agent can process all 5-8 files in a directory with the same template.
+
+### AP14: toBeDefined/toBeTruthy Sole Assertion -> Content Check
+
+Context needed: the production code/registration to know what the actual value is.
+
+**Trigger:** `expect(x).toBeDefined()` or `expect(x).toBeTruthy()` is the ONLY assertion for a test. The value could be anything truthy and the test still passes.
+
+**Fix -- determine what the actual value should be, then assert it:**
+```typescript
+// BEFORE -- proves something exists, not what it is:
+expect(registry.getComponent('text')).toBeDefined();
+expect(result.items).toBeTruthy();
+
+// AFTER -- asserts the actual identity/content:
+expect(registry.getComponent('text')).toBe(TextQuestionComponent);
+expect(result.items).toEqual([ITEM_1, ITEM_2]);
+// OR if exact value unknown but shape is verifiable:
+expect(registry.getComponent('text')).toMatchObject({ type: 'text', render: expect.any(Function) });
+expect(result.items).toHaveLength(2);
+expect(result.items[0]).toHaveProperty('id');
+```
+
+**Priority order for replacement:**
+1. `toBe(ExactValue)` -- when value is a specific constant/component/enum
+2. `toEqual(fixture)` -- when value is a data structure you can reproduce
+3. `toMatchObject({...})` -- when verifying shape with key fields
+4. `toHaveLength(N)` + `toContainEqual(...)` -- when verifying collections
+
+**SKIP when:** `toBeDefined()` is SUPPLEMENTAL alongside a more specific assertion in the same test -- don't remove it, just note it's already covered.
+
+**Batch note:** In registry/factory patterns (settingsRegistry, componentRegistry), each `getComponent('type')` call should assert the specific registered component class, not just existence. Read the registry to find what's registered.
 
 ### AP10: Tautological Delegation -- Upgrade to CalledWith + Return Value
 
