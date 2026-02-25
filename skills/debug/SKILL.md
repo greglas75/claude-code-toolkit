@@ -1,6 +1,6 @@
 ---
 name: debug
-description: "Structured debugging session — find and fix issues systematically. Use when investigating a bug, error, or unexpected behavior. Works with error messages, stack traces, code snippets, or descriptions."
+description: "Structured debugging session — find and fix issues systematically. Use when investigating a bug, error, or unexpected behavior. Works with error messages, stack traces, code snippets, or descriptions. NOT for code quality issues (use /code-audit or /review)."
 user-invocable: true
 ---
 

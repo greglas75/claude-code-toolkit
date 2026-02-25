@@ -21,6 +21,7 @@ Add, list, or manage backlog items manually. Works independently of `/review`.
 | `wontfix B-{N} {reason}` | Mark item as WONT_FIX |
 | `delete B-{N}` | Remove item entirely |
 | `stats` | Show counts by severity + status |
+| `suggest` | Analyze backlog content and recommend batch fix actions |
 
 ## Adding Items
 
@@ -111,6 +112,32 @@ PRIORITIZED BACKLOG
 | 2    | B-1  | 24    | 4      | 4    | 3      | catch(err: any)       |
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+---
+
+## Suggest (when `suggest` is called or user asks "what should we tackle?")
+
+Analyze all OPEN items by pattern and propose batch actions:
+
+| Condition | Suggested action |
+|-----------|-----------------|
+| 3+ items with same CQ (e.g., CQ8=0 in 5 files) | `/code-audit [files]` or direct fix batch |
+| 3+ items from test-audit with same pattern ID | `/fix-tests --pattern [ID] [path]` |
+| 3+ items pointing to same module | `/refactor [module]` or `/architecture review [module]` |
+| 5+ Tier D items | `/code-audit --deep [path]` — serious quality debt |
+| No OPEN items | "Backlog is clear — consider scheduling a periodic `/code-audit`" |
+
+Output:
+```
+BACKLOG SUGGESTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Pattern: CQ8=0 appears in 5 files → /code-audit src/services/
+Pattern: P-41 in 4 test files     → /fix-tests --pattern P-41 src/
+Hotspot: src/offer/offer.service.ts (6 items) → /refactor src/offer/offer.service.ts
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+---
 
 ## Tech Debt Categories
 

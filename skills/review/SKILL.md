@@ -1,6 +1,6 @@
 ---
 name: review
-description: "Code review with triage, audit, confidence scoring, and auto-fix. Use when reviewing code changes, PRs, or diffs."
+description: "Code review with triage, audit, confidence scoring, and auto-fix. Use when reviewing code changes, PRs, or diffs. NOT before writing any code."
 user-invocable: true
 ---
 

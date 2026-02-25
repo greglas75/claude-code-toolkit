@@ -1,6 +1,6 @@
 ---
 name: build
-description: "Structured feature development with analysis sub-agents, quality gates, and backlog integration. Use for non-trivial new features (3+ files)."
+description: "Structured feature development with analysis sub-agents, quality gates, and backlog integration. Use for non-trivial new features (3+ files). NOT for bug fixes (use /debug) or pure refactoring (use /refactor)."
 user-invocable: true
 ---
 

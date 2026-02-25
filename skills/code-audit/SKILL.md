@@ -1,6 +1,6 @@
 ---
 name: code-audit
-description: "Audit production code files against CQ1-CQ20 checklist + CAP1-CAP13 anti-patterns. Produces tiered report with scores, evidence gaps, and fix priorities. Use: /code-audit [path] or /code-audit all"
+description: "Audit production code files against CQ1-CQ20 checklist + CAP1-CAP13 anti-patterns. Produces tiered report with scores, evidence gaps, and fix priorities. Use: /code-audit [path] or /code-audit all. NOT for immediate fixes (use /review fix)."
 user-invocable: true
 ---
 

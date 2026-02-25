@@ -1,6 +1,6 @@
 ---
 name: refactor
-description: "Smart refactoring runner with structured workflow (ETAP-1A/1B/2). Use when refactoring code, extracting methods, splitting files, or restructuring."
+description: "Smart refactoring runner with structured workflow (ETAP-1A/1B/2). Use when refactoring code, extracting methods, splitting files, or restructuring. NOT for new features (use /build)."
 user-invocable: true
 ---
 
@@ -368,6 +368,8 @@ Use the commit count from metrics (`"commits": N`) to scope the review:
 ```
 /review HEAD~[N]
 ```
+
+Note: unlike /build (which reviews staged files before committing), /refactor reviews after per-phase commits because each ETAP phase is independently verified by Test Quality Auditor and Post-Extraction Verifier before commit. /review here is a final cross-phase check, not the primary gate.
 
 This reviews only the refactoring commits — not the whole codebase.
 
