@@ -10,16 +10,27 @@ Triage + full audit in one step. No separate "Go" command needed.
 
 ## File Loading (Tier-Aware)
 
-Load files in two phases to minimize token cost. Phase 1 is always required. Phase 2 is conditional.
+Load files in two phases to minimize token cost. Do a quick diff stat FIRST to detect TIER 0.
 
-### Phase 1: Always Load (before triage)
+### Pre-load check (before Phase 1)
+
+Run `git diff --stat [scope]` (1 command). Count total lines changed and new files.
+
+```
+IF total lines < 15 AND no new production files (.ts/.tsx/.py — not *.test.*) → TIER 0
+  Load Phase 1: rules.md ONLY (skip code-quality.md)
+ELSE
+  Load Phase 1: rules.md + code-quality.md
+```
+
+### Phase 1: Always Load
 
 ```
 1. ✅/❌  ~/.claude/skills/review/rules.md        — Iron Rules, severity, confidence, backlog
-2. ✅/❌  ~/.claude/rules/code-quality.md         — CQ1-CQ20 production code checklist
+2. ✅/❌  ~/.claude/rules/code-quality.md         — CQ1-CQ20 (skip if TIER 0)
 ```
 
-**If ANY Phase 1 file is ❌ → STOP.**
+**If ANY required Phase 1 file is ❌ → STOP.**
 
 ### Phase 2: Conditional Loading (after triage Step 4 — tier known)
 
@@ -27,10 +38,10 @@ Load each file ONLY when its trigger condition is met:
 
 | File | Load When | Skip When |
 |------|-----------|-----------|
-| `~/.claude/review-protocol.md` | TIER 2+ | TIER 1 (only runs steps 0→1→2.1→6.1, covered by rules.md) |
-| `~/.claude/rules/testing.md` | TIER 2+, OR diff contains `*.test.*`/`*.spec.*` files | TIER 1 with no test files in diff |
+| `~/.claude/review-protocol.md` | TIER 2+ | TIER 0 or TIER 1 |
+| `~/.claude/rules/testing.md` | TIER 2+, OR diff contains `*.test.*`/`*.spec.*` files | TIER 0-1 with no test files |
 | `~/.claude/test-patterns.md` | Diff contains `*.test.*`/`*.spec.*` files | No test files in diff |
-| `~/.claude/rules/security.md` | Triage Step 6 flags SECURITY conditional section, OR TIER 3 | TIER 1-2 with no security signals |
+| `~/.claude/rules/security.md` | Triage Step 6 flags SECURITY conditional section, OR TIER 3 | TIER 0-2 with no security signals |
 
 Print loaded files after triage:
 ```
@@ -140,9 +151,10 @@ Risk signals:
   [ ] API contract changes
   [ ] Payment/money flow
   [ ] >500 lines changed
+  [ ] New production files added (.ts/.tsx/.py — not *.test.*)
   [ ] AI-generated code suspected
 
-Tier:       [1-LIGHT / 2-STANDARD / 3-DEEP]
+Tier:       [0-NANO / 1-LIGHT / 2-STANDARD / 3-DEEP]
 Mode 2 OK:  [YES / NO — reason]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
@@ -160,9 +172,14 @@ Heuristics (check commit messages + diff content):
 
 | Condition | Tier |
 |-----------|------|
-| <50 lines, no risk signals | TIER 1 (LIGHT) |
-| 50-500 lines, max 1 risk signal | TIER 2 (STANDARD) |
-| >500 lines OR 2+ risk signals | TIER 3 (DEEP) |
+| <15 lines, no risk signals | TIER 0 (NANO) |
+| 15-100 lines, no risk signals | TIER 1 (LIGHT) |
+| 100-500 lines OR 5-15 files OR 1 risk signal | TIER 2 (STANDARD) |
+| >500 lines OR 15+ files OR 2+ risk signals | TIER 3 (DEEP) |
+
+**Intent downgrade (apply after table above):**
+- `REFACTOR` + < 10 files + no DB/security/API/money signal → cap at TIER 2 (file count alone cannot push to TIER 3)
+- `INFRA` (config, CI, Dockerfile, terraform only — no production code) → cap at TIER 1 unless > 300 lines
 
 ### Step 5: Mode 2 Blocker Check
 
@@ -172,6 +189,7 @@ Mode 2 (`/review fix`) is **FORBIDDEN** if ANY:
 - Security/auth changes
 - API contract changes
 - Payment/money flow changes
+- New production files + TIER 2 (suggest `blocking` instead — Behavior Auditor may find issues needing manual judgment)
 
 If blocked and user requested `fix` → warn, downgrade to MODE 1 (report only), suggest `Execute BLOCKING` after report.
 
@@ -201,7 +219,7 @@ CODE REVIEW [+ AUTO-FIX if Mode 2/3]
 ═══════════════════════════════════════════════════════════════
 REVIEWING: [1-2 sentence summary]
 FILES: [X files, +Y/-Z lines]
-TIER: [1/2/3] - [LIGHT/STANDARD/DEEP]
+TIER: [0/1/2/3] - [NANO/LIGHT/STANDARD/DEEP]
 AUDIT: [SOLO / TEAM (2 auditors)]
 CHANGE INTENT: [BUGFIX/REFACTOR/FEATURE/INFRA]
 ═══════════════════════════════════════════════════════════════
@@ -215,40 +233,49 @@ The Task tool does NOT read `.claude/agents/*.md` files automatically. You MUST 
 **Agent spawning is gated by tier to avoid unnecessary API calls:**
 
 ```
+IF TIER 0:
+  → NO agents. Lead does inline audit only. Skip CQ self-eval (diff too small).
+  → Confidence scoring inline.
+
 IF TIER 1:
-  → NO background agents. Lead does blast radius (single grep) and blame (single git blame) inline.
-  → NO Confidence Re-Scorer (max 2-3 issues — lead scores inline).
+  → NO background agents. Lead does blast radius (single grep) and blame inline.
+  → Confidence scoring inline.
 
-IF TIER 2 solo (< 5 files):
-  → Blast Radius Mapper: ONLY if files_changed >= 3 (otherwise lead does inline grep)
-  → Pre-Existing Checker: YES (50-500 lines justifies dedicated blame agent)
-  → Confidence Re-Scorer: YES (issue list can be large)
+IF TIER 2:
+  → NO Blast Radius, Pre-Existing, or Structure Auditor.
+  → Behavior Auditor: ONLY IF "New production files" risk signal is set.
+  → Confidence Re-Scorer: ONLY IF Behavior Auditor spawned (otherwise lead scores inline).
+  → Lead audits sequentially using protocol.md.
 
-IF TIER 2 team (5+ files) OR TIER 3:
-  → ALL agents spawned (Blast Radius, Pre-Existing, Structure/Behavior Auditors, Re-Scorer)
+IF TIER 3:
+  → ALL agents spawned (Blast Radius, Pre-Existing, Structure/Behavior Auditors, Re-Scorer).
 ```
 
 **Agent model table (when spawned):**
 
 | Agent | Model | subagent_type | Spawned When |
 |-------|-------|---------------|--------------|
-| Blast Radius Mapper | **sonnet** | Explore | TIER 2 (3+ files) or TIER 3 |
-| Pre-Existing Checker | **haiku** | Explore | TIER 2+ |
-| Structure Auditor | **sonnet** | Explore | Team audit only |
-| Behavior Auditor | **sonnet** or **opus** | Explore | Team audit only (see Model Routing below) |
-| Confidence Re-Scorer | **haiku** | Explore | TIER 2+ |
+| Blast Radius Mapper | **sonnet** | Explore | TIER 3 only |
+| Pre-Existing Checker | **haiku** | Explore | TIER 3 only |
+| Structure Auditor | **sonnet** | Explore | TIER 3 only |
+| Behavior Auditor | **sonnet** or **opus** | Explore | TIER 2 (new files) or TIER 3 |
+| Confidence Re-Scorer | **haiku** | Explore | TIER 3 only (TIER 2: lead scores inline) |
 
-#### TIER 1 Inline Analysis (no agents)
+#### TIER 0 and TIER 1 Inline Analysis (no agents)
 
 Instead of spawning agents, the lead does this directly:
 
-**Blast radius (inline):** Run a single `grep -r 'import.*[changed-file]'` or `grep -r 'from.*[module]'` to find importers. For 1 file / <50 lines, this is 1 tool call vs an entire agent.
+**Blast radius (inline):** Run a single `grep -r 'import.*[changed-file]'` or `grep -r 'from.*[module]'` to find importers. For 1-4 files / <100 lines, this is 1-2 tool calls vs an entire agent.
 
-**Pre-existing check (inline):** Run `git blame -L <start>,<end> <file>` on changed hunks. For <50 lines, this is 1-2 Bash calls.
+**Pre-existing check (inline):** Run `git blame -L <start>,<end> <file>` on changed hunks. For <100 lines, this is 1-2 Bash calls.
 
-**Confidence scoring (inline):** With max 2-3 issues from TIER 1 audit, lead assigns confidence scores directly using the scoring table from rules.md (Confidence Re-Scoring section — already loaded in Phase 1).
+**Confidence scoring (inline):** With max 2-4 issues from TIER 0-1 audit, lead assigns confidence scores directly using the scoring table from rules.md.
 
-#### TIER 2+ Agent Spawning
+#### TIER 2 Inline Analysis (no agents unless new files)
+
+Lead runs all audit steps sequentially using protocol.md. No background agents unless "New production files" risk signal is set — in that case spawn Behavior Auditor only (see TIER 2 in agent table above).
+
+#### TIER 3 Agent Spawning (+ Behavior Auditor for TIER 2 new files)
 
 Spawn applicable agents in parallel (use Task tool, run_in_background=true). Don't wait — start auditing immediately. Incorporate results when available.
 
@@ -288,19 +315,23 @@ This will be used to filter out pre-existing issues from the review."
 After Steps 0-1 (context), decide audit execution mode:
 
 ```
-IF TIER 1:
-  → SOLO AUDIT (too few steps for parallelism)
+IF TIER 0 OR TIER 1:
+  → SOLO AUDIT (inline, no agents)
 
-IF (TIER 2 AND files_changed >= 5) OR TIER 3:
-  → TEAM AUDIT (parallel step execution)
+IF TIER 2 AND "New production files" risk signal:
+  → SOLO AUDIT + Behavior Auditor (single background agent)
 
-ELSE:
-  → SOLO AUDIT
+IF TIER 2 (no new files):
+  → SOLO AUDIT (lead runs protocol sequentially, no agents)
+
+IF TIER 3:
+  → TEAM AUDIT (all agents parallel)
 ```
 
 ### Audit Steps by Tier
 
-**TIER 1 (LIGHT):** Steps 0 → 1 → 2.1 → 6.1 → Confidence Gate → Report (always SOLO)
+**TIER 0 (NANO):** Steps 0 → 1 → 2.1 → Confidence Gate (inline) → Report (SOLO, skip CQ self-eval)
+**TIER 1 (LIGHT):** Steps 0 → 1 → 2.1 → 6.1 → Confidence Gate (inline) → Report (always SOLO)
 **TIER 2 (STANDARD):** Steps 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7.0 → 9 → Confidence Gate → Report
 **TIER 3 (DEEP):** ALL steps 0-11 → Confidence Gate → Report
 
@@ -322,17 +353,17 @@ Before spawning audit agents, preprocess the diff to give each agent only the da
 
 3. Pass the scoped fragment in each agent's prompt where it says `DIFF: [scoped diff]`
 
-**TIER 1:** No diff scoping needed (lead processes everything inline, no agents spawned).
+**TIER 0-1:** No diff scoping needed (lead processes everything inline, no agents spawned).
 
-**TIER 2 solo:** Diff scoping applies only to Blast Radius Mapper and Pre-Existing Checker (if spawned). Lead processes the full diff directly.
+**TIER 2 (new files):** Pass only production code diff to Behavior Auditor (exclude test files, config). Lead processes full diff directly.
 
-**Fallback:** If diff is small (<100 lines total), skip scoping — pass full diff to all agents. The overhead of preprocessing exceeds the savings.
+**Fallback:** If diff is small (<100 lines total), skip scoping — pass full diff to agent. The overhead of preprocessing exceeds the savings.
 
 ### Solo Audit (default)
 
-Lead executes all steps sequentially. Current behavior, no changes.
+Lead executes all steps sequentially. Used for TIER 0, TIER 1, and TIER 2.
 
-### Team Audit (TIER 2 with 5+ files OR TIER 3)
+### Team Audit (TIER 3 only)
 
 After Steps 0-1 (lead, sequential — these set context for everything), spawn 2 audit agents in parallel. Each is read-only — they analyze the same diff through different "lenses."
 
@@ -341,7 +372,7 @@ After Steps 0-1 (lead, sequential — these set context for everything), spawn 2
 The Behavior Auditor model depends on review complexity:
 
 ```
-IF TIER 2 team:
+IF TIER 2 (new files only):
   → Behavior Auditor model: "sonnet"
 
 IF TIER 3 AND (files_changed >= 15 OR risk_signals include SECURITY or MONEY):
