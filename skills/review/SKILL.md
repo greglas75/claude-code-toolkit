@@ -72,15 +72,33 @@ If running in Antigravity, Cursor, or other IDEs where `~/.claude/` is not acces
 
 ## Progress Tracking
 
-Use `TaskCreate` at the start to create a todo list from the steps below. Update task status (`in_progress` → `completed`) as you progress. This gives the user visibility into multi-step execution.
+## Tool Availability (Cursor / Codex / Antigravity)
 
-## Multi-Agent Compatibility
+Different environments have different tools. Adapt as follows:
 
-This skill uses `Task` tool to spawn parallel sub-agents. **If `Task` tool is not available** (Cursor, Antigravity, other IDEs):
-- **Skip all "Spawn via Task tool" blocks** — do NOT attempt to call tools that don't exist
-- **Execute the agent's work inline yourself**, sequentially — read the agent's prompt/instructions and perform that analysis directly
-- **Model routing is ignored** — use whatever model you are running on
-- The quality gates, checklists, and output format remain identical
+| Tool | Claude Code | Cursor | Codex | Antigravity |
+|------|-------------|--------|-------|-------------|
+| `Task` (spawn agents) | ✅ | ❌ | ❌ | ❌ |
+| `AskUserQuestion` | ✅ | ❌ | ❌ | ❌ |
+| `TaskCreate` (progress tracking) | ✅ | ❌ | ❌ | ❌ |
+| File read/write, Bash, git | ✅ | ✅ | ✅ | ✅ |
+
+**If `Task` tool NOT available:**
+- Skip all "Spawn via Task tool" blocks — do NOT attempt to call tools that don't exist
+- Execute agent work **inline**, sequentially — read the agent's prompt and perform that analysis directly
+- Model routing is ignored — use whatever model you are running on
+
+**If `AskUserQuestion` NOT available (Cursor, Codex, Antigravity):**
+- Skip all interactive prompts/gates that use `AskUserQuestion`
+- MODE 1 (report only): after report → go directly to Execute (apply ALL fixes automatically)
+- Questions Gate (QUESTIONS FOR AUTHOR): skip — proceed with original severity assessments
+- Post-Execute "Next step?" prompt: skip — automatically proceed to Push if tests pass
+
+**If `TaskCreate` NOT available:**
+- Skip TaskCreate — instead print step status inline:
+  `STEP: Triage [START]` → `STEP: Triage [DONE]`
+
+Quality gates, checklists, and output format are identical in all environments.
 
 ## Step 0: Parse $ARGUMENTS
 
@@ -100,10 +118,14 @@ $ARGUMENTS controls WHAT gets reviewed AND which mode to use.
 | `apps/api/ apps/runner/` | Multiple paths (uncommitted) | `git diff --stat HEAD -- apps/api/ apps/runner/` |
 | `staged` | Only staged changes | `git diff --stat --cached` |
 
-**Special: `new` keyword**
-- Uses git tag `reviewed` as the baseline (set automatically after Push)
-- If tag doesn't exist → show warning and fall back to `git diff --stat HEAD` (all uncommitted)
-- Combines with paths: `new apps/api/` → only unreviewed changes in API dir
+**Special: `new` keyword** — baseline resolution order:
+1. Read `memory/last-reviewed.txt` → if file exists and hash is valid in current repo → use it
+2. Fallback: git tag `reviewed` → if tag exists → use it
+3. Fallback: warn + use `git diff --stat HEAD~5` (last 5 commits as approximation)
+
+Reason for file-first: in Codex/Cursor, review fixes land on a separate branch. After merge to main, the `memory/last-reviewed.txt` file is already present with the correct hash — the git tag may be on the wrong branch.
+
+Combines with paths: `new apps/api/` → only unreviewed changes in API dir
 
 Multiple tokens can combine: `HEAD~1 apps/designer/` → last commit, only designer dir.
 
@@ -114,8 +136,16 @@ Multiple tokens can combine: `HEAD~1 apps/designer/` → last commit, only desig
 | _(none)_ | MODE 1 | Report only. Wait for Execute. |
 | `fix` | MODE 2 | Auto-fix ALL + tests + loop (Mode 2 gate applies) |
 | `blocking` | MODE 3 | Fix CRITICAL/HIGH only + tests + loop |
+| `tag` | UTIL | No audit. Just mark current HEAD as reviewed (updates file + tag). |
 
 Examples: `/review`, `/review fix`, `/review HEAD~1 blocking`, `/review new apps/worker/ fix`
+
+**Special: `tag` argument** — use after merging a review branch to main:
+1. Run `git rev-parse HEAD` to get current hash
+2. Write hash to `memory/last-reviewed.txt`
+3. Run `git tag -f reviewed HEAD`
+4. Print: "Marked [hash] as reviewed. Next `/review new` starts from here."
+5. STOP — no audit, no report.
 
 ---
 
@@ -739,11 +769,22 @@ Options:
 
 **"Push":**
 1. `git push origin [branch]`
-2. Move the `reviewed` tag to HEAD: `git tag -f reviewed HEAD`
-3. Show pushed confirmation: "Tag `reviewed` updated — use `/review new` next time to see only unreviewed commits"
+2. Get current hash: `git rev-parse HEAD`
+3. Write hash to `memory/last-reviewed.txt` (create file if not exists)
+4. Move the `reviewed` tag to HEAD: `git tag -f reviewed HEAD`
+5. Show pushed confirmation:
+   ```
+   Marked [short-hash] as reviewed.
+   memory/last-reviewed.txt updated — works across branches (Codex, Cursor).
+   git tag 'reviewed' updated — works in Claude Code.
+   Next: /review new
+   ```
 
 **"Done":**
-1. Show summary of what was fixed
-2. Stop — don't push (commit already done)
+1. Get current hash: `git rev-parse HEAD`
+2. Write hash to `memory/last-reviewed.txt`
+3. Show summary of what was fixed
+4. Print: "Not pushed. Marked [hash] as reviewed locally — run `/review new` after merging to main."
+5. Stop — don't push (commit already done)
 
 $ARGUMENTS
