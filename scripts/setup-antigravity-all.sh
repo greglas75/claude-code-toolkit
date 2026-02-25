@@ -1,12 +1,106 @@
 #!/bin/zsh
 # Setup Antigravity integration for all DEV projects
 # Creates _agent/skills/, _agent/workflows/, memory/backlog.md, MEMORY.md
+# Also installs git hooks: pre-commit (fast checks) + pre-push (tests)
 # Run again after adding new skills or projects
 
 DEV="/Users/greglas/DEV"
 CP="$HOME/.claude/projects"
 SKILLS="$HOME/.claude/skills"
 
+# --- Detect package manager ---
+pkg_manager() {
+  local dir="$1"
+  [ -f "$dir/yarn.lock" ] && echo "yarn" && return
+  [ -f "$dir/pnpm-lock.yaml" ] && echo "pnpm run" && return
+  echo "npm run"
+}
+
+# --- Detect test script from package.json ---
+detect_test_cmd() {
+  local pkg="$1/package.json"
+  [ -f "$pkg" ] || return 1
+  local mgr=$(pkg_manager "$1")
+  for script in "test:run" "test:unit" "test:changed" "test"; do
+    python3 -c "import json,sys; d=json.load(open('$pkg')); sys.exit(0 if '$script' in d.get('scripts',{}) else 1)" 2>/dev/null \
+      && echo "$mgr $script" && return
+  done
+  return 1
+}
+
+# --- Detect lint script from package.json ---
+detect_lint_cmd() {
+  local pkg="$1/package.json"
+  [ -f "$pkg" ] || return 1
+  local mgr=$(pkg_manager "$1")
+  for script in "lint" "lint:check"; do
+    python3 -c "import json,sys; d=json.load(open('$pkg')); sys.exit(0 if '$script' in d.get('scripts',{}) else 1)" 2>/dev/null \
+      && echo "$mgr $script" && return
+  done
+  return 1
+}
+
+# --- Detect typecheck script from package.json ---
+detect_type_cmd() {
+  local pkg="$1/package.json"
+  [ -f "$pkg" ] || return 1
+  local mgr=$(pkg_manager "$1")
+  for script in "type-check" "typecheck" "types"; do
+    python3 -c "import json,sys; d=json.load(open('$pkg')); sys.exit(0 if '$script' in d.get('scripts',{}) else 1)" 2>/dev/null \
+      && echo "$mgr $script" && return
+  done
+  return 1
+}
+
+# --- Install git hooks ---
+setup_hooks() {
+  local dir="$1"
+  [ -d "$dir/.git/hooks" ] || return
+  [ -f "$dir/package.json" ] || return
+
+  local hooks_added=""
+
+  # --- pre-commit: fast checks only (skip if husky manages it) ---
+  if [ ! -f "$dir/.git/hooks/pre-commit" ] && [ ! -d "$dir/.husky" ]; then
+    # No existing pre-commit and no husky — install our test gate
+    if [ -f "$HOME/.claude/scripts/pre-commit-test-gate.sh" ]; then
+      ln -sf "$HOME/.claude/scripts/pre-commit-test-gate.sh" "$dir/.git/hooks/pre-commit"
+      hooks_added="pre-commit(gate)"
+    fi
+  fi
+
+  # --- pre-push: tests (skip if already exists) ---
+  local push_hook=""
+  if [ -d "$dir/.husky" ]; then
+    push_hook="$dir/.husky/pre-push"
+  else
+    push_hook="$dir/.git/hooks/pre-push"
+  fi
+
+  if [ ! -f "$push_hook" ]; then
+    local test_cmd=$(detect_test_cmd "$dir")
+    if [ -n "$test_cmd" ]; then
+      cat > "$push_hook" << EOF
+#!/bin/bash
+echo "🧪 Running tests before push..."
+$test_cmd
+
+if [ \$? -ne 0 ]; then
+  echo "❌ Tests failed. Fix before pushing."
+  exit 1
+fi
+
+echo "✅ Tests passed!"
+EOF
+      chmod +x "$push_hook"
+      hooks_added="$hooks_added pre-push($test_cmd)"
+    fi
+  fi
+
+  [ -n "$hooks_added" ] && echo "  hooks: $hooks_added"
+}
+
+# --- Main setup function ---
 setup() {
   local dir="$1"
   local mem="$2"   # Claude memory dir key (encoded project name)
@@ -25,7 +119,7 @@ setup() {
   done
 
   # Root-level protocols and patterns (referenced by skills via ~/.claude/ paths)
-  for f in review-protocol.md refactoring-protocol.md test-patterns.md test-patterns-catalog.md test-patterns-redux.md test-patterns-nestjs.md test-patterns-yii2.md refactoring-god-class.md; do
+  for f in review-protocol.md refactoring-protocol.md test-patterns.md test-patterns-catalog.md test-patterns-redux.md test-patterns-nestjs.md test-patterns-yii2.md refactoring-god-class.md skill-workflows.md; do
     [ -f "$HOME/.claude/$f" ] && ln -sf "$HOME/.claude/$f" "$dir/_agent/$f"
   done
 
@@ -41,12 +135,8 @@ setup() {
   # Agent instructions (tells IDE agents what's available and how to use it)
   ln -sf "$HOME/.claude/agent-instructions.md" "$dir/_agent/AGENT_INSTRUCTIONS.md"
 
-  # Pre-commit hook (test gate — blocks commit without tests for new source files)
-  if [ -d "$dir/.git/hooks" ] && [ -f "$HOME/.claude/scripts/pre-commit-test-gate.sh" ]; then
-    if [ ! -f "$dir/.git/hooks/pre-commit" ]; then
-      ln -sf "$HOME/.claude/scripts/pre-commit-test-gate.sh" "$dir/.git/hooks/pre-commit"
-    fi
-  fi
+  # Git hooks (pre-commit gate + pre-push tests)
+  setup_hooks "$dir"
 
   # memory/backlog.md
   local has_mem=""
