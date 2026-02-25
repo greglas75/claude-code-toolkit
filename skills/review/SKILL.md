@@ -158,6 +158,12 @@ Examples: `/review`, `/review fix`, `/review HEAD~1 blocking`, `/review new apps
 
 Run the git command determined in Step 0 from the current working directory (git repo root).
 
+**Capture `REVIEWED_THROUGH` hash** — the end of the reviewed range. This is used in Phase C to mark the correct baseline (not the fix branch HEAD, which may not exist after squash merge):
+- If scope = `HEAD`, `HEAD~N`, `staged`, or `new` → `REVIEWED_THROUGH = git rev-parse HEAD`
+- If scope = `abc123..HEAD` → `REVIEWED_THROUGH = git rev-parse HEAD`
+- If scope = `abc123..def456` → `REVIEWED_THROUGH = git rev-parse def456`
+- Store this hash — it will be written to `memory/last-reviewed.txt` in Phase C.
+
 Also check for new untracked files in scope: `git status --short` filtered by pathspec.
 
 If no changes found in the resolved scope, check if user pasted code/diff.
@@ -772,22 +778,21 @@ Options:
 
 **"Push":**
 1. `git push origin [branch]`
-2. Get current hash: `git rev-parse HEAD`
-3. Write hash to `memory/last-reviewed.txt` (create file if not exists)
-4. Move the `reviewed` tag to HEAD: `git tag -f reviewed HEAD`
-5. Show pushed confirmation:
+2. Write `REVIEWED_THROUGH` hash (captured in Step 1) to `memory/last-reviewed.txt`
+   — This is the end of the ORIGINAL reviewed range, not the fix branch HEAD.
+   — Survives squash merges because it's a hash from the original branch history.
+3. Move the `reviewed` tag: `git tag -f reviewed [REVIEWED_THROUGH]`
+4. Show pushed confirmation:
    ```
-   Marked [short-hash] as reviewed.
-   memory/last-reviewed.txt updated — works across branches (Codex, Cursor).
-   git tag 'reviewed' updated — works in Claude Code.
+   Marked [REVIEWED_THROUGH short-hash] as reviewed.
+   memory/last-reviewed.txt updated — works across branches (Codex, Cursor, squash merges).
    Next: /review new
    ```
 
 **"Done":**
-1. Get current hash: `git rev-parse HEAD`
-2. Write hash to `memory/last-reviewed.txt`
-3. Show summary of what was fixed
-4. Print: "Not pushed. Marked [hash] as reviewed locally — run `/review new` after merging to main."
-5. Stop — don't push (commit already done)
+1. Write `REVIEWED_THROUGH` hash to `memory/last-reviewed.txt`
+2. Show summary of what was fixed
+3. Print: "Not pushed. Marked [REVIEWED_THROUGH] as reviewed — run `/review new` after merging to main."
+4. Stop — don't push (commit already done)
 
 $ARGUMENTS
