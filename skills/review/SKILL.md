@@ -112,7 +112,10 @@ $ARGUMENTS controls WHAT gets reviewed AND which mode to use.
 | `new` | Commits since last review | `git diff --stat reviewed..HEAD` (tag) |
 | `HEAD~1` | Last commit only | `git diff --stat HEAD~1..HEAD` |
 | `HEAD~3` | Last 3 commits | `git diff --stat HEAD~3..HEAD` |
-| `HEAD~2..HEAD~1` | Specific commit range | `git diff --stat HEAD~2..HEAD~1` |
+| `HEAD~2..HEAD~1` | Specific commit range (relative) | `git diff --stat HEAD~2..HEAD~1` |
+| `abc123..def456` | Specific commit range (by hash) | `git diff --stat abc123..def456` |
+| `abc123..HEAD` | From specific commit to now | `git diff --stat abc123..HEAD` |
+| `abc123~1..abc123` | Single commit by hash | `git diff --stat abc123~1..abc123` |
 | `apps/designer/` | Only this directory (uncommitted) | `git diff --stat HEAD -- apps/designer/` |
 | `auth.controller.ts` | Only files matching name (uncommitted) | `git diff --stat HEAD -- '**/auth.controller.ts'` |
 | `apps/api/ apps/runner/` | Multiple paths (uncommitted) | `git diff --stat HEAD -- apps/api/ apps/runner/` |
