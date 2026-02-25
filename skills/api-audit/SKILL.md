@@ -378,6 +378,35 @@ After audit, persist ALL findings (confidence 26+) to `memory/backlog.md`:
 3. New → append with next `B-{N}` ID, source: `api-audit/{date}`
 4. Confidence 0-25 → DISCARD (consistent with `/review` rules)
 
+Item format:
+```
+| B-{N} | HIGH | src/offer/offer.controller.ts | D1: missing DTO validation on POST /offers | api-audit/2026-02-25 | OPEN |
+```
+
+Print summary: `Backlog updated: {N} new items (B-{X}–B-{Y}), {M} duplicates incremented`
+
+### Next-Step Routing
+
+After report and backlog, propose the most impactful next action based on findings:
+
+| Condition | Suggested action |
+|-----------|-----------------|
+| D1 = 0 (no validation) | `/code-audit [controllers]` — audit CQ3/CQ19 across all endpoints |
+| D9 < 8 (auth gaps) | `/code-audit [controllers]` — audit CQ4/CQ5 auth defense in depth |
+| D3 < 3 AND >10K rows possible | `/refactor [services]` — add pagination/cursor to unbounded queries |
+| D10 < 3 (undocumented endpoints) | `/docs api [path]` — generate API reference from controller files |
+| D1 + D9 both critical | Fix D9 (auth) first — security before correctness |
+| All dimensions ≥ 8 | No action needed — consider scheduling next audit in 30 days |
+
+Output the routing suggestion as:
+```
+RECOMMENDED NEXT ACTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[condition met] → [suggested command]
+Reason: [1 sentence why this is the highest-impact fix]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
 ---
 
 ## Execution Notes

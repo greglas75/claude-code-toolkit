@@ -403,9 +403,10 @@ Tag: [tag name] (rollback: git reset --hard [tag])
 Execution: [SOLO / TEAM (N agents, M parallel tasks)]
 
 Next steps:
-  /docs update [file]  → Update docs if API or module structure changed
-  Push                 → git push origin [branch]
-  Continue             → /refactor to start next task
+  /docs update [file]          → Update docs if API or module structure changed
+  /code-audit [new-files]      → Verify CQ on new modules (if SPLIT_FILE or multi-file EXTRACT)
+  Push                         → git push origin [branch]
+  Continue                     → /refactor to start next task
 ```
 
 ---

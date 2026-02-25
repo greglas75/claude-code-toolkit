@@ -384,6 +384,7 @@ Analyze the audit results and select the most impactful action:
 | CQ14=0 in 2+ files (shared duplication) | "Run `/refactor` to extract shared logic" | Duplication across files = structural problem, needs CONTRACT+ETAP |
 | Same CQ fails in 3+ files (e.g., CQ8=0 in 5 services) | "Fix [CQ] across all affected files" | Pattern fix — same fix applied repeatedly |
 | CQ18=0 (multi-store sync needs new mechanism) | "Run `/build` to add sync mechanism" | New infrastructure needed |
+| A1/A2/A3 structural issues (wrong layers, circular deps, god modules) | "Run `/architecture review [path]`" | Code quality fixes won't solve structural problems — needs architectural view first |
 | Only Tier B/C with varied issues | "Fix top 3 critical gate failures" | Highest ROI |
 | All Tier A | Skip — print "All files production-ready" | Nothing to fix |
 

@@ -335,6 +335,34 @@ Final report structure:
 [Patterns found in triage but not selected — with file counts for future runs]
 ```
 
+### Backlog Persistence (MANDATORY)
+
+After report, persist SKIP and NEEDS_REVIEW items to `memory/backlog.md`:
+1. Read existing backlog — skip if already tracked
+2. For each SKIP file: add item with reason
+3. For each NEEDS_REVIEW file: add item with pattern ID + what failed
+4. Print: `Backlog updated: {N} new items`
+
+Item format:
+```
+| B-{N} | MEDIUM | src/profiles/profileSlice.test.ts | fix-tests SKIP: P-41 — state shape too complex for mechanical fix | fix-tests/2026-02-25 | OPEN |
+```
+
+### Next Steps
+
+After the report:
+
+```
+NEXT STEPS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Run tests to verify fixes:  npm test [fixed-files]
+Review fixed files:         /review [space-separated list of FIXED files]
+Manual fixes needed:        [N] NEEDS_REVIEW files in backlog (B-{X}–B-{Y})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+`/review` on fixed test files confirms no regressions and validates self-eval improvements.
+
 ---
 
 ## Pattern-Specific Fix Notes
