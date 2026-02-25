@@ -29,6 +29,12 @@ I want to AUDIT code quality
   └─ API endpoints → /api-audit [path]
   └─ System structure → /architecture review [path]
 
+I want to WRITE tests for existing code
+  └─ Single file → /write-tests [file.ts]
+  └─ Directory batch → /write-tests [dir/]
+  └─ Auto-discover uncovered → /write-tests auto
+  └─ Plan only → /write-tests [file.ts] --dry-run
+
 I want to FIX systematic test issues
   └─ /fix-tests --triage   (discover what's broken)
   └─ /fix-tests --pattern [ID] [path]
@@ -122,6 +128,22 @@ I want to make an ARCHITECTURE DECISION
 
 ---
 
+## Workflow: Writing Tests for Existing Code
+
+```
+1. /write-tests [file | dir/ | auto]
+   ├─ Phase 1: Coverage Scanner (what's untested) + Pattern Selector (which patterns)
+   ├─ Phase 2: plan → HARD STOP for approval (or --dry-run to stop here)
+   ├─ Phase 3: write tests + Q1-Q17 self-eval
+   ├─ Phase 4: Test Quality Auditor + full suite run
+   └─ Phase 5: /review staged → auto-commit + tag
+
+2. Optional after:
+   └─ /test-audit [path]   — re-audit to confirm tier improvement
+```
+
+---
+
 ## Workflow: Test Quality Cleanup
 
 ```
@@ -188,6 +210,7 @@ Every skill writes to `memory/backlog.md`:
 | `/test-audit` | Tier C/D, critical gate failures per file |
 | `/api-audit` | All findings confidence 26+ |
 | `/fix-tests` | SKIP + NEEDS_REVIEW files |
+| `/write-tests` | Test Quality Auditor finds issues during write |
 | `/debug` | Unrelated issues found during debugging |
 | `/architecture` | Critical issues from review |
 
@@ -208,6 +231,8 @@ Manage with: `/backlog list` · `/backlog prioritize` · `/backlog fix B-{N}` ·
 | `/architecture` | Simple 1-2 file changes (overkill) |
 | `/docs` | You haven't read the source files first (it will anyway) |
 | `/fix-tests` | Tests are structurally wrong (rewrite needed, not pattern fix) |
+| `/write-tests` | New feature code (tests go in `/build` Phase 3.4) |
+| `/write-tests` | Tests already exist and need pattern fixes (use `/fix-tests`) |
 
 ---
 
@@ -224,7 +249,11 @@ Manage with: `/backlog list` · `/backlog prioritize` · `/backlog fix B-{N}` ·
 /code-audit ─────────────────────► /refactor | /build | /review (via routing)
   └─ A1-A3 failures ────────────► /architecture review
 
+/write-tests ────────────────────► /review staged (auto, before commit)
+  └─ after write-tests ─────────► /test-audit [path] (confirm tier improvement)
+
 /test-audit ─────────────────────► /fix-tests (via pattern routing)
+  └─ Tier D / no tests ─────────► /write-tests [file]
   └─ after fix-tests ───────────► /review [fixed files]
 
 /api-audit ──────────────────────► /code-audit | /refactor | /docs api (via routing)

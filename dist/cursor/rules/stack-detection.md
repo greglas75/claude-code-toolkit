@@ -57,12 +57,13 @@ These are loaded ON-DEMAND (not in `~/.cursor/rules/`):
 | Review protocol | `/review` invoked | `~/.cursor/review-protocol.md` -- detailed checklists, report templates |
 | Refactoring rules | `/refactor` invoked | `~/.cursor/skills/refactor/rules.md` -- read by skill |
 | Refactoring protocol | `/refactor` invoked | `~/.cursor/refactoring-protocol.md` -- CONTRACT + ETAP stages |
-| Test patterns (core) | `/test-audit`, `/review`, `/refactor` | `~/.cursor/test-patterns.md` -- Q1-Q17, lookup table, scoring |
+| Test patterns (core) | `/test-audit`, `/review`, `/refactor`, `/write-tests` | `~/.cursor/test-patterns.md` -- Q1-Q17, lookup table, scoring |
 | Test patterns (catalog) | Core lookup routes here | `~/.cursor/test-patterns-catalog.md` -- G-1–G-40, P-1–P-46 |
 | Test patterns (Redux) | Code type = REDUX-SLICE | `~/.cursor/test-patterns-redux.md` -- G-41–G-45, P-40, P-41, P-44 |
 | Test patterns (NestJS) | Code type = CONTROLLER + NestJS | `~/.cursor/test-patterns-nestjs.md` -- G-33–G-34, NestJS-G1–G2, NestJS-AP1, NestJS-P1–P3, security S1-S7, templates |
 | Code audit | `/code-audit` invoked | `~/.cursor/skills/code-audit/SKILL.md` -- CQ1-CQ20 mass audit |
 | Test audit | `/test-audit` invoked | `~/.cursor/skills/test-audit/SKILL.md` -- Q1-Q17 mass audit |
+| Write tests | `/write-tests` invoked | `~/.cursor/skills/write-tests/SKILL.md` -- coverage scanner + pattern selector + Q1-Q17 gates |
 | API audit | `/api-audit` invoked | `~/.cursor/skills/api-audit/SKILL.md` -- endpoint integrity |
 | Backlog management | `/backlog` invoked | `~/.cursor/skills/backlog/SKILL.md` -- tech debt tracking |
 | Refactoring examples | `/refactor` invoked (stack-specific) | `~/.cursor/refactoring-examples/{stack}.md` -- test patterns per stack |

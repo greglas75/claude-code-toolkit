@@ -28,6 +28,8 @@ Before starting implementation, route the task to the correct workflow.
 | Code review | After coding, before push | `/review` | Audit + confidence gate + backlog |
 | Code quality audit | Mass audit of production files | `/code-audit` | CQ1-CQ20 + CAP1-CAP13, tiered report |
 | Test quality audit | Mass audit of test files | `/test-audit` | Q1-Q17 + AP/P-* patterns, tiered report |
+| Write tests for existing code | Legacy/uncovered production files, post-refactor test rewrite | `/write-tests` | Coverage scanner + pattern selector + Q1-Q17 gates |
+| Fix systematic test issues | Same anti-pattern across many test files | `/fix-tests` | Batch repair per pattern (P-41, AP10, etc.) |
 | API audit | Endpoint integrity check | `/api-audit` | 10 dimensions (D1-D10), cross-cutting analysis |
 | Tech debt management | View/manage backlog items | `/backlog` | Add, list, fix, wontfix items |
 | Simple bug fix | <3 files, clear cause | Direct coding | Follow testing + CQ rules |
