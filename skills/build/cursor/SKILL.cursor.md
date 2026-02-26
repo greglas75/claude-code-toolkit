@@ -29,7 +29,7 @@ Resolve paths from both possible locations -- try `~/.cursor/` first, fall back 
 
 ---
 
-## Mandatory File Reading (NON-NEGOTIABLE)
+## Mandatory File Reading (required; degraded mode if missing)
 
 Before starting ANY work, read ALL files below. Confirm each with check or X:
 
@@ -189,7 +189,7 @@ Write tests per the Test Strategy from Phase 2. Requirements:
 
 ### 3.5: Test Self-Eval (before Phase 4)
 
-Run Q1-Q17 self-eval (from `~/.cursor/rules/testing.md`) on each test file you wrote.
+Run Q1-Q17 self-eval (from `~/.cursor/rules/testing.md`) on each test file you wrote or modified.
 
 - Score each Q individually (1/0)
 - Critical gate: Q7, Q11, Q13, Q15, Q17 -- any = 0 -> fix before proceeding
@@ -214,10 +214,16 @@ Delegate to @test-quality-auditor to verify test quality:
 
 ### 4.2: Verification Commands
 
-Run in parallel:
-- Tests: project test command (`npm run test:run`, `pytest`, etc.)
-- Types: `npx tsc --noEmit` or equivalent
-- Lint: `npm run lint` or equivalent
+Run in parallel (use stack-appropriate commands from Phase 0):
+- Tests: project test command (`npm run test:run`, `pytest`, `go test ./...`, etc.)
+- Types: stack-dependent type checker:
+  - TypeScript: `npx tsc --noEmit`
+  - Python (mypy): `mypy [changed-files]`
+  - Python (pyright): `pyright [changed-files]`
+  - Go: `go vet ./...`
+  - PHP (phpstan): `vendor/bin/phpstan analyse [changed-files]`
+  - No type checker configured -> skip with note "TYPES: skipped (no type checker detected)"
+- Lint: `npm run lint`, `ruff check`, `golangci-lint run`, or project equivalent
 
 **All must pass.** If any fails -> fix -> re-run.
 
@@ -231,7 +237,7 @@ EXECUTE VERIFICATION
 [x]/[ ]  SCOPE: All files match the approved plan (no unplanned files added)
 [x]/[ ]  SCOPE: No extra features/refactoring beyond what the plan specifies
 [x]/[ ]  TESTS PASS: Full test suite green (not just new files)
-[x]/[ ]  TYPES: tsc --noEmit passes (no type errors)
+[x]/[ ]  TYPES: type checker passes -- tsc --noEmit (TS), mypy/pyright (Python), go vet (Go), or skipped if none
 [x]/[ ]  FILE LIMITS: All created/modified files within limits from file-limits.md (production + test)
 [x]/[ ]  CQ1-CQ20: Self-eval on each new/modified PRODUCTION file (scores + evidence)
 [x]/[ ]  Q1-Q17: Self-eval on each new/modified TEST file (individual scores + critical gate)
