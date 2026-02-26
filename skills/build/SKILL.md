@@ -87,11 +87,14 @@ BACKLOG: [N open items in related files, or "none"]
 
 ---
 
-## Phase 1: Analysis (background — runs during Phase 2)
+## Phase 1: Analysis
 
-Spawn 2 sub-agents to gather context. Both run in background while you proceed to Phase 2 planning. Incorporate their results into the plan when they complete — do not block on them.
+Gather context from 2 analyses before planning. Both can run in background (Claude Code) or inline (other environments).
 
-**Agent 1: Blast Radius Mapper** — uses `~/.claude/skills/build/agents/dependency-mapper.md`
+**Analysis 1: Blast Radius Mapper** — `~/.claude/skills/build/agents/dependency-mapper.md`
+
+Trace all importers/callers of target files. Identify what might break or need updates.
+
 ```
 Spawn via Task tool with:
   subagent_type: "Explore"
@@ -107,7 +110,10 @@ Trace all importers/callers of the target files. Identify what might break or ne
 Read project CLAUDE.md for import conventions."
 ```
 
-**Agent 2: Existing Code Scanner** — uses `~/.claude/skills/build/agents/existing-code-scanner.md`
+**Analysis 2: Existing Code Scanner** — `~/.claude/skills/build/agents/existing-code-scanner.md`
+
+Search for existing services/helpers/components similar to what's planned. Prevent duplication.
+
 ```
 Spawn via Task tool with:
   subagent_type: "Explore"
@@ -123,7 +129,7 @@ Search for existing services/helpers/components similar to what's planned. Preve
 Read project CLAUDE.md for file organization conventions."
 ```
 
-Both agents run in background (`run_in_background: true`). Proceed to Phase 2 immediately.
+Incorporate results into the Phase 2 plan. If running in background, proceed to Phase 2 and merge results when they arrive. If running inline, complete both analyses before Phase 2.
 
 ---
 

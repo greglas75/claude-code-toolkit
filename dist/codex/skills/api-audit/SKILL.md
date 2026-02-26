@@ -233,14 +233,7 @@ Within any tier, additional dimensions may become N/A by context (e.g., D7=N/A i
 
 Split endpoints into batches by controller/module. Each batch covers one controller/module and all its endpoints.
 
-**Execution strategy** -- choose based on tool availability:
-
-| Environment | Strategy | How |
-|-------------|----------|-----|
-| Claude Code (`Task` available) | **Parallel** | Spawn one agent per batch (max 6 concurrent). Each gets `agent-prompt.md` instructions + endpoint list. |
-| Cursor, Codex, Antigravity (`Task` NOT available) | **Sequential inline** | Evaluate each batch yourself, one at a time, following `agent-prompt.md` instructions and output format. |
-
-**Parallel agent template** (Claude Code only):
+**Execution:** audit each batch following `~/.codex/skills/api-audit/agent-prompt.md` instructions and output format. Evaluate sequentially, one batch at a time.
 Perform this analysis inline.
 
 

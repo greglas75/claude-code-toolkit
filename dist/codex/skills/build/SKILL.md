@@ -57,19 +57,25 @@ BACKLOG: [N open items in related files, or "none"]
 
 ---
 
-## Phase 1: Analysis (background -- runs during Phase 2)
+## Phase 1: Analysis
 
-Spawn 2 sub-agents to gather context. Both run in background while you proceed to Phase 2 planning. Incorporate their results into the plan when they complete -- do not block on them.
+Gather context from 2 analyses before planning. Both can run in background (Claude Code) or inline (other environments).
 
-**Agent 1: Blast Radius Mapper** -- uses `references/dependency-mapper.md`
+**Analysis 1: Blast Radius Mapper** -- `references/dependency-mapper.md`
+
+Trace all importers/callers of target files. Identify what might break or need updates.
+
 Read `references/dependency-mapper.md` and perform this analysis yourself.
 
 
-**Agent 2: Existing Code Scanner** -- uses `references/existing-code-scanner.md`
+**Analysis 2: Existing Code Scanner** -- `references/existing-code-scanner.md`
+
+Search for existing services/helpers/components similar to what's planned. Prevent duplication.
+
 Read `references/existing-code-scanner.md` and perform this analysis yourself.
 
 
-Both agents run in background (``). Proceed to Phase 2 immediately.
+Incorporate results into the Phase 2 plan. If running in background, proceed to Phase 2 and merge results when they arrive. If running inline, complete both analyses before Phase 2.
 
 ---
 
