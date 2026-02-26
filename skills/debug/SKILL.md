@@ -13,19 +13,20 @@ Turns a bug report or error into a root cause + fix using a four-phase framework
 | Input | Action |
 |-------|--------|
 | _(empty)_ | Ask: "What's the issue? Share the error, stack trace, or describe what's happening." |
-| error message / stack trace | Start at Phase 2 (Narrow) — reproduction already known |
+| error message / stack trace | Start at Phase 1.5 (Minimal Repro) — verify reproducibility before narrowing |
 | code snippet | Start at Phase 3 (Diagnose) — read the code, trace the path |
 | "why does X…" / "X is broken" | Start at Phase 1 (Reproduce) — gather more context |
 
 ---
 
-## Framework: 4 Phases
+## Framework: 5 Phases
 
 ```
-Phase 1: REPRODUCE   → understand expected vs. actual behavior
-Phase 2: NARROW      → find exact failure point (logs, scope, recent changes)
-Phase 3: DIAGNOSE    → trace the code path, form + test hypotheses
-Phase 4: FIX         → propose fix, check side effects, add regression test
+Phase 1:   REPRODUCE    → understand expected vs. actual behavior
+Phase 1.5: MINIMAL REPRO → verify stack trace is reproducible (skip if from Phase 1)
+Phase 2:   NARROW       → baseline check + find exact failure point
+Phase 3:   DIAGNOSE     → trace the code path, form + test hypotheses
+Phase 4:   FIX + VERIFY → implement fix, run tests, write regression test, confirm green
 ```
 
 ---
@@ -42,9 +43,37 @@ Establish a clear, reproducible failure description. Ask if not provided:
 
 If reproduction is inconsistent (flaky) → flag as potential race condition, environment-specific config, or test order dependency.
 
+## Phase 1.5: Minimal Repro (when starting from stack trace)
+
+A stack trace proves an error occurred — it does NOT prove you can reproduce it now. Before narrowing:
+
+1. **Run the failing test/endpoint** — can you trigger the same error?
+2. **If YES** → proceed to Phase 2 with confirmed reproduction
+3. **If NO** → the trace may be from a different state (stale data, config, deploy). Treat as Phase 1: gather expected vs actual, steps, scope.
+4. **If INTERMITTENT** → run 3× to confirm flakiness, then proceed with flaky flag
+
+Skip this phase only when the reproduction is self-evident (e.g., type error visible in code, compilation failure).
+
 ## Phase 2: Narrow
 
-Reduce the search space. Work through in order:
+### 2.0: Baseline Check (pre-existing vs introduced)
+
+Before diving in, establish whether this is a new regression or a pre-existing issue:
+
+1. **Run existing tests** for the affected area → were they already failing?
+2. **Check recent commits** — `git log --oneline -10 -- [affected-files]`
+3. **If regression suspected** — `git log --oneline --since="[when it broke]"` to narrow the introducing commit
+4. **Tag baseline state** — note which tests pass/fail NOW, before you change anything
+
+Output:
+```
+BASELINE: [N] tests passing, [M] failing in affected area
+REGRESSION: YES (commit [hash]) / NO (pre-existing) / UNKNOWN
+```
+
+### 2.1: Reduce the search space
+
+Work through in order:
 
 1. **Error message / stack trace** — read the full trace, not just the last line. The root error is usually earlier in the chain.
 2. **Logs around the time of failure** — what happened just before the error?
