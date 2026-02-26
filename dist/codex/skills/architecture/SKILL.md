@@ -69,6 +69,16 @@ Tests can live in multiple locations. Check ALL of these -- do NOT stop at the f
 
 **Never write the review from memory. Read first.**
 
+### Scope Bounding (when `[path]` is specified)
+
+When reviewing a specific path (`--mode review src/billing`):
+- **Step 1-2:** read structure and map architecture **within the path only**. Cross-boundary imports (from outside the path into it, and from it outward) are noted as external dependencies but not audited.
+- **Step 2.5 metrics:** compute fan-in/fan-out, LOC, cycles **for modules inside the path**. External modules appear only as edge nodes (fan-in/fan-out targets, not scored).
+- **Step 3 scoring:** A1-A8 scored **for the scoped path**. If a dimension is unobservable within scope (e.g., A7 Observability when only reviewing a utility module), mark as N/A with justification.
+- **Step 4 + report:** issues and recommendations scoped to the path. Broader architectural concerns noted in a separate "Out of Scope Observations" section (not scored, not in backlog).
+
+When `[path]` is omitted or set to project root -> full-project review, no scope restriction.
+
 ### Step 2 -- Map the architecture
 
 Identify:
@@ -122,7 +132,7 @@ Each score requires **1-line evidence** (file:line or pattern reference).
 | 40-59% | Significant issues | Prioritized rework sprint |
 | <40% | Critical | Architecture overhaul needed |
 
-**Critical gate:** any A1-A4 = 0 -> verdict capped at "Significant issues" regardless of total (structural fundamentals broken).
+**Critical gate:** any A1-A4 = 0 -> verdict capped at **no higher than** "Significant issues" (structural fundamentals broken). If total <40%, verdict stays "Critical" -- the cap only prevents upgrading past "Significant".
 
 ### Step 4 -- Identify top problems
 
@@ -319,7 +329,7 @@ Not a repeat of pros/cons -- synthesize: "Option A wins on X and Y but loses on 
 ### When to use
 Designing a new service, API, or subsystem from requirements.
 
-### Framework (5 Steps)
+### Framework (6 Steps)
 
 **Step 1 -- Requirements**
 - Functional: what does it do? (user stories or capabilities)
@@ -438,7 +448,7 @@ Designing a new service, API, or subsystem from requirements.
 
 After completing any mode, persist risks and action items to backlog:
 
-**Review mode:** run `/backlog add` for each Critical issue (already required in report template).
+**Review mode:** run `/backlog add` for each Critical **and** Needs-work issue from the report. Critical = CRITICAL severity, Needs-work = HIGH severity.
 
 **ADR mode:** run `/backlog add` for:
 - Each item in "Becomes harder" (Consequences section) -- these are accepted trade-offs that need tracking
