@@ -61,14 +61,6 @@ After reading, print step name before executing each step:
 - `STEP: 7.0 Compliance`
 - `STEP: Report`
 
-## Path Resolution (non-Claude-Code environments)
-
-If running in Antigravity, Cursor, or other IDEs where `~/.codex/` is not accessible, resolve paths from `_agent/` in project root:
-- `~/.codex/skills/` -> `_agent/skills/`
-- `~/.codex/rules/` -> `_agent/rules/`
-- `~/.codex/review-protocol.md` -> `_agent/review-protocol.md`
-- `~/.codex/test-patterns.md` -> `_agent/test-patterns.md`
-
 ## Tool Availability (Cursor / Codex / Antigravity)
 
 Different environments have different tools. Adapt as follows:
@@ -89,7 +81,7 @@ Different environments have different tools. Adapt as follows:
 - Skip all interactive prompts/gates that use ask the user
 - MODE 1 (report only): after report -> go directly to Execute (apply ALL fixes automatically)
 - Questions Gate (QUESTIONS FOR AUTHOR): skip -- proceed with original severity assessments
-- Post-Execute "Next step?" prompt: skip -- automatically proceed to Push if tests pass
+- Post-Execute: commit fixes if tests pass, but **do NOT push** -- STOP after commit. Push is a user decision.
 
 **If task creation NOT available:**
 - Skip task creation -- instead print step status inline:
@@ -106,7 +98,7 @@ $ARGUMENTS controls WHAT gets reviewed AND which mode to use.
 | Input | Interpretation | Git Command |
 |-------|---------------|-------------|
 | _(empty)_ | All uncommitted changes | `git diff --stat HEAD` |
-| `new` | Commits since last review | `git diff --stat reviewed..HEAD` (tag) |
+| `new` | Commits since last review | Uses fallback chain: `last-reviewed.txt` -> `reviewed` tag -> `merge-base` -> `HEAD~5` |
 | `HEAD~1` | Last commit only | `git diff --stat HEAD~1..HEAD` |
 | `HEAD~3` | Last 3 commits | `git diff --stat HEAD~3..HEAD` |
 | `HEAD~2..HEAD~1` | Specific commit range (relative) | `git diff --stat HEAD~2..HEAD~1` |
@@ -307,7 +299,7 @@ IF TIER 3:
 | Pre-Existing Checker | **haiku** | Explore | TIER 3 only |
 | Structure Auditor | **sonnet** | Explore | TIER 3 only |
 | Behavior Auditor | **sonnet** or **opus** | Explore | TIER 2 (new files) or TIER 3 |
-| Confidence Re-Scorer | **haiku** | Explore | TIER 3 only (TIER 2: lead scores inline) |
+| Confidence Re-Scorer | **haiku** | Explore | TIER 2+ when agents spawned (TIER 2 without agents: lead scores inline) |
 
 #### TIER 0 and TIER 1 Inline Analysis (no agents)
 
