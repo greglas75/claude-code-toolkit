@@ -58,7 +58,7 @@ Find all test files:
 find . \( -name "*.test.ts" -o -name "*.test.tsx" -o -name "*.spec.ts" -o -name "*.spec.tsx" -o -name "test_*.py" -o -name "*_test.py" \) ! -path "*/node_modules/*" ! -path "*/.next/*" ! -path "*/__pycache__/*" ! -path "*/e2e/*" | sort
 ```
 
-Count total. If >50 files, use `--quick` mode automatically (skip evidence gathering).
+Count total. If >50 files **and no explicit `--deep` flag was provided**, switch to `--quick` mode automatically (skip evidence gathering). An explicit `--deep` always takes precedence — never auto-downgrade a user's explicit mode choice.
 
 ## Step 2: Pair with Production Files
 
@@ -94,7 +94,7 @@ You are a test quality auditor. For each test file below, evaluate against the Q
 
 STEP 0 — RED FLAG PRE-SCAN (do this FIRST, before full evaluation):
 Count these in the test file. If any trigger → auto Tier-D, skip full checklist:
-- Tests with zero `expect()` calls (AP13) → AUTO TIER-D
+- Tests with zero `expect()` calls (AP13) → AUTO TIER-D. **RTL exception:** `getByRole`/`getByText`/`getByLabelText` are implicit assertions — a test with only `getBy*` queries and no `expect()` is NOT AP13 (these throw on missing elements).
 - Fixture:assertion ratio > 20:1 (AP16) → AUTO TIER-D
 - 50%+ of tests use `toBeTruthy()`/`toBeDefined()` as sole assertion (AP14) → AUTO TIER-D
 
@@ -151,7 +151,9 @@ CRITICAL GATE: Q7, Q11, Q13, Q15, Q17 — any = 0 → capped at Tier B (Fix) reg
 SCORING MATH (aligned with testing.md):
   Total = (yes-count + N/A-count) - AP-deductions
   No normalization. N/A=1 is the only adjustment.
+  AP deduction: each unique AP found = -1 (max -5). Same AP occurring multiple times in one file = still -1.
   Example: 12 yes + 3 N/A = 15, minus 2 APs = 13 → Tier B
+  Note: test-patterns.md may reference stack-specific deductions (Redux P-40/P-41, NestJS NestJS-P1). These apply ONLY when auditing that code type — they are included in the AP list above (not a separate deduction).
 
 FOR AUTO TIER-D FILES (red flag triggered), output SHORT format:
 ```
