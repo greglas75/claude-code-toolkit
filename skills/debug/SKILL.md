@@ -136,11 +136,48 @@ Choose the profile matching the bug area — each has a focused diagnostic seque
 
 ## Phase 4: Fix + Verify
 
-1. **Propose the fix** — be specific: which file, which line, what change
-2. **Explain why** — connect the fix to the root cause
+### 4.1: Implement the fix
+
+1. **Apply the fix** — edit the specific file(s). Be minimal: fix the root cause only.
+2. **Explain why** — connect the fix to the root cause (comment in code if non-obvious)
 3. **Check side effects** — does the fix break other paths? does it change behavior for other callers?
 4. **Edge cases** — does the fix hold for null, empty, concurrent, high-load scenarios?
-5. **Regression test** — suggest a specific test that would have caught this bug (and will prevent recurrence)
+
+### 4.2: Run targeted tests
+
+Run only the tests for the affected area:
+```bash
+[test-runner] [affected-test-files]
+```
+- If failing → fix is incomplete or introduced a new issue. Iterate.
+- If passing → proceed.
+
+### 4.3: Run full suite
+
+```bash
+[test-runner]
+```
+- Compare with Phase 2.0 baseline: no NEW failures should appear.
+- If new failures → the fix has side effects. Investigate before proceeding.
+
+### 4.4: Confirm original reproduction is resolved
+
+Re-run the exact reproduction from Phase 1 / Phase 1.5:
+- If the bug still occurs → root cause was wrong. Return to Phase 3.
+- If fixed → proceed.
+
+### 4.5: Write regression test
+
+Write a test that:
+1. Reproduces the exact bug condition
+2. Asserts it no longer occurs
+3. Would have caught this bug if it existed before
+
+Run Q1-Q17 self-eval (from `~/.claude/rules/testing.md`) on the regression test. Critical gates must pass.
+
+### 4.6: CQ self-eval (if production code changed)
+
+Run CQ1-CQ20 (from `~/.claude/rules/code-quality.md`) on each modified production file. Critical gates must pass.
 
 ---
 
@@ -154,13 +191,22 @@ Choose the profile matching the bug area — each has a focused diagnostic seque
 - **Actual:** [what happens instead]
 - **Steps:** [how to reproduce]
 - **Scope:** [always / intermittent / specific conditions]
+- **Baseline:** [N] tests passing, [M] failing before fix
+
+### Diagnosis (Hypothesis → Evidence → Verdict)
+
+| # | Hypothesis | Evidence | Verdict |
+|---|-----------|----------|---------|
+| 1 | [most likely cause] | [what you found: file:line, log output, test result] | CONFIRMED / RULED OUT |
+| 2 | [alternative cause] | [evidence] | CONFIRMED / RULED OUT |
+
+**Confidence:** HIGH / MEDIUM / LOW — [why]
 
 ### Root Cause
 [1-3 sentences explaining WHY the bug occurs — not just where]
+File: [file:line]
 
-### Fix
-[Specific code change with file + line reference]
-
+### Fix Applied
 ```[language]
 // Before:
 [broken code]
@@ -168,6 +214,13 @@ Choose the profile matching the bug area — each has a focused diagnostic seque
 // After:
 [fixed code]
 ```
+
+### Verification
+- Targeted tests: ✅ PASS ([N] tests)
+- Full suite: ✅ PASS (no new failures vs baseline)
+- Original reproduction: ✅ RESOLVED
+- CQ self-eval: [score]/20 → [PASS/CONDITIONAL PASS]
+- Regression test: Q self-eval [score]/17 → [PASS]
 
 ### Side Effects
 [Any other paths affected, or "None — change is isolated to X"]
@@ -179,13 +232,6 @@ it('should [describe the bug scenario] — [ticket ref if known]', () => {
   // Assert it no longer occurs
 });
 ```
-
-### Next Steps
-
-1. Apply the fix to `[file:line]`
-2. Add the regression test to `[test-file]`
-3. `/review [file]` — verify fix quality before committing
-4. `git commit -m "fix: [issue summary]"`
 ```
 
 ---
@@ -196,7 +242,30 @@ If debugging reveals multiple problems, surface them all but focus the fix on th
 
 1. **Root cause** — fix this first
 2. **Contributing factors** — note these but don't fix speculatively
-3. **Unrelated issues spotted** — MANDATORY: add to `/backlog add [description]`, don't fix now
+3. **Unrelated issues spotted** — MANDATORY: add to `memory/backlog.md`, don't fix now
+
+---
+
+## Completion
+
+After Phase 4 verification passes:
+
+```
+DEBUG COMPLETE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Issue: [summary]
+Root cause: [1-line explanation]
+Files fixed: [list]
+Regression test: [test-file]
+Verification: targeted PASS | full suite PASS | repro RESOLVED
+Confidence: HIGH / MEDIUM / LOW
+Backlog: [N items added | "none"]
+
+Next steps:
+  /review [fixed-files]  → verify fix quality
+  git commit -m "fix: [issue summary]"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
 
 ---
 
