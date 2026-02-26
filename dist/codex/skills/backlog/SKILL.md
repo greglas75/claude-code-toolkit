@@ -1,26 +1,36 @@
 ---
 name: backlog
-description: "Manage tech debt backlog -- add, list, fix, wontfix, delete items. Use when managing or viewing the project's tech debt."
+description: "Manage tech debt backlog -- add, list, fix, wontfix, prioritize items. Use when managing or viewing the project's tech debt."
 ---
 
 # /backlog -- Manage Tech Debt Backlog
 
-Add, list, or manage backlog items manually. Works independently of `/review`.
+Add, list, or manage backlog items manually.
 
-**Backlog location:** `memory/backlog.md` in the project's auto memory directory (path shown in system prompt). If the file doesn't exist, create it from the template in `~/.codex/skills/review/rules.md`.
+**Backlog location:** `memory/backlog.md` in the project's auto memory directory (path shown in system prompt). If the file doesn't exist, create it from the embedded template below.
 
 ## Parse $ARGUMENTS
 
 | Input | Action |
 |-------|--------|
-| _(empty)_ | Show all OPEN items as a summary table |
+| _(empty)_ or `list` | Show all OPEN items as a summary table |
+| `list category:{x}` | Show OPEN items filtered by category (code/test/arch/dep/doc/infra) |
 | `add` | Interactive: ask what to add, then append |
 | `add {description}` | Add issue described in natural language |
-| `fix B-{N}` | Mark item as FIXED with today's date |
-| `wontfix B-{N} {reason}` | Mark item as WONT_FIX |
-| `delete B-{N}` | Remove item entirely |
-| `stats` | Show counts by severity + status |
+| `fix B-{N}` | Delete item (confirmed fixed -- git has history) |
+| `wontfix B-{N} {reason}` | Delete item with reason logged to console |
+| `delete B-{N}` | Remove item entirely (no reason needed) |
+| `stats` | Show counts by severity |
+| `prioritize` | Score and rank all OPEN items by Impact/Risk/Effort |
 | `suggest` | Analyze backlog content and recommend batch fix actions |
+
+## Resolving Items
+
+`fix` and `wontfix` both **delete** the item from the backlog. Fixed/won't-fix items are not kept -- git history preserves them. This matches `/review`'s model: no "resolved" section, no unbounded growth.
+
+- `fix B-{N}` -> confirm item ID, delete it, report "B-{N} deleted (fixed)"
+- `wontfix B-{N} {reason}` -> confirm item ID, log reason to console, delete it
+- `delete B-{N}` -> silent delete (for cleanup, no reason needed)
 
 ## Adding Items
 
@@ -31,9 +41,10 @@ When adding (either interactive or from description):
 3. If user gave natural language description, extract:
    - **File + function** (ask if not obvious)
    - **Severity** (infer from description, confirm if unsure)
+   - **Category** (Code/Test/Architecture/Dependency/Documentation/Infrastructure)
    - **Problem** (from user's description)
    - **Fix** (suggest one if obvious, otherwise "TBD")
-4. Check for duplicates (same file + same function/location) -- if found, increment `Seen` count instead
+4. **Dedup check** -- compute fingerprint `file_path:rule_id:line_range` (e.g., `src/auth.ts:CQ8:L45-60`). Search existing items for matching fingerprint with ±10 line tolerance. If found -> increment `Seen` count, keep highest severity, update line range. Do NOT create duplicate.
 5. Append under `## OPEN Issues`
 6. Confirm what was added
 
@@ -74,8 +85,9 @@ OPEN:      X items
   MEDIUM:    _
   LOW:       _
 
-RESOLVED:  Y items
-WONT_FIX:  Z items
+By category:
+  Code: _  Test: _  Architecture: _
+  Dependency: _  Documentation: _  Infrastructure: _
 
 Top files:
   1. services/payout.service.ts (3 items)
@@ -152,5 +164,36 @@ When classifying new items (for filtering/planning):
 | **Infrastructure** | Manual deploys, no monitoring, missing IaC |
 
 Assign category when adding items. Enables `/backlog list category:test` filtered views.
+
+---
+
+## Backlog Template (embedded -- no external dependency)
+
+When `memory/backlog.md` doesn't exist, create it from this template:
+
+```markdown
+# Tech Debt Backlog
+
+> Auto-maintained by `/review`, `/code-audit`, `/test-audit`, `/backlog`.
+> Max 50 OPEN items. Fixed items are deleted (git has history).
+
+## Format
+
+### B-{N}: {Short Title}
+- **Severity:** CRITICAL / HIGH / MEDIUM / LOW
+- **Category:** Code / Test / Architecture / Dependency / Documentation / Infrastructure
+- **File:** `{path}` -> `{function}()`
+- **Fingerprint:** `{file_path}:{rule_id}:{line_range}`
+- **Problem:** {description}
+- **Fix:** {brief fix description}
+- **Source:** {skill} {date}
+- **Seen:** {count}x
+
+---
+
+## OPEN Issues
+
+_No issues yet._
+```
 
 $ARGUMENTS
