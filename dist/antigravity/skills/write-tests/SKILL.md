@@ -278,7 +278,26 @@ Before writing, verify:
 
 ### 3.2: Write Tests
 
-Implement per the plan. Rules:
+**Process EVERY file in the Phase 2 plan.** For each production file listed in the Scope table:
+
+1. Log: `FILE [N]/[total]: [path]`
+2. Read the production file (full -- don't skip methods)
+3. If ADD TO: read the existing test file to know what's already there
+4. Write the test file following Phase 2 strategy for this file
+5. Run Q1-Q17 self-eval (Phase 3.3) on this test file
+6. Fix until score >= 14 with all critical gates passing
+7. -> Move to next file
+
+**Do NOT stop after one file.** The batch is complete only when ALL files in the plan have tests written and self-eval passing. If you have 8 files in the plan, you write 8 test files.
+
+**Minimum tests per public method:**
+- 1 happy path test
+- 1 error/rejection test (required for Q7 critical gate)
+- 1+ edge case tests (null, empty, boundary -- required for Q8/Q11)
+
+A single `it('should work')` per method is NOT sufficient. Minimum 3 `it()` blocks per public method. Controllers/API routes additionally need S1-S4 security tests from the plan.
+
+**Rules:**
 
 **Never delete or replace existing tests** -- add new `describe` blocks or `it` blocks only.
 Allowed modifications to existing code: imports, `beforeEach`/`afterEach` setup, shared helpers/factories (when needed by new tests). Do NOT rewrite existing assertions or test logic.
@@ -320,6 +339,16 @@ Output format:
 ```
 
 Only proceed to Phase 4 when ALL test files score >= 14 (after AP deductions) AND all critical gates pass.
+
+### 3.4: Batch Completion Gate
+
+Before moving to Phase 4, verify the batch is complete:
+
+```
+BATCH PROGRESS: [N]/[total] files completed
+```
+
+If `N < total` -> you are NOT done. Go back to Phase 3.2 and continue with the next file. Do NOT proceed to Phase 4 until all files are processed.
 
 ---
 
