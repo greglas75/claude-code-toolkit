@@ -114,8 +114,8 @@ setup() {
   for skill_dir in "$SKILLS"/*/; do
     skill=$(basename "$skill_dir")
     [ -f "$skill_dir/SKILL.md" ] || continue
-    ln -sf "$SKILLS/$skill"          "$dir/_agent/skills/$skill"
-    ln -sf "$SKILLS/$skill/SKILL.md" "$dir/_agent/workflows/$skill.md"
+    ln -sfn "$SKILLS/$skill"          "$dir/_agent/skills/$skill"
+    ln -sfn "$SKILLS/$skill/SKILL.md" "$dir/_agent/workflows/$skill.md"
   done
 
   # Root-level protocols and patterns (referenced by skills via ~/.claude/ paths)
