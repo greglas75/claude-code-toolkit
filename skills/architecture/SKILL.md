@@ -10,15 +10,27 @@ Three modes: audit an existing codebase architecture, create an ADR for a decisi
 
 ## Parse $ARGUMENTS
 
-| Input | Action |
-|-------|--------|
+**Explicit flags (preferred — no ambiguity):**
+
+| Flag | Action |
+|------|--------|
+| `--mode review [path]` | Architecture Review mode — scan codebase, assess structure and health |
+| `--mode adr` | ADR mode — create/evaluate an architecture decision record |
+| `--mode design` | System Design mode — full requirements → design |
+
+**Heuristic fallback (when no `--mode` flag):**
+
+| Input | Detected Mode |
+|-------|---------------|
 | _(empty)_ | Ask: "What would you like to do? (review [path] / adr / design)" |
-| `review [path]` | Architecture Review mode — scan codebase, assess structure and health |
-| `review` (no path) | Architecture Review mode — scan current directory |
-| "should we use X or Y…" | ADR mode — structured trade-off comparison |
-| "design a system for…" | System design mode — full requirements → design |
-| "document this decision…" | ADR mode — formalize a decision already made |
-| "evaluate this proposal…" | ADR mode — review an existing design |
+| `review [path]` | Review mode |
+| `review` (no path) | Review mode — scan current directory |
+| "should we use X or Y…" | ADR mode |
+| "design a system for…" | Design mode |
+| "document this decision…" | ADR mode |
+| "evaluate this proposal…" | ADR mode |
+
+**Ambiguous input:** if heuristic is uncertain, ask the user to confirm mode before proceeding.
 
 ---
 
@@ -47,6 +59,17 @@ Identify:
 - **External dependencies:** external APIs, queues, caches — how coupled are they?
 - **Cross-cutting concerns:** auth, logging, error handling — centralized or scattered?
 
+### Step 2.5 — Structural metrics (MANDATORY)
+
+Before qualitative scoring, gather these metrics. They provide evidence for A1-A4 and prevent subjective drift.
+
+1. **Dependency cycles:** check for circular imports between modules/directories. Use import analysis (grep for cross-module imports, check if A→B→A or A→B→C→A). Report: cycle count + paths.
+2. **Fan-in / fan-out per module:** for each top-level module, count how many other modules import it (fan-in) and how many it imports (fan-out). High fan-out (>5) = coupling risk. High fan-in (>8) = fragile shared module.
+3. **Module size:** LOC per top-level module/directory. Flag modules >2000 LOC (potential god module).
+4. **Instability index:** per module: `I = fan-out / (fan-in + fan-out)`. Stable (I<0.3) modules should be abstract; unstable (I>0.7) modules should be concrete. Flag violations.
+
+Report these in a `## Structural Metrics` section before the dimension scores.
+
 ### Step 3 — Score against 8 dimensions
 
 | # | Dimension | What to check |
@@ -60,7 +83,27 @@ Identify:
 | A7 | **Observability** | Logging, metrics, tracing present? Correlation IDs? |
 | A8 | **Security boundary** | Auth/authz at layer boundary? Input validated at entry point only? |
 
-Score each: **Good** / **Needs work** / **Critical issue** + 1-line evidence.
+Score each dimension **0-3**:
+
+| Score | Label | Meaning |
+|-------|-------|---------|
+| 3 | Good | No issues found, pattern correctly applied |
+| 2 | Minor gaps | Small deviations, low risk, easy fix |
+| 1 | Needs work | Significant issues, structural risk if not addressed |
+| 0 | Critical | Architectural violation actively causing problems |
+
+Each score requires **1-line evidence** (file:line or pattern reference).
+
+**Weighted total:** `A_total = sum(A1..A8) / 24 × 100%`
+
+| Total | Verdict | Action |
+|-------|---------|--------|
+| ≥80% | Healthy | Minor improvements only |
+| 60-79% | Needs attention | Plan targeted refactoring |
+| 40-59% | Significant issues | Prioritized rework sprint |
+| <40% | Critical | Architecture overhaul needed |
+
+**Critical gate:** any A1-A4 = 0 → verdict capped at "Significant issues" regardless of total (structural fundamentals broken).
 
 ### Step 4 — Identify top problems
 
@@ -86,18 +129,29 @@ For each Critical or Needs-work dimension, describe:
 
 [ASCII or described component diagram showing key modules and data flow]
 
+## Structural Metrics
+
+| Module | LOC | Fan-in | Fan-out | Instability | Flags |
+|--------|-----|--------|---------|-------------|-------|
+| [module] | [N] | [N] | [N] | [0.0-1.0] | [>2000 LOC / high fan-out / cycle] |
+
+Dependency cycles: [N found — list paths, or "none"]
+
 ## Dimension Scores
 
-| Dimension | Score | Evidence |
-|-----------|-------|----------|
-| A1 Modularity | Good / Needs work / Critical | [1-line finding] |
-| A2 Layering | ... | ... |
-| A3 Dependency direction | ... | ... |
-| A4 Single responsibility | ... | ... |
-| A5 Scalability | ... | ... |
-| A6 Testability | ... | ... |
-| A7 Observability | ... | ... |
-| A8 Security boundary | ... | ... |
+| Dimension | Score (0-3) | Evidence |
+|-----------|-------------|----------|
+| A1 Modularity | [0-3] | [1-line finding] |
+| A2 Layering | [0-3] | ... |
+| A3 Dependency direction | [0-3] | ... |
+| A4 Single responsibility | [0-3] | ... |
+| A5 Scalability | [0-3] | ... |
+| A6 Testability | [0-3] | ... |
+| A7 Observability | [0-3] | ... |
+| A8 Security boundary | [0-3] | ... |
+
+**Total: [N]/24 ([N]%) → [Healthy/Needs attention/Significant issues/Critical]**
+**Critical gate: A1=[N] A2=[N] A3=[N] A4=[N] → [PASS/FAIL]**
 
 ## Critical Issues
 
@@ -131,6 +185,17 @@ MANDATORY: run /backlog add for each Critical issue before finishing.
 
 ### When to use
 Capturing a significant technical decision: framework choice, data store selection, communication pattern, API design approach, auth strategy, etc.
+
+### Step 0: Check existing ADRs (MANDATORY)
+
+Before writing a new ADR, search for existing ones:
+1. Check `docs/adr/`, `architecture/decisions/`, `adr/` directories
+2. Search for ADRs covering the same topic (keyword match on title/context)
+3. If related ADR exists:
+   - **Same decision:** update status of existing ADR instead of creating duplicate
+   - **Conflicting decision:** new ADR must reference the old one with `Supersedes: ADR-[N]` and update old ADR status to `Superseded by ADR-[N]`
+   - **Related but different:** add `Related: ADR-[N]` cross-reference
+4. Determine next ADR number from existing files
 
 ### Step 1: Extract context
 
@@ -262,7 +327,14 @@ Designing a new service, API, or subsystem from requirements.
 - Failover: what happens when each component fails?
 - Monitoring: which metrics indicate health?
 
-**Step 5 — Trade-offs & Open Questions**
+**Step 5 — Rollout & Migration (MANDATORY)**
+- **Migration plan:** how to get from current state to new design (if replacing existing system)
+- **Backward compatibility:** what breaks, what needs dual-write/dual-read period
+- **Rollout strategy:** big bang / gradual / feature flag / canary — and why
+- **Rollback plan:** how to revert if deployment fails — data rollback, API compatibility
+- **Timeline:** phases with milestones and go/no-go criteria
+
+**Step 6 — Trade-offs & Open Questions**
 - Every design decision has trade-offs — make them explicit
 - List assumptions that could change the design
 - Identify what you'd revisit at 10x scale
@@ -310,6 +382,23 @@ Designing a new service, API, or subsystem from requirements.
 ## API Design
 [Key endpoints with request/response shapes]
 
+## Rollout & Migration
+
+### Migration Plan
+- [Step-by-step from current state to new design, or "Greenfield — no migration needed"]
+
+### Backward Compatibility
+- [What breaks, dual-write/dual-read requirements, API versioning]
+
+### Rollout Strategy
+- [big bang / gradual / feature flag / canary — and why]
+
+### Rollback Plan
+- [How to revert if deployment fails — data rollback, API compatibility]
+
+### Timeline
+- [Phases with milestones and go/no-go criteria]
+
 ## Trade-offs
 
 | Decision | Chose | Alternative | Why |
@@ -323,6 +412,26 @@ Designing a new service, API, or subsystem from requirements.
 ## What to Revisit at Scale
 - [Trigger: if X, then reconsider Y]
 ```
+
+---
+
+## Backlog Integration (ALL MODES — MANDATORY)
+
+After completing any mode, persist risks and action items to backlog:
+
+**Review mode:** run `/backlog add` for each Critical issue (already required in report template).
+
+**ADR mode:** run `/backlog add` for:
+- Each item in "Becomes harder" (Consequences section) — these are accepted trade-offs that need tracking
+- Each "What to revisit" trigger — schedule a review when trigger conditions approach
+- Each Action Item that can't be completed immediately
+
+**Design mode:** run `/backlog add` for:
+- Each Open Question that blocks implementation
+- Each "What to Revisit at Scale" trigger
+- Each risk identified in Rollout/Migration plan (rollback scenarios, compatibility gaps)
+
+**Zero risks may be silently discarded.** If the output has Consequences, Open Questions, or Risks — they must end up in the backlog.
 
 ---
 
