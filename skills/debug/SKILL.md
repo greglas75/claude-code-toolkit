@@ -102,7 +102,39 @@ Common root causes by error type:
 | Flaky failure | Race condition, global state, test order dep |
 | Works in dev, fails in prod | Env var missing, prod data edge case, timezone |
 
-## Phase 4: Fix
+### Debug Profiles (stack-specific playbooks)
+
+Choose the profile matching the bug area — each has a focused diagnostic sequence:
+
+**API / Backend:**
+1. Reproduce with `curl` / test runner against the endpoint
+2. Check request validation — does the schema reject it or let bad data through?
+3. Check auth context — is the user/token/session correct at point of failure?
+4. Check DB query — does the query return expected data? Add `EXPLAIN` for slow queries
+5. Check error handling — does the catch block swallow, transform, or propagate correctly?
+
+**Frontend / UI:**
+1. Open browser DevTools → Console (errors), Network (failed requests), React DevTools (component state)
+2. Check if the data from API is correct — if yes, bug is in rendering/state management
+3. Check component props flow — is the data reaching the failing component?
+4. Check event handlers — is the user action triggering the expected dispatch/callback?
+5. Check hydration — does the server-rendered HTML match client expectations? (SSR bugs)
+
+**DB / Performance:**
+1. Identify the slow/failing query — check query logs or ORM debug mode
+2. Run `EXPLAIN ANALYZE` on the query — missing index? full table scan? cartesian join?
+3. Check for N+1 — is the same query executed in a loop?
+4. Check connection pool — are connections exhausted? timeouts?
+5. Check data volume — did the dataset grow beyond what the query handles efficiently?
+
+**Async / Flaky:**
+1. Run the failing test 5× — consistent or intermittent?
+2. Check for shared mutable state — global variables, singletons, DB state between tests
+3. Check timing assumptions — `setTimeout`, `sleep`, `waitFor` with inadequate duration
+4. Check execution order — does the test depend on another test running first?
+5. Check resource cleanup — are ports, connections, file handles properly released?
+
+## Phase 4: Fix + Verify
 
 1. **Propose the fix** — be specific: which file, which line, what change
 2. **Explain why** — connect the fix to the root cause
