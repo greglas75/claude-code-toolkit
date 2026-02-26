@@ -16,8 +16,10 @@ Read files based on mode and refactoring type. Parse $ARGUMENTS first to determi
 
 ```
 1. ✅/❌  ~/.claude/skills/refactor/rules.md      — types, iron rules, hard gates, scope fence, sub-agents
-2. ✅/❌  ~/.claude/refactoring-protocol.md       — full ETAP-1A → 1B → 2 protocol (QUICK mode: skip)
+2. ✅/❌  ~/.claude/refactoring-protocol.md       — full ETAP-1A → 1B → 2 protocol
 ```
+
+**QUICK mode exception:** Skip `refactoring-protocol.md` (file 2). QUICK uses its own inline flow (see QUICK Mode section below). `rules.md` is ALWAYS read regardless of mode.
 
 ### Conditional files (read when needed — missing = DEGRADED MODE)
 
@@ -264,28 +266,26 @@ Execute in order:
 1. **ETAP-1A** — Q1-Q17 self-eval → gap classification (STRUCTURAL vs ASSERTION) → CONTRACT → HARD STOP
 2. **ETAP-1B** — Structural cleanup (DRY, helpers, constants) → commit
 3. **ETAP-2** — Assertion strengthening (payload verification, missing scenarios, interaction tests) → re-score → commit
-4. **HARD GATE:** score must improve ≥ 2 points AND all ASSERTION gaps resolved
+4. **HARD GATE:** score must improve ≥ 2 points (or reach 15+/17 if already high) AND all ASSERTION gaps resolved
 
 **For all other types** (production code refactoring):
 1. **ETAP-1A** (Analyze & Scope Freeze)
    - Stages 0 → 0.5 → 1 → 2 → **2.5 (Parallelism Analysis)** → 3 → HARD STOP
    - Incorporate Dependency Mapper + Existing Code Scanner results
-   - Stage 2.5 determines TEAM_MODE (true/false) — included in CONTRACT
+   - Stage 2.5 determines TEAM_MODE — **currently disabled** (always false). Solo execution only.
+     Team mode requires TeamCreate/TaskCreate which are unavailable in most environments.
    - **STOP** for plan approval (all modes)
 
    If PLAN mode (`plan-only`): OUTPUT plan and STOP here.
 
 2. **ETAP-1B** (Tests)
    - Mode routing based on type
-   - If WRITE_NEW + TEAM_MODE: spawn team for parallel test writing (each agent writes tests for their assigned functions — separate spec files, no conflicts)
-   - If WRITE_NEW solo: sequential test writing flow
-   - If RUN_EXISTING/VERIFY_COMPILATION: compiler + optional tests (always solo)
+   - If WRITE_NEW: sequential test writing flow
+   - If RUN_EXISTING/VERIFY_COMPILATION: compiler + optional tests
    - **STOP** for test approval (FULL mode only; AUTO mode continues)
 
 3. **ETAP-2** (Execute & Verify)
-   - If TEAM_MODE: Stage 4A → **4B Team Execution** → 4B.5 → 4C → 4D → 4E
-   - If solo: Stage 4A → 4B → 4B.5 → 4C → 4D → 4E (per phase)
-   - Team is dissolved before 4B.5 (verification is always solo)
+   - Stage 4A → 4B → 4B.5 → 4C → 4D → 4E (per phase)
    - Final: full test suite
 
 ---
