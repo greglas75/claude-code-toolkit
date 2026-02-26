@@ -39,7 +39,9 @@ See SKILL.md Step 2.5 — run 2-3 golden files to verify agent scoring consisten
 
 ### Step 4: Batch + Spawn
 
-Split files into batches of 8-10. For each batch, spawn a Task agent:
+**Pre-batch grouping:** Group test files by production file first. If multiple test files target the same production file (e.g., `foo.test.ts` + `foo.errors.test.ts`), they MUST go into the same batch so suite-aware Q7/Q11 evaluation works correctly.
+
+After grouping, split into batches of 8-10 files. For each batch, spawn a Task agent:
 
 ```
 Task(
@@ -54,11 +56,9 @@ Run batches in parallel (max 6 concurrent agents). Send all Task calls in one me
 ### Step 5: Collect + Score
 
 Parse each agent's output. Extract per-file:
-- Applicable questions (N/17)
-- Raw score (yes-count / applicable)
-- Normalized score (raw/applicable × 17)
+- Score: yes-count + N/A-count (out of 17)
 - Anti-pattern count
-- Final score (normalized - AP)
+- Final score: (yes + N/A) - AP deductions
 - Critical gate (PASS/FAIL)
 - Tier (A/B/C/D)
 - Top 3 gaps
