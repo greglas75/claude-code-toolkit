@@ -108,9 +108,10 @@ Dimension scores:
   D9 (Auth):           [X]/15  — [one-line justification]
   D10 (Docs):          [X]/5   — [one-line justification or N/A if not DEEP]
   TOTAL:               [X]/[max] ([percentage]%)
-  (max = 69 for LIGHT, 95 for STANDARD, 100 for DEEP. N/A dimensions excluded from sum AND max.)
+  (N/A dimensions excluded from BOTH sum AND max. Base max = 69 LIGHT, 95 STANDARD, 100 DEEP — then subtract N/A weights. Example: STANDARD with D7=N/A → max = 95-5 = 90.)
 
-Critical gate: D1=[X] D3=[X] D9=[X] → [PASS/FAIL]
+Critical gate: D1=[X] D3=[X] D9=[X] stack-trace-leak=[yes/no] → [PASS/FAIL]
+(auto-fail triggers: D1=0, D3<3 with >10K rows, D9<8, stack traces in production responses)
 Grade: [HEALTHY ≥80% / NEEDS ATTENTION 60-79% / AT RISK 40-59% / CRITICAL <40%]
 
 Issues found:

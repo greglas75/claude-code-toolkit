@@ -227,25 +227,14 @@ If `backlog.md` doesn't exist yet, create it using the template below.
 ```markdown
 # Tech Debt Backlog
 
-> Auto-maintained by `/review`. Max 50 OPEN items. Fixed items are deleted.
+> Auto-maintained by `/review`, `/build`, `/code-audit`, `/test-audit`, `/write-tests`, `/fix-tests`, `/backlog`.
+> Fixed items are deleted (git has history).
 
-## Format
-
-### B-{N}: {Short Title}
-- **Severity:** CRITICAL / HIGH / MEDIUM / LOW
-- **Confidence:** {X}/100
-- **File:** `{path}` → `{function}()`
-- **Problem:** {description}
-- **Fix:** {brief fix description}
-- **Source:** review {date}
-- **Seen:** {count}x
-
----
-
-## OPEN Issues
-
-_No issues yet._
+| ID | Fingerprint | File | Issue | Severity | Category | Source | Seen | Dates |
+|----|-------------|------|-------|----------|----------|--------|------|-------|
 ```
+
+Fingerprint format: `file|rule-id|signature` (e.g., `auth.service.ts|CQ8|missing-try-catch`). Dedup: search `Fingerprint` column for match → increment `Seen`, update date, keep highest severity. New: append row with next `B-{N}` ID.
 
 ### What goes to backlog
 
@@ -271,15 +260,15 @@ Issues with confidence 0-25 are DISCARDED — hallucinations don't go to backlog
 ### How to persist
 
 1. Read current `backlog.md`
-2. For each issue to persist, compute **fingerprint**: `file_path:rule_id:line_range`
-   - `rule_id` = CQ number (e.g., CQ8), or issue category (e.g., "missing-test", "dead-code")
-   - `line_range` = approximate hunk location (e.g., "L45-60"). Use ±10 line tolerance for matching.
-   - Example fingerprint: `src/auth/auth.service.ts:CQ4:L45-60`
+2. For each issue to persist, compute **fingerprint**: `file|rule-id|signature`
+   - `rule-id` = CQ number (e.g., CQ8), or issue category (e.g., `missing-test`, `dead-code`)
+   - `signature` = short slug describing the issue (e.g., `missing-try-catch`, `no-auth-filter`)
+   - Example fingerprint: `auth.service.ts|CQ4|no-query-filter`
 3. For each issue:
-   - Search backlog for matching fingerprint (same file + same rule + overlapping line range)
-   - If **duplicate**: increment `Seen` count, keep highest confidence score, update line range if shifted
-   - If **new**: append under `## OPEN Issues` with next `B-{N}` ID
-4. **Prune:** delete any FIXED/WONT_FIX items.
+   - Search the `Fingerprint` column for an existing match
+   - If **duplicate**: increment `Seen` count, keep highest severity, update date
+   - If **new**: append table row with next `B-{N}` ID
+4. **Prune:** delete any FIXED/WONT_FIX rows.
 5. Write updated `backlog.md`
 
 ### When to delete items

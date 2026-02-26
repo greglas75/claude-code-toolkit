@@ -45,8 +45,8 @@ When adding (either interactive or from description):
    - **Category** (Code/Test/Architecture/Dependency/Documentation/Infrastructure)
    - **Problem** (from user's description)
    - **Fix** (suggest one if obvious, otherwise "TBD")
-4. **Dedup check** -- compute fingerprint `file_path:rule_id:line_range` (e.g., `src/auth.ts:CQ8:L45-60`). Search existing items for matching fingerprint with ±10 line tolerance. If found -> increment `Seen` count, keep highest severity, update line range. Do NOT create duplicate.
-5. Append under `## OPEN Issues`
+4. **Dedup check** -- compute fingerprint `file|rule-id|signature` (e.g., `auth.service.ts|CQ8|missing-try-catch`). Search the `Fingerprint` column for an existing match. If found -> increment `Seen` count, keep highest severity, update date. Do NOT create duplicate.
+5. Append as new table row
 6. Confirm what was added
 
 ### Batch Add
@@ -166,6 +166,17 @@ When classifying new items (for filtering/planning):
 
 Assign category when adding items. Enables `/backlog list category:test` filtered views.
 
+### CLI Alias -> Column Value
+
+| CLI shortcut | Category column value |
+|-------------|----------------------|
+| `code` | Code |
+| `test` | Test |
+| `arch` | Architecture |
+| `dep` | Dependency |
+| `doc` | Documentation |
+| `infra` | Infrastructure |
+
 ---
 
 ## Backlog Template (embedded -- no external dependency)
@@ -175,26 +186,11 @@ When `memory/backlog.md` doesn't exist, create it from this template:
 ```markdown
 # Tech Debt Backlog
 
-> Auto-maintained by `/review`, `/code-audit`, `/test-audit`, `/backlog`.
-> Max 50 OPEN items. Fixed items are deleted (git has history).
+> Auto-maintained by `/review`, `/build`, `/code-audit`, `/test-audit`, `/write-tests`, `/fix-tests`, `/backlog`.
+> Fixed items are deleted (git has history).
 
-## Format
-
-### B-{N}: {Short Title}
-- **Severity:** CRITICAL / HIGH / MEDIUM / LOW
-- **Category:** Code / Test / Architecture / Dependency / Documentation / Infrastructure
-- **File:** `{path}` -> `{function}()`
-- **Fingerprint:** `{file_path}:{rule_id}:{line_range}`
-- **Problem:** {description}
-- **Fix:** {brief fix description}
-- **Source:** {skill} {date}
-- **Seen:** {count}x
-
----
-
-## OPEN Issues
-
-_No issues yet._
+| ID | Fingerprint | File | Issue | Severity | Category | Source | Seen | Dates |
+|----|-------------|------|-------|----------|----------|--------|------|-------|
 ```
 
-$ARGUMENTS
+This is the same table format used by all producer skills (build, test-audit, fix-tests, write-tests, code-audit). Each row = one backlog item. Fingerprint format: `file|rule-id|signature`.

@@ -289,13 +289,13 @@ After generating the report, persist ALL findings to `memory/backlog.md`:
 2. **If file doesn't exist**: create it with this template:
    ```markdown
    # Tech Debt Backlog
-   | ID | Fingerprint | File | Issue | Severity | Source | Status | Seen | Dates |
-   |----|-------------|------|-------|----------|--------|--------|------|-------|
+   | ID | Fingerprint | File | Issue | Severity | Category | Source | Seen | Dates |
+   |----|-------------|------|-------|----------|----------|--------|------|-------|
    ```
 3. For each Tier C/D file:
    - **Fingerprint:** `file|Q/AP-id|signature` (e.g., `user.test.ts|Q7|no-error-path-test`). Search the `Fingerprint` column for an existing match.
    - **Duplicate** (same fingerprint found): increment `Seen` count, add date, keep highest severity
-   - **New** (no match): append with next `B-{N}` ID, source: `test-audit/{date}`, status: OPEN
+   - **New** (no match): append with next `B-{N}` ID, category: Test, source: `test-audit/{date}`, date: today
    - Include: top 3 gaps, critical gate failures, untested methods
 4. For Tier B files with critical gate failures (Q7/Q11/Q13/Q15/Q17=0):
    - Persist each critical gate failure as separate backlog item (fingerprint: `file|Q-id|gate-fail`)

@@ -354,8 +354,8 @@ After generating the report, persist findings to `memory/backlog.md`:
 2. **If file doesn't exist**: create it with this template (or use the one in `~/.codex/skills/review/rules.md` if available):
    ```markdown
    # Tech Debt Backlog
-   | ID | Fingerprint | File | Issue | Severity | Source | Status | Seen | Dates |
-   |----|-------------|------|-------|----------|--------|--------|------|-------|
+   | ID | Fingerprint | File | Issue | Severity | Category | Source | Seen | Dates |
+   |----|-------------|------|-------|----------|----------|--------|------|-------|
    ```
 3. **Which findings to persist** (tier-based -- no arbitrary score threshold):
    - **Tier D** (red flags, <10): ALL findings -- CRITICAL severity
@@ -365,7 +365,7 @@ After generating the report, persist findings to `memory/backlog.md`:
 4. For each finding to persist:
    - **Fingerprint:** `file|CQ-id|signature` (e.g., `order.service.ts|CQ8|missing-try-catch`). Search the `Fingerprint` column for an existing match.
    - **Duplicate**: increment `Seen` count, add date, keep highest severity
-   - **New**: append with next `B-{N}` ID, source: `code-audit/{date}`, status: OPEN
+   - **New**: append with next `B-{N}` ID, category: Code, source: `code-audit/{date}`, date: today
 5. **Tier A files**: if any OPEN backlog items exist for Tier A files, mark as FIXED
 
 **THIS IS REQUIRED, NOT OPTIONAL.** Every finding from the audit must end up either fixed (Step 8) or in the backlog. Zero issues may be silently discarded.

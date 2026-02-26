@@ -279,7 +279,7 @@ Persist each unrelated issue found during debugging to `memory/backlog.md`:
    |----|-------------|------|-------|----------|----------|--------|------|-------|
    ```
 3. For each issue, compute **fingerprint**: `file|rule-id|signature` (e.g., `auth.service.ts|CQ8|missing-try-catch`)
-4. Search backlog for matching fingerprint -> **duplicate**: increment `Seen`, update date, keep highest severity. **New**: append with next `B-{N}` ID, source: `debug/{date}`, status: OPEN
+4. Search backlog for matching fingerprint -> **duplicate**: increment `Seen`, update date, keep highest severity. **New**: append with next `B-{N}` ID, category: Code, source: `debug/{date}`, date: today
 
 ---
 
