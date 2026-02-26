@@ -38,6 +38,15 @@ You receive:
 
 ### Auto-discovery mode (TARGET=auto)
 
+**Step 0: Read existing coverage registry**
+
+Read `memory/coverage.md` if it exists. Extract:
+- **COVERED files** (Status = COVERED) → skip these entirely in discovery (already tested)
+- **UNCOVERED/PARTIAL files** → these are pre-known candidates, verify they still exist and status hasn't changed
+- If `coverage.md` has > 50 UNCOVERED entries from a recent scan (< 7 days) → skip Steps A-D, use cached data directly. Only re-verify the top 30 candidates still exist on disk.
+
+Report: `CACHE: [N] entries loaded from coverage.md ([N] COVERED skipped, [N] UNCOVERED/PARTIAL pre-known)` or `CACHE: no coverage.md found — full scan`
+
 **Step A: Discover ALL production files** (exhaustive — do NOT stop early)
 
 Run these globs to find every production file in the project:

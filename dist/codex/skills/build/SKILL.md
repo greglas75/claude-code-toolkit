@@ -275,6 +275,13 @@ If any OPEN backlog items in related files were resolved -> delete them (fixed =
 
 **THIS IS REQUIRED.** Zero issues may be silently discarded.
 
+### 5.1b: Coverage Update
+
+If tests were written in Phase 3.4, update `memory/coverage.md`:
+- For each production file that now has tests -> add/update row with Status: COVERED (or PARTIAL if not all methods tested)
+- Use Source: `build/phase-3`
+- If `coverage.md` doesn't exist -> create with template (see `/write-tests` SKILL.md Phase 5.1b for full template)
+
 ### 5.2: Stage + Pre-Commit Review
 
 Stage exactly the files created/modified in this build (no more, no less):

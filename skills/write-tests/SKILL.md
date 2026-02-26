@@ -76,6 +76,7 @@ Before starting ANY work, read ALL files below. Confirm each with ✅ or ❌:
    - NestJS detected → note: load `~/.claude/test-patterns-nestjs.md` when writing CONTROLLER tests
    - Redux detected → note: load `~/.claude/test-patterns-redux.md` when writing REDUX-SLICE tests
 4. Read `memory/backlog.md` — check for related open items in target files
+5. Read `memory/coverage.md` — if exists, use as cached coverage state (skip re-scanning known files)
 
 **Parse arguments:**
 
@@ -158,7 +159,9 @@ Wait for both agents to complete before starting Phase 2 — the plan requires c
 
 ### Auto mode: Sequential Discovery → Classify → Prioritize
 
-In `auto` mode, Pattern Selector cannot run until Coverage Scanner discovers the files. Execute sequentially:
+In `auto` mode, Pattern Selector cannot run until Coverage Scanner discovers the files. Execute sequentially.
+
+If `memory/coverage.md` exists with recent data → scanner uses cached state (much faster). If not → full discovery scan.
 
 **Step 1: Coverage Scanner** (discover + classify coverage)
 
@@ -171,6 +174,7 @@ Spawn via Task tool with:
     for full instructions.
 
     TARGET FILES: auto
+    COVERAGE CACHE: [path to memory/coverage.md, or "none"]
     PROJECT ROOT: [cwd]
 
     Read project CLAUDE.md for test file location conventions.
@@ -446,6 +450,48 @@ If any OPEN backlog items for the same test files were resolved → delete them 
 
 **THIS IS REQUIRED.** Zero issues may be silently discarded.
 
+### 5.1b: Coverage Persistence (MANDATORY)
+
+Update `memory/coverage.md` with results of this session. This file is the project's **persistent coverage registry** — read by all skills that write or audit tests.
+
+1. **Read** the project's `memory/coverage.md` (from the auto memory directory shown in system prompt)
+2. **If file doesn't exist**: create it with this template:
+   ```markdown
+   # Test Coverage Registry
+
+   > Auto-maintained by `/write-tests`, `/build`, `/refactor`, `/review`, `/fix-tests`.
+   > Updated after each test writing session. Read at start to skip re-scanning.
+
+   | File | Status | Methods | Covered | Test file | Risk | Updated | Source | Duration |
+   |------|--------|---------|---------|-----------|------|---------|--------|----------|
+   ```
+3. For each file processed in this session:
+   - **Search** the `File` column for an existing row
+   - **Existing row**: update Status, Methods, Covered, Test file, Updated date, Source, Duration
+   - **New row**: append with current data
+4. For files from Coverage Scanner's DISCOVERY SUMMARY that were NOT processed (DEFERRED):
+   - Add as UNCOVERED rows (if not already present) with `Source: write-tests/scan`
+   - This seeds the registry for the next run — subsequent `/write-tests auto` reads these instead of re-scanning
+5. For files that were COVERED in scanner results:
+   - Add/update as COVERED rows — so next run skips them entirely
+
+**Column definitions:**
+- **Status**: UNCOVERED | PARTIAL | COVERED
+- **Methods**: total exported methods/functions count
+- **Covered**: count of methods with at least one test (0 for UNCOVERED)
+- **Test file**: path to test file, or "none"
+- **Risk**: HIGH | MEDIUM | LOW
+- **Updated**: date of last update (YYYY-MM-DD)
+- **Source**: which skill updated it (`write-tests/auto`, `build/phase-3`, `refactor/etap-1b`, etc.)
+- **Duration**: time spent writing tests for this file in this session (e.g., `3m`, `12m`). Set `—` for scan-only entries.
+
+**Cross-skill usage:** any skill that writes tests SHOULD update coverage.md:
+- `/build` Phase 3.4 (test writing) → update files it tested
+- `/refactor` ETAP-1B (test writing) → update files it tested
+- `/fix-tests` → update files whose tests it repaired
+- `/review fix` (Execute) → update files it wrote tests for
+- `/test-audit` → update Status based on audit results (may downgrade COVERED → PARTIAL if quality is low)
+
 ### 5.2: Stage + Pre-Commit Review
 
 Stage only test files (never production files):
@@ -484,6 +530,7 @@ git tag write-tests-[YYYY-MM-DD]-[short-slug]
 WRITE-TESTS COMPLETE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Target: [file | directory | N files auto-discovered]
+Duration: [total time from Phase 1 start to Phase 5 end]
 Test files created: [N]
 Test files extended: [N]
 Tests written: [N total], all passing
@@ -491,14 +538,15 @@ Coverage: [methods covered: X/Y | "see report"]
 Verification: tests PASS | types PASS (if applicable)
 Quality: [N files at Tier A, N at Tier B after auditor]
 Backlog: [N items persisted | "none"]
+Coverage registry: [N entries updated in memory/coverage.md]
 Commit: [hash] — [message]
 Tag: [tag name] (rollback: git reset --hard [tag])
 
 Mock hazards resolved: [N — list hazard types fixed]
 
 Next steps:
+  /write-tests auto    → Continue with next batch (reads coverage.md)
   /test-audit [path]   → Re-audit to confirm tier improvement
-  /review staged       → If additional review needed
   Push                 → git push origin [branch]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```

@@ -306,6 +306,13 @@ After each sub-agent (Agent 3 and Agent 4) completes, check their output for a `
 
 **Self-check before Phase 5:** verify "Did I persist all backlog items from Agent 3 and Agent 4?" If not -> persist them now, before proceeding to Phase 5 completion output.
 
+### Coverage Update
+
+If tests were written or modified during ETAP phases, update `memory/coverage.md`:
+- For each production file that now has tests -> add/update row with Status: COVERED (or PARTIAL if not all methods tested)
+- Use Source: `refactor/etap-2`
+- If `coverage.md` doesn't exist -> create with template (see `/write-tests` SKILL.md Phase 5.1b for full template)
+
 ---
 
 ## Phase 5: Completion
