@@ -50,6 +50,9 @@ Before starting ANY work, read ALL files below. Confirm each with [x] or [ ]:
    - Redux detected -> note: load `~/.codex/test-patterns-redux.md` when writing REDUX-SLICE tests
 4. Read `memory/backlog.md` -- check for related open items in target files
 5. Read `memory/coverage.md` -- if exists, use as cached coverage state (skip re-scanning known files)
+   - **Path:** `memory/` is in the project root directory (same level as `package.json`/`CLAUDE.md`)
+   - If `memory/` dir does not exist -> create it: `mkdir -p memory`
+   - If `memory/coverage.md` does not exist -> create it with the Phase 5.1b template (empty table)
 
 **Parse arguments:**
 
@@ -390,7 +393,7 @@ If any OPEN backlog items for the same test files were resolved -> delete them (
 
 Update `memory/coverage.md` with results of this session. This file is the project's **persistent coverage registry** -- read by all skills that write or audit tests.
 
-1. **Read** the project's `memory/coverage.md` (from the auto memory directory shown in system prompt)
+1. **Read** the project's `memory/coverage.md` (in project root, same level as `package.json`). Create `memory/` dir if missing.
 2. **If file doesn't exist**: create it with this template:
    ```markdown
    # Test Coverage Registry
