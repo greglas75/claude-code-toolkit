@@ -81,6 +81,25 @@ TARGET: [file | directory | auto-discover]
 BACKLOG: [N open items in related files, or "none"]
 ```
 
+### Phase 0.5: Baseline Test Run
+
+Run existing tests BEFORE writing anything to establish a baseline:
+
+```bash
+# Run full suite (or scoped to target directory):
+[test runner] [target path if scoped]
+```
+
+Record results:
+```
+BASELINE: [N] tests, [N] passing, [N] failing
+PRE-EXISTING FAILURES: [list of already-failing tests, or "none"]
+```
+
+**Why:** If existing tests already fail, Phase 4 cannot distinguish pre-existing failures from regressions caused by your new tests. Record failures now -> ignore them in Phase 4.
+
+If baseline run fails on infrastructure (no test runner, missing deps) -> note it and proceed. The baseline is for distinguishing old vs new failures, not a gate.
+
 ---
 
 ## Phase 1: Analysis (parallel, background)
@@ -106,9 +125,11 @@ Spawn via Task tool with:
        c. Which ones have NO coverage -> UNTESTED
        d. Estimate branch coverage: count if/else/switch in production code,
           check if test exercises both/all branches
-    4. For auto mode ($ARGUMENTS=auto): glob all .ts/.tsx/.py files (exclude
-       node_modules, .next, dist, __generated__), find those with no .test.* sibling
-       and no entry in __tests__/ -> return list sorted by file size DESC
+    4. For auto mode ($ARGUMENTS=auto): glob all .ts/.tsx/.py files, EXCLUDING:
+       node_modules, .next, dist, build, out, coverage, __generated__,
+       *.config.*, *.d.ts, scripts/, migrations/, *.generated.*, *.min.*
+       Find those with no .test.* sibling and no entry in __tests__/
+       -> return list sorted by file size DESC
 
     Output per file:
     - Status: UNCOVERED | PARTIAL | COVERED
@@ -132,7 +153,8 @@ Spawn via Task tool with:
     PROJECT ROOT: [cwd]
 
     For each file:
-    1. Read the file (first 100 lines sufficient for classification)
+    1. Read the file -- scan ALL exports, class/function signatures, and key patterns
+       (don't limit to first 100 lines -- large files have critical logic deeper)
     2. Classify ALL matching code types from this list:
        PURE | REACT | SERVICE | REDIS/CACHE | ORM/DB | API-CALL | GUARD/AUTH |
        STATE-MACHINE | ORCHESTRATOR | EXPORT/FORMAT | ADAPTER/TRANSFORM |
@@ -192,7 +214,9 @@ For each target:
 | foo.service.ts | foo.service.test.ts | CREATE (no test file) |
 | bar.service.ts | bar.service.test.ts | ADD TO (partial, ~40%) |
 
-⚠️ ADD TO: never replace existing tests. New describe blocks only.
+⚠️ ADD TO: never DELETE or REPLACE existing tests. New describe/it blocks only.
+   Allowed modifications to existing code: imports, beforeEach/afterEach setup, shared helpers/factories
+   (when needed by new tests). Do NOT rewrite existing assertions or test logic.
 ⚠️ File size: [current LOC of existing test file] + [estimated new LOC] = [total]
    Flag if total > 400 lines -> plan split into [foo.service.errors.test.ts] etc.
 
@@ -248,7 +272,8 @@ Before writing, verify:
 
 Implement per the plan. Rules:
 
-**Never replace existing tests** -- add new `describe` blocks or `it` blocks only.
+**Never delete or replace existing tests** -- add new `describe` blocks or `it` blocks only.
+Allowed modifications to existing code: imports, `beforeEach`/`afterEach` setup, shared helpers/factories (when needed by new tests). Do NOT rewrite existing assertions or test logic.
 
 **For each test file, follow patterns from `~/.cursor/test-patterns.md`** (loaded in Phase 0). The lookup from Pattern Selector gives the G-/P- IDs -- read those pattern entries before writing.
 
@@ -296,7 +321,7 @@ Spawn the auditor:
 ```
 Spawn via Task tool with:
   prompt: |
-    You are a Test Quality Auditor. Read ~/.cursor/skills/refactor/agents/test-quality-auditor.md
+    You are a Test Quality Auditor. Read ~/.cursor/skills/write-tests/agents/test-quality-auditor.md
     for full instructions.
 
     TEST FILES: [list of test files written/modified]
@@ -331,9 +356,10 @@ Do not proceed to Phase 5 until auditor returns PASS or FIX-with-fixes-applied.
 ```
 
 All tests must pass. If any fail:
-1. Read the failure output
-2. Fix the cause (test bug or mock hazard)
-3. Re-run
+1. Check against Phase 0.5 baseline -- if test was already failing before your changes -> pre-existing, not your bug
+2. Read the failure output for NEW failures
+3. Fix the cause (test bug or mock hazard)
+4. Re-run
 
 ### 4.3: Verification Checklist (NON-NEGOTIABLE)
 
@@ -343,7 +369,7 @@ Print each with [x]/[ ]:
 WRITE-TESTS VERIFICATION
 ------------------------------------
 [x]/[ ]  SCOPE: Only test files modified (NO production code changes)
-[x]/[ ]  SCOPE: No existing tests removed or modified (ADD TO only)
+[x]/[ ]  SCOPE: No existing tests deleted or rewritten (setup/import changes OK)
 [x]/[ ]  TESTS PASS: Full test suite green (not just new files)
 [x]/[ ]  FILE LIMITS: All test files <= 400 lines
 [x]/[ ]  Q1-Q17: Self-eval on each written/modified test file (individual scores + critical gate)
