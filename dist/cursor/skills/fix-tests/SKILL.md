@@ -31,22 +31,6 @@ Before starting ANY work, read the applicable files:
 
 **If any CORE file (1-3) is [ ] -> STOP.** Conditional files: SKIP with note if not needed for current pattern.
 
-## Progress Tracking
-
-Track progress through the steps below, marking each as in_progress -> completed as you go.
-
-## Multi-Agent Compatibility
-
-This skill uses `Task` tool to spawn parallel fixer agents (Step 4). **If `Task` tool is not available** (Cursor, Codex, Antigravity):
-- Skip all "Spawn via Task tool" blocks -- fix files inline, sequentially
-- Model routing is ignored -- use whatever model you are running on
-- Quality gates and output format remain identical
-
-**If user interaction is NOT available** (Codex, Antigravity):
-- `--triage` mode: show triage table, then fix ALL patterns with count > 0 (skip user selection)
-- "ask user which to fix" -> fix all non-zero patterns in descending count order
-- Scope Discovery: use auto-detect, do not ask for directory selection
-
 ---
 
 ## Step 0: Parse $ARGUMENTS

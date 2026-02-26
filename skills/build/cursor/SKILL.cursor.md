@@ -261,11 +261,17 @@ Collect items from ALL sources:
 3. **Review warnings** -- warnings from `/review` (if run)
 
 For each item -> persist to `memory/backlog.md`:
-- Next available B-{N} ID
-- Source: `build/{source}` (e.g., `build/test-quality-auditor`, `build/cq-self-eval`, `build/review`)
-- Status: OPEN
-- Date: today
-- **Dedup:** before adding, check if `memory/backlog.md` already has an item with same file + same issue description. If found -> skip (do not create duplicate).
+
+1. **Read** the project's `memory/backlog.md` (from the auto memory directory shown in system prompt)
+2. **If file doesn't exist**: create it with this template:
+   ```markdown
+   # Tech Debt Backlog
+   | ID | File | Issue | Severity | Source | Status | Seen | Dates |
+   |----|------|-------|----------|--------|--------|------|-------|
+   ```
+3. For each finding:
+   - **Dedup:** check if backlog already has item with same file + same issue. If found -> increment `Seen`, update date, keep highest severity
+   - **New:** append with next `B-{N}` ID, source: `build/{source}` (e.g., `build/test-quality-auditor`, `build/cq-self-eval`, `build/review`), status: OPEN, date: today
 
 If any OPEN backlog items in related files were resolved -> mark FIXED.
 

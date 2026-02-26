@@ -202,7 +202,7 @@ For EACH dimension, agent evaluates all endpoints in scope and assigns a score:
 - **STANDARD** (D1-D9): max = 95. D10 = N/A.
 - **DEEP** (D1-D10): max = 100.
 
-**Health grades** (always percentage-based = score/max x 100):
+**Health grades** (always percentage-based = score/max × 100):
 - >= 80%: HEALTHY -- minor improvements possible
 - 60-79%: NEEDS ATTENTION -- significant issues to address
 - 40-59%: AT RISK -- multiple critical/high issues
@@ -386,7 +386,7 @@ Item format (aligned with `/backlog` template):
 - **Seen:** 1x
 ```
 
-Print summary: `Backlog updated: {N} new items (B-{X}--B-{Y}), {M} duplicates incremented`
+Print summary: `Backlog updated: {N} new items (B-{X}–B-{Y}), {M} duplicates incremented`
 
 ### Next-Step Routing
 

@@ -23,7 +23,7 @@ Example: `/build add offer export --auto` -> feature: "add offer export", auto-p
 
 ---
 
-## Mandatory File Reading (NON-NEGOTIABLE)
+## Mandatory File Reading (required; degraded mode if missing)
 
 Before starting ANY work, read ALL files below. Confirm each with [x] or [ ]:
 
@@ -182,7 +182,7 @@ Write tests per the Test Strategy from Phase 2. Requirements:
 
 ### 3.5: Test Self-Eval (before Phase 4)
 
-Run Q1-Q17 self-eval (from `~/.codex/rules/testing.md`) on each test file you wrote.
+Run Q1-Q17 self-eval (from `~/.codex/rules/testing.md`) on each test file you wrote or modified.
 
 - Score each Q individually (1/0)
 - Critical gate: Q7, Q11, Q13, Q15, Q17 -- any = 0 -> fix before proceeding
@@ -206,10 +206,16 @@ Read `references/test-quality-auditor.md` and perform this analysis yourself.
 
 ### 4.2: Verification Commands
 
-Run in parallel:
-- Tests: project test command (`npm run test:run`, `pytest`, etc.)
-- Types: `npx tsc --noEmit` or equivalent
-- Lint: `npm run lint` or equivalent
+Run in parallel (use stack-appropriate commands from Phase 0):
+- Tests: project test command (`npm run test:run`, `pytest`, `go test ./...`, etc.)
+- Types: stack-dependent type checker:
+  - TypeScript: `npx tsc --noEmit`
+  - Python (mypy): `mypy [changed-files]`
+  - Python (pyright): `pyright [changed-files]`
+  - Go: `go vet ./...`
+  - PHP (phpstan): `vendor/bin/phpstan analyse [changed-files]`
+  - No type checker configured -> skip with note "TYPES: skipped (no type checker detected)"
+- Lint: `npm run lint`, `ruff check`, `golangci-lint run`, or project equivalent
 
 **All must pass.** If any fails -> fix -> re-run.
 
@@ -223,7 +229,7 @@ EXECUTE VERIFICATION
 [x]/[ ]  SCOPE: All files match the approved plan (no unplanned files added)
 [x]/[ ]  SCOPE: No extra features/refactoring beyond what the plan specifies
 [x]/[ ]  TESTS PASS: Full test suite green (not just new files)
-[x]/[ ]  TYPES: `tsc --noEmit` passes (no type errors)
+[x]/[ ]  TYPES: type checker passes -- `tsc --noEmit` (TS), `mypy`/`pyright` (Python), `go vet` (Go), or skipped if none configured
 [x]/[ ]  FILE LIMITS: All created/modified files within limits from file-limits.md (production + test)
 [x]/[ ]  CQ1-CQ20: Self-eval on each new/modified PRODUCTION file (scores + evidence)
 [x]/[ ]  Q1-Q17: Self-eval on each new/modified TEST file (individual scores + critical gate)
@@ -247,11 +253,17 @@ Collect items from ALL sources:
 3. **Review warnings** -- warnings from Phase 5.2 `/review` (if run)
 
 For each item -> persist to `memory/backlog.md`:
-- Next available B-{N} ID
-- Source: `build/{source}` (e.g., `build/test-quality-auditor`, `build/cq-self-eval`, `build/review`)
-- Status: OPEN
-- Date: today
-- **Dedup:** before adding, check if `memory/backlog.md` already has an item with same file + same issue description. If found -> skip (do not create duplicate).
+
+1. **Read** the project's `memory/backlog.md` (from the auto memory directory shown in system prompt)
+2. **If file doesn't exist**: create it with this template:
+   ```markdown
+   # Tech Debt Backlog
+   | ID | File | Issue | Severity | Source | Status | Seen | Dates |
+   |----|------|-------|----------|--------|--------|------|-------|
+   ```
+3. For each finding:
+   - **Dedup:** check if backlog already has item with same file + same issue. If found -> increment `Seen`, update date, keep highest severity
+   - **New:** append with next `B-{N}` ID, source: `build/{source}` (e.g., `build/test-quality-auditor`, `build/cq-self-eval`, `build/review`), status: OPEN, date: today
 
 If any OPEN backlog items in related files were resolved -> mark FIXED.
 
