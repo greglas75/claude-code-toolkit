@@ -236,19 +236,21 @@ Delegate to @post-extraction-verifier to verify refactoring integrity:
 After each agent (@test-quality-auditor and @post-extraction-verifier) completes, check their output for a `BACKLOG ITEMS` section. If present:
 
 1. **Read** the project's `memory/backlog.md` (from the auto memory directory shown in system prompt)
-2. **If file doesn't exist**: create it with the template from `~/.cursor/skills/review/rules.md`
-3. **Dedup check (MANDATORY):** Before appending, check if an OPEN item with the same fingerprint already exists. Fingerprint = `file|rule|signature` (e.g., `src/order.service.ts|CQ8|missing try-catch`). If match found -> update `occurrence` count and date instead of creating a new B-{N} ID. This prevents duplicate backlog items from repeated runs.
-4. **Append** new (non-duplicate) items with:
-   - Next available B-{N} ID
-   - Source: `refactor/{agent-name}`
-   - Status: OPEN
-   - Date: today
-   - Confidence: N/A (these are verified observations, not scored)
-5. **Items that ARE fixed during refactoring**: mark any matching OPEN backlog items as FIXED
+2. **If file doesn't exist**: create it with this template:
+   ```markdown
+   # Tech Debt Backlog
+   | ID | Fingerprint | File | Issue | Severity | Category | Source | Seen | Dates |
+   |----|-------------|------|-------|----------|----------|--------|------|-------|
+   ```
+3. For each finding:
+   - **Fingerprint:** `file|rule-id|signature` (e.g., `order.service.ts|CQ8|missing-try-catch`). Search the `Fingerprint` column for an existing match.
+   - **Duplicate**: increment `Seen` count, update date, keep highest severity
+   - **New**: append table row with next `B-{N}` ID, category: Code, source: `refactor/{agent-name}`, date: today
+4. **Items that ARE fixed during refactoring**: delete matching backlog rows (fixed = deleted per backlog policy; git has history)
 
 **THIS IS REQUIRED, NOT OPTIONAL.** Every issue found by agents that isn't fixed in this session must be persisted. Zero issues may be silently discarded.
 
-After Phase 5 completion, verify: "Did I persist all backlog items from Agent 3 and Agent 4?" If not -> persist them now before showing completion output.
+**Self-check before Phase 5:** verify "Did I persist all backlog items?" If not -> persist them now, before proceeding to Phase 5 completion output.
 
 ---
 

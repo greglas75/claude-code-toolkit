@@ -80,9 +80,11 @@ Different environments have different tools. Adapt as follows:
 
 **If `AskUserQuestion` NOT available (Cursor, Codex, Antigravity):**
 - Skip all interactive prompts/gates that use `AskUserQuestion`
-- MODE 1 (report only): after report -> go directly to Execute (apply ALL fixes automatically)
+- MODE 1 (report only): after report + backlog update -> **STOP**. Do NOT auto-execute fixes. User must explicitly run `/review fix` or `/review blocking` to apply changes.
+- MODE 2 (`fix`): after report -> go directly to Execute (apply ALL fixes automatically)
+- MODE 3 (`blocking`): after report -> go directly to Execute BLOCKING (CRITICAL + HIGH only)
 - Questions Gate (QUESTIONS FOR AUTHOR): skip -- proceed with original severity assessments
-- Post-Execute: commit fixes if tests pass, but **do NOT push** -- STOP after commit. Push is a user decision.
+- Post-Execute (MODE 2/3 only): commit fixes if tests pass, but **do NOT push** -- STOP after commit. Push is a user decision.
 
 **If `TaskCreate` NOT available:**
 - Skip TaskCreate -- instead print step status inline:
@@ -209,7 +211,7 @@ Heuristics (check commit messages + diff content):
 - "refactor", "rename", "extract", "move" -> **REFACTOR**
 - New files + new routes/endpoints/components -> **FEATURE**
 - Config/CI/Dockerfile/terraform -> **INFRA**
-- Can't determine -> ask user (max 1 question)
+- Can't determine -> ask user (max 1 question). If asking is NOT available (Cursor, Codex, Antigravity) -> default to **FEATURE** (safest -- triggers full audit coverage including Steps 3.7, 6.1, tests). Log: `Intent: FEATURE (auto -- could not determine, using safe default)`
 
 ### Step 4: Tier Selection
 
@@ -249,7 +251,7 @@ Flag which extra audit sections are needed:
 
 ### Step 6.5: Read Backlog
 
-Read `memory/backlog.md` from the project's auto memory directory (path shown in system prompt). If the file doesn't exist, create it from the template in rules.md. Check if any OPEN items are in files touched by this PR. If yes, include them in the report under `## BACKLOG ITEMS IN SCOPE`.
+Read `memory/backlog.md` from the project's auto memory directory (path shown in system prompt). If the file doesn't exist, create it from the table template in rules.md (table format: `| ID | Fingerprint | File | Issue | ... |`). Check if any OPEN items are in files touched by this PR. If yes, include them in the report under `## BACKLOG ITEMS IN SCOPE`.
 
 ---
 
@@ -785,5 +787,3 @@ Options:
 2. Show summary of what was fixed
 3. Print: "Not pushed. Marked [REVIEWED_THROUGH] as reviewed -- run `/review new` after merging to main."
 4. Stop -- don't push (commit already done)
-
-$ARGUMENTS

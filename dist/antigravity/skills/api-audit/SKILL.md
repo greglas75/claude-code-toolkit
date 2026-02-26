@@ -35,14 +35,17 @@ If running in Antigravity, Cursor, or other IDEs where `~/.antigravity/` is not 
 
 ## Safety Gates (NON-NEGOTIABLE)
 
-### GATE 1 -- Mutation Prevention
-**NEVER execute POST, PUT, PATCH, DELETE** against any environment without explicit user confirmation AND sandbox detection. GET and OPTIONS only for live probing.
+### GATE 1 -- HTTP Request Policy
 
-Before any HTTP request:
-1. Check URL -- is it localhost, staging, or production?
-2. If production domain detected -> REFUSE (ask user to provide sandbox URL)
-3. If staging -> present the full probing plan (list of endpoints + methods), get ONE user approval for the batch, then execute all. Do NOT ask per-request.
-4. If localhost/sandbox -> proceed with GET/OPTIONS only
+**One rule for all environments:**
+
+| Environment | Detection | GET / OPTIONS | POST / PUT / PATCH / DELETE |
+|-------------|-----------|--------------|----------------------------|
+| Production | Known prod domains, CI env vars | REFUSE -- ask user for sandbox URL | REFUSE |
+| Staging | User confirms "staging" | Present full plan, get ONE batch approval, then execute | Present full plan, get ONE batch approval, then execute |
+| Localhost / sandbox | `localhost`, `127.0.0.1`, user confirms | Proceed freely | REFUSE unless user explicitly approves per-endpoint |
+
+**Default (no environment confirmed):** treat as production -> REFUSE all requests until user clarifies.
 
 ### GATE 2 -- PII & Credential Censorship
 When logging API responses, headers, or payloads:
@@ -148,7 +151,7 @@ grep -rn "@Get\|@Post\|@Put\|@Patch\|@Delete\|@All" "$SRC" --include="*.controll
 
 **Cloudflare Workers:**
 ```bash
-grep -rn "request\.method\|url\.pathname\|router\.\(get\|post\|put\|delete\)" "$SRC" --include="*.ts" | head -50
+grep -rn "request\.method\|url\.pathname\|router\.\(get\|post\|put\|delete\)" "$SRC" --include="*.ts" | sort
 ```
 
 **FastAPI:**
@@ -159,8 +162,10 @@ grep -rn "@router\.\(get\|post\|put\|patch\|delete\)\|@app\.\(get\|post\)" "$SRC
 **Frontend API calls:**
 ```bash
 grep -rn "useQuery\|useMutation\|fetch(\|axios\.\(get\|post\|put\|patch\|delete\)" "$SRC" \
-  --include="*.ts" --include="*.tsx" | head -80
+  --include="*.ts" --include="*.tsx" | sort
 ```
+
+**No truncation:** Discovery commands must return ALL results. Never use `head -N` -- truncated inventory = missed endpoints = missed findings.
 
 **Inventory completeness check:** Grep-based discovery can miss routes behind:
 - Controller/router prefixes (`@Controller('api/v1/offers')`)
@@ -203,10 +208,22 @@ For EACH dimension, evaluate all endpoints in scope and assign a score:
 | D9 | Authentication & Authorization | 15% | 15 | D9<8 -> auto-fail |
 | D10 | Documentation & Contracts (DEEP only) | 5% | 5 | -- |
 
-**Tier-aware scoring:**
-- **LIGHT** (D1+D2+D3+D4+D9): max = 69. D5-D8,D10 = N/A.
-- **STANDARD** (D1-D9): max = 95. D10 = N/A.
-- **DEEP** (D1-D10): max = 100.
+**N/A-aware scoring:**
+
+Dimensions can be N/A based on tier OR code context (e.g., D7 N/A if no frontend code, D10 N/A if not DEEP tier). N/A dimensions are excluded from BOTH the score sum AND the max denominator.
+
+```
+max = sum of weights for all non-N/A dimensions
+score = sum of dimension scores for all non-N/A dimensions
+percentage = score / max x 100
+```
+
+**Tier baselines** (before context-based N/A):
+- **LIGHT** (D1+D2+D3+D4+D9): baseline max = 69. D5-D8,D10 start as N/A.
+- **STANDARD** (D1-D9): baseline max = 95. D10 starts as N/A.
+- **DEEP** (D1-D10): baseline max = 100.
+
+Within any tier, additional dimensions may become N/A by context (e.g., D7=N/A in backend-only project -> reduces max further). The report always shows the actual max used.
 
 **Health grades** (always percentage-based = score/max x 100):
 - >= 80%: HEALTHY -- minor improvements possible
@@ -326,7 +343,9 @@ Save to: `audits/api-audit-[date].md`
 | D8. Rate Limiting | {X} | 5 | |
 | D9. Auth & Authorization | {X} | 15 | |
 | D10. Documentation | {X} | 5 | |
-| **TOTAL** | **{X}** | **{max: 69/95/100}** | **{grade} ({X/max}%)** |
+| **TOTAL** | **{X}** | **{max}** | **{grade} ({X/max}%)** |
+
+> `max` = tier baseline (69/95/100) minus weights of any N/A dimensions.
 
 ## Critical Findings
 {CRITICAL/HIGH severity -- SCRUBBED of PII}
@@ -364,23 +383,18 @@ CQ Overlap: {CQ3/CQ5/CQ7/CQ19/CQ20 or "none -- cross-endpoint only"}
 ### Backlog Persistence (MANDATORY)
 
 After audit, persist ALL findings (confidence 26+) to `memory/backlog.md`:
-1. Read existing backlog
-2. Compute fingerprint per issue: `file_path:dimension:endpoint` (e.g., `src/offer/offer.controller.ts:D1:POST /offers`)
-3. Search for matching fingerprint (same file + same dimension + same endpoint) -> increment `Seen` count, keep highest severity
-4. New -> append with next `B-{N}` ID, source: `api-audit/{date}`, category: `Code`
-5. Confidence 0-25 -> DISCARD (consistent with `/review` rules)
 
-Item format (aligned with `/backlog` template):
-```
-### B-{N}: D1: missing DTO validation on POST /offers
-- **Severity:** HIGH
-- **Category:** Code
-- **File:** `src/offer/offer.controller.ts` -> `createOffer()`
-- **Fingerprint:** `src/offer/offer.controller.ts:D1:POST /offers`
-- **Problem:** No runtime validation on request body
-- **Fix:** Add @Body(ValidationPipe) dto: CreateOfferDto
-- **Source:** api-audit 2026-02-25
-- **Seen:** 1x
-```
+1. **Read** the project's `memory/backlog.md` (from the auto memory directory shown in system prompt)
+2. **If file doesn't exist**: create it with this template:
+   ```markdown
+   # Tech Debt Backlog
+   | ID | Fingerprint | File | Issue | Severity | Category | Source | Seen | Dates |
+   |----|-------------|------|-------|----------|----------|--------|------|-------|
+   ```
+3. For each finding:
+   - **Fingerprint:** `file|dimension|endpoint-signature` (e.g., `offer.controller.ts|D1|POST-offers`). Search the `Fingerprint` column for an existing match.
+   - **Duplicate**: increment `Seen` count, update date, keep highest severity
+   - **New**: append table row with next `B-{N}` ID, category: Code, source: `api-audit/{date}`, date: today
+4. Confidence 0-25 -> DISCARD (consistent with `/review` rules)
 
 Print summary: `Backlog updated: {N} new items (B-{X}--B-{Y}), {M} duplicates incremented`
