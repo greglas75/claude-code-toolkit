@@ -150,9 +150,13 @@ Analysis to perform (execute inline):
     Read project CLAUDE.md for test file location conventions.
 ```
 
-Wait for results. Scanner returns a list of UNCOVERED and PARTIAL files.
+Wait for results. Scanner returns a **DISCOVERY SUMMARY** (mandatory) with total counts + list of UNCOVERED and PARTIAL files.
 
-**Step 2: Pattern Selector** (classify code types for discovered files)
+**Verify discovery is complete:** if DISCOVERY SUMMARY shows fewer than 10 production files for a non-trivial project -> scanner likely missed directories. Re-run with explicit paths or check glob patterns.
+
+**Step 2: Pattern Selector** (classify code types for top candidates)
+
+Pass only the top 30 UNCOVERED + PARTIAL files (by scanner's risk ranking) to Pattern Selector. No need to classify all files -- only the candidates for this batch.
 
 ```
 Analysis to perform (execute inline):
@@ -160,7 +164,7 @@ Analysis to perform (execute inline):
     You are a Pattern Selector. Read ~/.antigravity/skills/write-tests/agents/pattern-selector.md
     for full instructions.
 
-    TARGET FILES: [list of UNCOVERED + PARTIAL files from Step 1]
+    TARGET FILES: [top 30 UNCOVERED + PARTIAL files from Step 1]
     PROJECT ROOT: [cwd]
 
     Read project CLAUDE.md for project-specific conventions.
@@ -170,7 +174,7 @@ Wait for results. Selector returns code types per file.
 
 **Step 3: Merge + Prioritize**
 
-Merge both agent results -- each file now has coverage status (from Scanner) AND code type (from Selector). Apply priority table:
+Merge both results -- each file now has coverage status + risk (from Scanner) AND code type (from Selector). Apply priority table:
 
 | Priority | Criteria | Why |
 |----------|----------|-----|

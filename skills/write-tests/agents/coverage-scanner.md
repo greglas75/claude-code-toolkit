@@ -38,17 +38,83 @@ You receive:
 
 ### Auto-discovery mode (TARGET=auto)
 
-Glob all `.ts`/`.tsx`/`.py` files, **EXCLUDING**:
-- `node_modules`, `.next`, `dist`, `build`, `out`, `coverage`, `__generated__`
-- `*.config.*`, `*.d.ts`, `scripts/`, `migrations/`, `*.generated.*`, `*.min.*`
+**Step A: Discover ALL production files** (exhaustive — do NOT stop early)
+
+Run these globs to find every production file in the project:
+```
+Glob("src/**/*.ts")
+Glob("src/**/*.tsx")
+Glob("lib/**/*.ts")
+Glob("app/**/*.ts")
+Glob("**/*.ts", excluding node_modules/dist/build/.next/out/coverage)
+Glob("**/*.py", excluding node_modules/dist/build/venv/.venv)
+```
+
+From results, **EXCLUDE** (filter out):
+- `*.config.*`, `*.d.ts`, `*.generated.*`, `*.min.*`
+- `scripts/`, `migrations/`, `__generated__/`
 - **Test files**: `*.test.*`, `*.spec.*`, `__tests__/**`, `tests/**`, `test_*.py`, `*_test.py`
+- **DTO/type-only files**: files with only interfaces/types/enums and no logic (optional — include if unsure)
 
-For each file, check all test-file patterns (Step 1 above):
-- No test file found → **UNCOVERED**
-- Test file found but has gaps → **PARTIAL** (read both files, identify untested methods)
-- Test file found and all methods covered → **COVERED** (skip from results)
+Report: `DISCOVERY: [N] production files found`
 
-Return list sorted by status (UNCOVERED first, then PARTIAL), then file size DESC.
+**Step B: Discover ALL test files**
+
+```
+Glob("**/*.test.ts")
+Glob("**/*.spec.ts")
+Glob("**/*.test.tsx")
+Glob("**/*.spec.tsx")
+Glob("**/test_*.py")
+Glob("**/*_test.py")
+```
+
+Report: `TEST FILES: [N] test files found`
+
+**Step C: Fast match — UNCOVERED vs has-test**
+
+For each production file, check if ANY test file matches by name:
+- `user.service.ts` → look for `user.service.test.ts`, `user.service.spec.ts` (any extension variant) in the test file list
+- Match by **basename without extension** (strip `.service`, `.controller`, etc. is NOT needed — match exact stem)
+
+Split into:
+- **UNCOVERED**: no matching test file at all
+- **HAS_TEST**: at least one matching test file exists
+
+Report: `UNCOVERED: [N] files | HAS_TEST: [N] files`
+
+**Step D: Classify UNCOVERED files by risk**
+
+For UNCOVERED files, classify risk by filename patterns (fast — no need to read file content):
+- `*.service.*`, `*.controller.*`, `*.guard.*`, `*.middleware.*` → **HIGH**
+- `*.hook.*`, `*.orchestrator.*`, `*.api.*`, `*.client.*` → **HIGH**
+- `*.component.*`, `*.tsx` (React components) → **MEDIUM**
+- `*.util.*`, `*.helper.*`, `*.constant.*`, `*.type.*`, `*.dto.*`, `*.enum.*` → **LOW**
+- Everything else → **MEDIUM**
+
+**Step E: PARTIAL analysis (only if UNCOVERED < 15)**
+
+If fewer than 15 UNCOVERED files found → also check HAS_TEST files for gaps:
+- Read both production + test file
+- Identify untested methods → PARTIAL if gaps
+- Only analyze up to 30 HAS_TEST files (stop after finding 15 PARTIAL or checking 30)
+
+If 15+ UNCOVERED → skip PARTIAL analysis (enough work already).
+
+**Step F: Return results**
+
+Sort: UNCOVERED first (HIGH → MEDIUM → LOW), then PARTIAL, then by file size DESC.
+Return ALL UNCOVERED + PARTIAL files (the SKILL.md applies the 15-file cap, not you).
+
+**MANDATORY summary at the top of output:**
+```
+DISCOVERY SUMMARY
+  Production files: [N]
+  Test files: [N]
+  UNCOVERED: [N] (HIGH: [N], MEDIUM: [N], LOW: [N])
+  PARTIAL: [N]
+  COVERED: [N] (skipped)
+```
 
 ## Output Format
 
