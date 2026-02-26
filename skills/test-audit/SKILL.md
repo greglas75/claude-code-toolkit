@@ -6,8 +6,10 @@ user-invocable: true
 
 # /test-audit — Test Quality Triage
 
-Mass audit of test files against the Q1-Q17 binary checklist + AP anti-patterns.
+Mass audit of unit and integration test files against the Q1-Q17 binary checklist + AP anti-patterns.
 Produces a tiered report: which files are fine, which need fixes, which need rewrites.
+
+**Scope:** Unit and integration tests only. E2E tests (`*/e2e/*`, `*.e2e.*`, `*.spec.ts` in e2e dirs) are excluded by default — they follow different quality criteria. Use `--include-e2e` to include them.
 
 ## Mandatory File Reading (NON-NEGOTIABLE)
 
@@ -48,6 +50,7 @@ This skill uses `Task` tool to spawn parallel sub-agents for batch evaluation. *
 | `--deep` | Include per-file fix recommendations (slower) |
 | `--quick` | Binary checklist only, skip evidence (faster) |
 | `--commit=ask\|auto\|off` | Commit mode after fix workflow (default: `ask`) |
+| `--include-e2e` | Include E2E test files (excluded by default) |
 
 Default: `all --quick --commit=ask`
 
@@ -302,15 +305,20 @@ If `--deep` mode: also save per-file reports to `audits/test-audit-details/[file
 After generating the report, persist ALL findings to `memory/backlog.md`:
 
 1. **Read** the project's `memory/backlog.md` (from the auto memory directory shown in system prompt)
-2. **If file doesn't exist**: create it from the template in `~/.claude/skills/review/rules.md`
+2. **If file doesn't exist**: create it with this template:
+   ```markdown
+   # Tech Debt Backlog
+   | ID | File | Issue | Severity | Source | Status | Seen | Dates |
+   |----|------|-------|----------|--------|--------|------|-------|
+   ```
 3. For each Tier C/D file:
-   - Search backlog for same test file
-   - **Duplicate**: increment `Seen` count, add date
-   - **New**: append with next `B-{N}` ID, source: `test-audit/{date}`, status: OPEN
+   - **Fingerprint:** `file|Q/AP-id|signature` (e.g., `user.test.ts|Q7|no-error-path-test`). Search backlog for matching fingerprint.
+   - **Duplicate** (same fingerprint found): increment `Seen` count, add date, keep highest severity
+   - **New** (no match): append with next `B-{N}` ID, source: `test-audit/{date}`, status: OPEN
    - Include: top 3 gaps, critical gate failures, untested methods
 4. For Tier B files with critical gate failures (Q7/Q11/Q13/Q15/Q17=0):
-   - Persist each critical gate failure as separate backlog item
-5. **Auto Tier-D red flags** (AP13/AP14/AP16): always persist as HIGH
+   - Persist each critical gate failure as separate backlog item (fingerprint: `file|Q-id|gate-fail`)
+5. **Auto Tier-D red flags** (AP13/AP14/AP16): always persist as HIGH (fingerprint: `file|AP-id|red-flag`)
 
 **THIS IS REQUIRED, NOT OPTIONAL.** Findings that aren't fixed must be tracked. Zero issues may be silently discarded.
 
