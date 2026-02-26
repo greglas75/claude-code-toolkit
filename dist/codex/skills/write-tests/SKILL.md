@@ -25,12 +25,6 @@ Parse `$ARGUMENTS` as: `[path | auto] [--dry-run]`
 
 ---
 
-## Path Resolution (non-Claude-Code environments)
-
-- `~/.codex/skills/` -> `_agent/skills/`
-- `~/.codex/rules/` -> `_agent/rules/`
-- `~/.codex/test-patterns.md` -> `_agent/test-patterns.md`
-
 ---
 
 ## Mandatory File Reading (NON-NEGOTIABLE)
@@ -99,12 +93,12 @@ Spawn 2 sub-agents in background. Start Phase 2 immediately -- incorporate resul
 
 **Agent 1: Coverage Scanner**
 
-Perform this analysis inline.
+Read `references/coverage-scanner.md` and perform this analysis yourself.
 
 
 **Agent 2: Pattern Selector**
 
-Perform this analysis inline.
+Read `references/pattern-selector.md` and perform this analysis yourself.
 
 
 ---

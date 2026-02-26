@@ -31,15 +31,6 @@ Before starting ANY work, read the applicable files:
 
 **If any CORE file (1-3) is [ ] -> STOP.** Conditional files: SKIP with note if not needed for current pattern.
 
-## Path Resolution (non-Claude-Code environments)
-
-If `~/.cursor/` is not accessible, resolve from `_agent/` in project root:
-- `~/.cursor/test-patterns.md` -> `_agent/test-patterns.md`
-- `~/.cursor/test-patterns-catalog.md` -> `_agent/test-patterns-catalog.md`
-- `~/.cursor/test-patterns-redux.md` -> `_agent/test-patterns-redux.md`
-- `~/.cursor/test-patterns-nestjs.md` -> `_agent/test-patterns-nestjs.md`
-- `~/.cursor/rules/testing.md` -> `_agent/rules/testing.md`
-
 ---
 
 ## Step 0: Parse $ARGUMENTS
@@ -149,9 +140,12 @@ find [path] \( -name "*.test.*" -o -name "*.spec.*" \) -not -path "*/node_module
 done
 
 # AP2: Conditional assertions (if-guarded expect -- silent skip when condition false)
-grep -rn "if (" [path] --include="*.test.*" --include="*.spec.*" | grep "expect\|assert" | grep -v "node_modules"
+# Multiline: find if-blocks containing expect within 3 lines (catches multi-line patterns)
+grep -rn -A3 "if (" [path] --include="*.test.*" --include="*.spec.*" | grep -B1 "expect\|assert" | grep "if (" | grep -v "node_modules"
+# Single-line fallback:
+grep -rn "if (.*) .*expect\|if (.*) return" [path] --include="*.test.*" --include="*.spec.*" | grep -v "node_modules"
 # Python variant:
-grep -rn "^    if " [path] --include="test_*.py" | grep -v "node_modules"
+grep -rn -A2 "^    if " [path] --include="test_*.py" | grep -B1 "assert " | grep "if " | grep -v "node_modules"
 
 # Q7-API: API wrapper files with zero error tests
 find [path] \( -name "*.api.test.*" -o -name "*.api.spec.*" -o -name "*.client.test.*" \) -not -path "*/node_modules/*" -print0 | while IFS= read -r -d '' f; do
@@ -196,8 +190,8 @@ Triage results:
   P-65 (route density):  [N] routes with <6 tests -> [ACTION: Fix / Skip]
 ```
 
-If `--pattern` specified: only run the relevant grep, proceed to Step 2 immediately.
-Otherwise: show triage report, ask user "Which patterns to fix? (all / list IDs)"
+**`--triage` mode:** show full triage report, ask user "Which patterns to fix? (all / list IDs)"
+**`--pattern` mode:** report only the relevant grep count, proceed to Step 2 immediately.
 
 ---
 
@@ -256,7 +250,7 @@ Split file pairs into batches of 5. For each batch, spawn a Task agent (`subagen
 ```
 You are a test repair specialist. Fix the test files below for the pattern: [PATTERN_ID].
 
-QUALITY GATES -- read _agent/rules/testing.md before writing. Forbidden patterns (auto-fail Q17):
+QUALITY GATES -- read [RESOLVED_RULES_PATH]/testing.md before writing. Forbidden patterns (auto-fail Q17):
 - expect(screen).toBeDefined()  -> tests nothing; assert actual content
 - await userEvent.type(x, 'v'); expect(x).toHaveValue('v')  -> UI echo; assert CalledWith on dispatch/callback instead
 - expect(payload.id).toEqual(id) where id comes from mock setup  -> MSW echo; assert computed fields
@@ -268,10 +262,14 @@ QUALITY GATES -- read _agent/rules/testing.md before writing. Forbidden patterns
 - if (await el.isVisible()) { ... }  -> silent pass; use await expect(el).toBeVisible() to fail loud
 - >15 vi.mock() with many unused  -> over-mocking; audit + remove unreferenced mocks
 
+RESOLVED PATHS (use these, not hardcoded):
+  Rules: [RESOLVED_RULES_PATH]       -- resolved from ~/.cursor/rules/ or _agent/rules/
+  Patterns: [RESOLVED_PATTERNS_PATH] -- resolved from ~/.cursor/ or _agent/
+
 PATTERN TO FIX: [PATTERN_ID]
 [PASTE FULL PATTERN DESCRIPTION from the correct file:
-  - Redux patterns (P-40, P-41, P-44, G-41–G-45): read _agent/test-patterns-redux.md
-  - General patterns (G-1–G-40, P-1–P-46): read _agent/test-patterns-catalog.md
+  - Redux patterns (P-40, P-41, P-44, G-41–G-45): read [RESOLVED_PATTERNS_PATH]/test-patterns-redux.md
+  - General patterns (G-1–G-40, P-1–P-46): read [RESOLVED_PATTERNS_PATH]/test-patterns-catalog.md
   Grep for the ### [PATTERN_ID] header to find the exact section.]
 
 PRODUCTION CONTEXT (extracted from source files):
@@ -367,7 +365,7 @@ After the report:
 ```
 NEXT STEPS
 ------------------------------
-Run tests to verify fixes:  npm test [fixed-files]
+Run tests to verify fixes:  [detected-test-command] [fixed-files]
 Review fixed files:         /review [space-separated list of FIXED files]
 Manual fixes needed:        [N] NEEDS_REVIEW files in backlog (B-{X}–B-{Y})
 ------------------------------
@@ -658,6 +656,8 @@ it('processes input with correct args and returns transformed result', async () 
 
 **Watch for Q17:** the return value assertion must verify a COMPUTED value, not an echo of RAW_RESULT. If service just passes through the dep's return unchanged, assert it's the correct passthrough with `toEqual(RAW_RESULT)` AND add a separate test for error propagation.
 
+**Optional Adjacent Fix (`--bundle-gates` only):** also add one error-path test per public method (Q7) -- `mockRejectedValue` + `rejects.toThrow`. Without `--bundle-gates`, leave Q7 gaps for a separate `/fix-tests --pattern Q7-API` run.
+
 **SKIP when:** the method genuinely is a pure delegation (adapter) with no transformation -- then `toEqual(RAW_RESULT)` is correct and the test should add `toHaveBeenCalledWith` but is not AP10.
 
 ### NestJS-P3: Self-Mock -> Test External Dep + Computed Output
@@ -695,15 +695,7 @@ expect(result.newRecords).toBe(MOCK_DIFF.filter(d => d.isNew).length);  // compu
 expect(result.updatedRecords).toBe(MOCK_DIFF.filter(d => !d.isNew).length);
 ```
 
-**Also add (for Q7):** One error-path test per public method:
-```typescript
-it('throws when external service fails', async () => {
-  mockGoogleService.fetchData.mockRejectedValue(new Error('Google API down'));
-  await expect(service.importData(req)).rejects.toThrow('Google API down');
-  // Or if service wraps the error:
-  await expect(service.importData(req)).rejects.toThrow('Import failed');
-});
-```
+**Optional Adjacent Fix (`--bundle-gates` only):** also add one `.rejects.toThrow()` test per public method (Q7 gap that always appears with NestJS-P3). Without `--bundle-gates`, leave Q7 gaps for a separate run.
 
 **Batch note (from 2026-02-24 audit):** task-schedule services all follow the same 6-method structure (import/sheet/diff/add/update/logError). Same fix template applies to all. Each file also needs:
 - Direct test for the `getDataChanged`/diff method with real inputs (null req, empty req, new records, unchanged records)
