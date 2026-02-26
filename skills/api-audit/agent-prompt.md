@@ -107,10 +107,11 @@ Dimension scores:
   D8 (Rate Limit):     [X]/5   — [one-line justification]
   D9 (Auth):           [X]/15  — [one-line justification]
   D10 (Docs):          [X]/5   — [one-line justification or N/A if not DEEP]
-  TOTAL:               [X]/100
+  TOTAL:               [X]/[max] ([percentage]%)
+  (max = 69 for LIGHT, 95 for STANDARD, 100 for DEEP. N/A dimensions excluded from sum AND max.)
 
 Critical gate: D1=[X] D3=[X] D9=[X] → [PASS/FAIL]
-Grade: [HEALTHY/NEEDS ATTENTION/AT RISK/CRITICAL]
+Grade: [HEALTHY ≥80% / NEEDS ATTENTION 60-79% / AT RISK 40-59% / CRITICAL <40%]
 
 Issues found:
 ### API-{N}: {title}

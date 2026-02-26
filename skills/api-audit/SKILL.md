@@ -18,6 +18,8 @@ Before starting ANY work, read ALL files below. Confirm each with ✅ or ❌:
 ```
 1. ✅/❌  ~/.claude/rules/code-quality.md         — CQ1-CQ20 (this audit extends CQ3/5/7/16/19/20)
 2. ✅/❌  ~/.claude/rules/security.md             — SSRF, path traversal, auth patterns
+3. ✅/❌  dimensions.md (skill-internal)           — D1-D10 scoring rubrics, discovery scripts
+4. ✅/❌  agent-prompt.md (skill-internal)         — agent execution template, output format
 ```
 
 **If ANY file is ❌ → STOP. Do not proceed with a partial rule set.**
@@ -51,7 +53,7 @@ This skill uses `Task` tool to spawn parallel sub-agents. **If `Task` tool is no
 Before any HTTP request:
 1. Check URL — is it localhost, staging, or production?
 2. If production domain detected → REFUSE (ask user to provide sandbox URL)
-3. If staging → ASK user confirmation before EACH request
+3. If staging → present the full probing plan (list of endpoints + methods), get ONE user approval for the batch, then execute all. Do NOT ask per-request.
 4. If localhost/sandbox → proceed with GET/OPTIONS only
 
 ### GATE 2 — PII & Credential Censorship
@@ -172,6 +174,14 @@ grep -rn "useQuery\|useMutation\|fetch(\|axios\.\(get\|post\|put\|patch\|delete\
   --include="*.ts" --include="*.tsx" | head -80
 ```
 
+**Inventory completeness check:** Grep-based discovery can miss routes behind:
+- Controller/router prefixes (`@Controller('api/v1/offers')`)
+- Dynamic route registration (middleware, plugin systems)
+- Re-exported routers (barrel files, `RouterModule.forRoutes()`)
+- Decorator wrappers (`@CrudController`, custom route factories)
+
+After grep discovery, cross-check against: (1) module imports/exports, (2) Swagger/OpenAPI spec if available, (3) test files hitting endpoints not in inventory.
+
 Output:
 ```
 ENDPOINT INVENTORY
@@ -180,6 +190,7 @@ Stack: [detected]
 Tier: [LIGHT/STANDARD/DEEP]
 Total endpoints: [N]
 Risk signals: [list or "none"]
+Completeness: [high/medium — note any gaps]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -204,23 +215,27 @@ For EACH dimension, agent evaluates all endpoints in scope and assigns a score:
 | D9 | Authentication & Authorization | 15% | 15 | D9<8 → auto-fail |
 | D10 | Documentation & Contracts (DEEP only) | 5% | 5 | — |
 
-**Health grades:**
-- ≥ 80: HEALTHY — minor improvements possible
-- 60-79: NEEDS ATTENTION — significant issues to address
-- 40-59: AT RISK — multiple critical/high issues
-- < 40: CRITICAL — immediate remediation required
+**Tier-aware scoring:**
+- **LIGHT** (D1+D2+D3+D4+D9): max = 69. D5-D8,D10 = N/A.
+- **STANDARD** (D1-D9): max = 95. D10 = N/A.
+- **DEEP** (D1-D10): max = 100.
+
+**Health grades** (always percentage-based = score/max × 100):
+- ≥ 80%: HEALTHY — minor improvements possible
+- 60-79%: NEEDS ATTENTION — significant issues to address
+- 40-59%: AT RISK — multiple critical/high issues
+- < 40%: CRITICAL — immediate remediation required
 
 **Critical gate:** D9 < 8 (auth gaps on mutations), D1 = 0 (no validation), D3 < 3 with >10K records, stack traces in production responses → auto-fail regardless of total.
 
 ---
 
-## Phase 1 Execution: Parallel Agents
+## Phase 1 Execution
 
-Split endpoints into batches by controller/module. Spawn Task agents with the prompt from `agent-prompt.md`. Each agent gets:
-- List of endpoints to audit (controller or module scope)
-- Detected stack
-- Reference to `dimensions.md` for scoring criteria
+Split endpoints into batches by controller/module. Each batch covers one controller/module and all its endpoints.
 
+**If Task tool is available** (Claude Code):
+Spawn parallel agents with the prompt from `agent-prompt.md`:
 ```
 Task(
   subagent_type: "general-purpose",
@@ -228,8 +243,10 @@ Task(
   prompt: [agent-prompt.md content with endpoint list]
 )
 ```
+Max 6 parallel agents.
 
-Max 6 parallel agents. Each agent audits one controller/module (all its endpoints).
+**If Task tool is NOT available** (Cursor, Codex, other IDEs):
+Evaluate each controller/module sequentially inline, following the same `agent-prompt.md` instructions and output format.
 
 ---
 
@@ -335,7 +352,7 @@ Save to: `audits/api-audit-[date].md`
 | D8. Rate Limiting | {X} | 5 | |
 | D9. Auth & Authorization | {X} | 15 | |
 | D10. Documentation | {X} | 5 | |
-| **TOTAL** | **{X}** | **100** | **{grade}** |
+| **TOTAL** | **{X}** | **{max: 69/95/100}** | **{grade} ({X/max}%)** |
 
 ## Critical Findings
 {CRITICAL/HIGH severity — SCRUBBED of PII}
@@ -374,13 +391,22 @@ CQ Overlap: {CQ3/CQ5/CQ7/CQ19/CQ20 or "none — cross-endpoint only"}
 
 After audit, persist ALL findings (confidence 26+) to `memory/backlog.md`:
 1. Read existing backlog
-2. Duplicates → increment `Seen` count
-3. New → append with next `B-{N}` ID, source: `api-audit/{date}`
-4. Confidence 0-25 → DISCARD (consistent with `/review` rules)
+2. Compute fingerprint per issue: `file_path:dimension:endpoint` (e.g., `src/offer/offer.controller.ts:D1:POST /offers`)
+3. Search for matching fingerprint (same file + same dimension + same endpoint) → increment `Seen` count, keep highest severity
+4. New → append with next `B-{N}` ID, source: `api-audit/{date}`, category: `Code`
+5. Confidence 0-25 → DISCARD (consistent with `/review` rules)
 
-Item format:
+Item format (aligned with `/backlog` template):
 ```
-| B-{N} | HIGH | src/offer/offer.controller.ts | D1: missing DTO validation on POST /offers | api-audit/2026-02-25 | OPEN |
+### B-{N}: D1: missing DTO validation on POST /offers
+- **Severity:** HIGH
+- **Category:** Code
+- **File:** `src/offer/offer.controller.ts` → `createOffer()`
+- **Fingerprint:** `src/offer/offer.controller.ts:D1:POST /offers`
+- **Problem:** No runtime validation on request body
+- **Fix:** Add @Body(ValidationPipe) dto: CreateOfferDto
+- **Source:** api-audit 2026-02-25
+- **Seen:** 1x
 ```
 
 Print summary: `Backlog updated: {N} new items (B-{X}–B-{Y}), {M} duplicates incremented`

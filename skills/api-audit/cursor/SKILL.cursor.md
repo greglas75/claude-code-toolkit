@@ -18,6 +18,8 @@ Before starting ANY work, read ALL files below. Confirm each with check or X:
 ```
 1. [x]/[ ]  ~/.cursor/rules/code-quality.md         -- CQ1-CQ20 (this audit extends CQ3/5/7/16/19/20)
 2. [x]/[ ]  ~/.cursor/rules/security.md             -- SSRF, path traversal, auth patterns
+3. [x]/[ ]  dimensions.md (skill-internal)           -- D1-D10 scoring rubrics, discovery scripts
+4. [x]/[ ]  agent-prompt.md (skill-internal)         -- agent execution template, output format
 ```
 
 **If ANY file fails to load, STOP. Do not proceed with a partial rule set.**
@@ -39,7 +41,7 @@ If running in Antigravity, Cursor, or other IDEs where `~/.cursor/` is not acces
 Before any HTTP request:
 1. Check URL -- is it localhost, staging, or production?
 2. If production domain detected -> REFUSE (ask user to provide sandbox URL)
-3. If staging -> ASK user confirmation before EACH request
+3. If staging -> present the full probing plan (list of endpoints + methods), get ONE user approval for the batch, then execute all. Do NOT ask per-request.
 4. If localhost/sandbox -> proceed with GET/OPTIONS only
 
 ### GATE 2 -- PII & Credential Censorship
@@ -160,6 +162,14 @@ grep -rn "useQuery\|useMutation\|fetch(\|axios\.\(get\|post\|put\|patch\|delete\
   --include="*.ts" --include="*.tsx" | head -80
 ```
 
+**Inventory completeness check:** Grep-based discovery can miss routes behind:
+- Controller/router prefixes (`@Controller('api/v1/offers')`)
+- Dynamic route registration (middleware, plugin systems)
+- Re-exported routers (barrel files, `RouterModule.forRoutes()`)
+- Decorator wrappers (`@CrudController`, custom route factories)
+
+After grep discovery, cross-check against: (1) module imports/exports, (2) Swagger/OpenAPI spec if available, (3) test files hitting endpoints not in inventory.
+
 Output:
 ```
 ENDPOINT INVENTORY
@@ -168,6 +178,7 @@ Stack: [detected]
 Tier: [LIGHT/STANDARD/DEEP]
 Total endpoints: [N]
 Risk signals: [list or "none"]
+Completeness: [high/medium -- note any gaps]
 ------------------------------
 ```
 
@@ -192,11 +203,16 @@ For EACH dimension, evaluate all endpoints in scope and assign a score:
 | D9 | Authentication & Authorization | 15% | 15 | D9<8 -> auto-fail |
 | D10 | Documentation & Contracts (DEEP only) | 5% | 5 | -- |
 
-**Health grades:**
-- >= 80: HEALTHY -- minor improvements possible
-- 60-79: NEEDS ATTENTION -- significant issues to address
-- 40-59: AT RISK -- multiple critical/high issues
-- < 40: CRITICAL -- immediate remediation required
+**Tier-aware scoring:**
+- **LIGHT** (D1+D2+D3+D4+D9): max = 69. D5-D8,D10 = N/A.
+- **STANDARD** (D1-D9): max = 95. D10 = N/A.
+- **DEEP** (D1-D10): max = 100.
+
+**Health grades** (always percentage-based = score/max x 100):
+- >= 80%: HEALTHY -- minor improvements possible
+- 60-79%: NEEDS ATTENTION -- significant issues to address
+- 40-59%: AT RISK -- multiple critical/high issues
+- < 40%: CRITICAL -- immediate remediation required
 
 **Critical gate:** D9 < 8 (auth gaps on mutations), D1 = 0 (no validation), D3 < 3 with >10K records, stack traces in production responses -> auto-fail regardless of total.
 
@@ -263,13 +279,13 @@ After per-endpoint scoring, analyze system-level patterns:
 - Flag: `cpi: 40.32` in one endpoint vs `cpi: "5000000 VND"` in another
 
 ### 3.3 Auth Matrix
-Build endpoint × role matrix:
+Build endpoint x role matrix:
 ```
 | Endpoint           | Public | User | Admin | Manager | Evidence |
 |--------------------|--------|------|-------|---------|----------|
 | GET /offers        |        | X    | X     | X       | @UseGuards(AuthGuard) |
 | DELETE /offers/:id |        |      | X     |         | @Roles('admin') |
-| POST /migrate      | X      |      |       |         | @Public() ← CRITICAL! |
+| POST /migrate      | X      |      |       |         | @Public() <- CRITICAL! |
 ```
 
 ### 3.4 Payload Size Analysis (if probing done)
@@ -310,7 +326,7 @@ Save to: `audits/api-audit-[date].md`
 | D8. Rate Limiting | {X} | 5 | |
 | D9. Auth & Authorization | {X} | 15 | |
 | D10. Documentation | {X} | 5 | |
-| **TOTAL** | **{X}** | **100** | **{grade}** |
+| **TOTAL** | **{X}** | **{max: 69/95/100}** | **{grade} ({X/max}%)** |
 
 ## Critical Findings
 {CRITICAL/HIGH severity -- SCRUBBED of PII}
@@ -349,6 +365,22 @@ CQ Overlap: {CQ3/CQ5/CQ7/CQ19/CQ20 or "none -- cross-endpoint only"}
 
 After audit, persist ALL findings (confidence 26+) to `memory/backlog.md`:
 1. Read existing backlog
-2. Duplicates -> increment `Seen` count
-3. New -> append with next `B-{N}` ID, source: `api-audit/{date}`
-4. Confidence 0-25 -> DISCARD (consistent with `/review` rules)
+2. Compute fingerprint per issue: `file_path:dimension:endpoint` (e.g., `src/offer/offer.controller.ts:D1:POST /offers`)
+3. Search for matching fingerprint (same file + same dimension + same endpoint) -> increment `Seen` count, keep highest severity
+4. New -> append with next `B-{N}` ID, source: `api-audit/{date}`, category: `Code`
+5. Confidence 0-25 -> DISCARD (consistent with `/review` rules)
+
+Item format (aligned with `/backlog` template):
+```
+### B-{N}: D1: missing DTO validation on POST /offers
+- **Severity:** HIGH
+- **Category:** Code
+- **File:** `src/offer/offer.controller.ts` -> `createOffer()`
+- **Fingerprint:** `src/offer/offer.controller.ts:D1:POST /offers`
+- **Problem:** No runtime validation on request body
+- **Fix:** Add @Body(ValidationPipe) dto: CreateOfferDto
+- **Source:** api-audit 2026-02-25
+- **Seen:** 1x
+```
+
+Print summary: `Backlog updated: {N} new items (B-{X}--B-{Y}), {M} duplicates incremented`
