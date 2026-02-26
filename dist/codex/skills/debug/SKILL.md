@@ -5,7 +5,20 @@ description: "Structured debugging session -- find and fix issues systematically
 
 # /debug -- Structured Debugging
 
-Turns a bug report or error into a root cause + fix using a four-phase framework.
+Turns a bug report or error into a root cause + fix using a five-phase framework.
+
+## Mandatory File Reading (before Phase 4)
+
+These files are referenced during Phase 4 self-evals. Read them **before** writing the fix, not after:
+
+```
+1. [x]/[ ]  ~/.codex/rules/testing.md         -- Q1-Q17 self-eval for regression test (Phase 4.5)
+2. [x]/[ ]  ~/.codex/rules/code-quality.md    -- CQ1-CQ20 self-eval for production fix (Phase 4.6)
+```
+
+**If either file is [ ]:** run self-eval with inline rules from memory, but note "DEGRADED -- rules file not loaded" in the report.
+
+---
 
 ## Parse $ARGUMENTS
 
@@ -172,11 +185,19 @@ Write a test that:
 2. Asserts it no longer occurs
 3. Would have caught this bug if it existed before
 
-Run Q1-Q17 self-eval (from `~/.codex/rules/testing.md`) on the regression test. Critical gates must pass.
+Run Q1-Q17 self-eval (from `~/.codex/rules/testing.md`) on the regression test:
+- Score each Q individually (1/0, N/A=1)
+- **Critical gate:** Q7, Q11, Q13, Q15, Q17 -- any = 0 -> fix before proceeding
+- **Threshold:** >=14/17 PASS, 9-13 FIX (fix worst dimension, re-score), <9 BLOCK (rewrite)
+- AP deductions apply (see testing.md)
 
 ### 4.6: CQ self-eval (if production code changed)
 
-Run CQ1-CQ20 (from `~/.codex/rules/code-quality.md`) on each modified production file. Critical gates must pass.
+Run CQ1-CQ20 (from `~/.codex/rules/code-quality.md`) on each modified production file:
+- **Static critical gate:** CQ3, CQ4, CQ5, CQ6, CQ8, CQ14 -- any = 0 -> FAIL
+- **Conditional gate:** CQ16 (money), CQ19 (API boundary), CQ20 (dual fields) -- activated by code context
+- **Threshold:** >=16/20 PASS, 14-15 CONDITIONAL PASS (fix encouraged), <14 FAIL
+- Evidence required for each critical gate CQ scored as 1
 
 ---
 
@@ -241,7 +262,23 @@ If debugging reveals multiple problems, surface them all but focus the fix on th
 
 1. **Root cause** -- fix this first
 2. **Contributing factors** -- note these but don't fix speculatively
-3. **Unrelated issues spotted** -- MANDATORY: add to `memory/backlog.md`, don't fix now
+3. **Unrelated issues spotted** -- MANDATORY: persist to backlog (see below)
+
+### Backlog Persistence (MANDATORY for unrelated issues)
+
+Persist each unrelated issue found during debugging to `memory/backlog.md`:
+
+1. **Read** the project's `memory/backlog.md` (from the auto memory directory shown in system prompt)
+2. **If file doesn't exist**: create it with this template:
+   ```markdown
+   # Tech Debt Backlog
+   > Auto-maintained by `/review`, `/build`, `/code-audit`, `/test-audit`, `/write-tests`, `/fix-tests`, `/debug`, `/backlog`.
+   > Fixed items are deleted (git has history).
+   | ID | Fingerprint | File | Issue | Severity | Category | Source | Seen | Dates |
+   |----|-------------|------|-------|----------|----------|--------|------|-------|
+   ```
+3. For each issue, compute **fingerprint**: `file|rule-id|signature` (e.g., `auth.service.ts|CQ8|missing-try-catch`)
+4. Search backlog for matching fingerprint -> **duplicate**: increment `Seen`, update date, keep highest severity. **New**: append with next `B-{N}` ID, source: `debug/{date}`, status: OPEN
 
 ---
 
