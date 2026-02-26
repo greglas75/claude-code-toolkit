@@ -56,7 +56,7 @@ Before starting ANY work, read ALL files below. Confirm each with [x] or [ ]:
 |----------|----------|
 | `[file.ts]` | Write tests for single production file |
 | `[directory/]` | Write tests for all production files in directory |
-| `auto` | Discover production files missing test coverage (see Phase 1 auto-mode). **Batch limit: 15 files per run.** |
+| `auto` | **Full autonomy.** Discover uncovered files, write tests, commit -- no approval gates, no questions, no stops. Batch limit: 15 files per run. |
 | `--dry-run` | Plan only, do NOT write files (output plan + stop before Phase 3) |
 
 Output:
@@ -109,9 +109,9 @@ When Coverage Scanner returns discovered files, apply these rules:
 2. **Priority ordering** (process highest risk first):
    | Priority | Criteria | Why |
    |----------|----------|-----|
-   | 1 (highest) | UNTESTED (0%) + SERVICE, CONTROLLER, GUARD | Core logic / security surface, zero safety net |
-   | 2 | UNTESTED + HOOK, ORCHESTRATOR, API-CALL | Complex async / coordination code |
-   | 3 | UNTESTED + PURE, COMPONENT, ORM | Lower blast radius |
+   | 1 (highest) | UNCOVERED (0%) + SERVICE, CONTROLLER, GUARD | Core logic / security surface, zero safety net |
+   | 2 | UNCOVERED + HOOK, ORCHESTRATOR, API-CALL | Complex async / coordination code |
+   | 3 | UNCOVERED + PURE, COMPONENT, ORM | Lower blast radius |
    | 4 | PARTIAL (<50% methods covered) | Some coverage, gaps are surgical |
    | 5 (lowest) | PARTIAL (>=50% methods covered) | Diminishing returns |
 3. Within same priority -> sort by file size descending (larger = more risk).
@@ -179,10 +179,12 @@ Leave empty if clear.]
 
 ### Questions Gate
 
-If section 4 is non-empty -> ask user, wait for answers, update plan.
-If empty -> present plan and wait for approval.
+**Auto mode:** skip questions entirely -- make best-judgment decisions, document assumptions in plan, proceed immediately.
 
-Wait for user approval.
+Non-auto modes: if section 4 is non-empty -> ask user, wait for answers, update plan. If empty -> present plan and wait for approval.
+
+**Auto mode:** do NOT wait for approval -- print plan summary and proceed immediately to Phase 3.
+Non-auto modes: wait for user approval.
 
 **If `--dry-run`:** print plan and STOP here. Do not proceed to Phase 3.
 
@@ -320,7 +322,7 @@ For each item -> persist to `memory/backlog.md`:
    - **Duplicate** (same fingerprint found): increment `Seen` count, update date, keep highest severity
    - **New** (no match): append with next `B-{N}` ID, category: Test, source: `write-tests/{date}`, date: today
 
-If any OPEN backlog items for the same test files were resolved -> mark FIXED.
+If any OPEN backlog items for the same test files were resolved -> delete them (fixed = deleted; git has history).
 
 **THIS IS REQUIRED.** Zero issues may be silently discarded.
 
@@ -332,7 +334,9 @@ Stage only test files (never production files):
 git add [explicit list of test files -- never -A or .]
 ```
 
-Then run `/review` scoped to staged:
+**Auto mode:** skip `/review` -- Phase 4 verification checklist is sufficient. Proceed directly to 5.3.
+
+Non-auto modes: run `/review` scoped to staged:
 
 ```
 /review staged
@@ -341,9 +345,9 @@ Then run `/review` scoped to staged:
 If review finds BLOCKING issues -> unstage, fix, re-stage, re-run review.
 If warnings only -> proceed, add warnings to backlog.
 
-### 5.3: Auto-Commit + Tag
+### 5.3: Commit + Tag
 
-After review passes:
+After verification passes (Phase 4.3 all [x]):
 
 ```bash
 git commit -m "test: [brief description of what was covered]"
@@ -387,5 +391,5 @@ Next steps:
 |------|---------|---------|---------|---------|---------|
 | `/write-tests foo.ts` | Scan 1 file | Plan 1 file | Write 1 test file | Audit + run | Commit |
 | `/write-tests src/services/` | Scan N files | Plan N files | Write N test files | Audit + run | Commit |
-| `/write-tests auto` | Discover uncovered files | Plan batch | Write batch | Audit + run | Commit |
+| `/write-tests auto` | Discover uncovered files | Plan (no approval) | Write batch | Audit + run | Commit (no review) |
 | `/write-tests foo.ts --dry-run` | Scan 1 file | Plan + STOP | -- | -- | -- |

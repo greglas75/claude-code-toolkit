@@ -273,7 +273,7 @@ For each item -> persist to `memory/backlog.md`:
    - **Fingerprint:** `file|rule-id|signature` (e.g., `order.service.ts|CQ8|missing-try-catch`). Search the `Fingerprint` column for an existing match. If found -> increment `Seen`, update date, keep highest severity
    - **New:** append with next `B-{N}` ID, category: Code/Test (infer from source), source: `build/{source}` (e.g., `build/test-quality-auditor`, `build/cq-self-eval`, `build/review`), date: today
 
-If any OPEN backlog items in related files were resolved -> mark FIXED.
+If any OPEN backlog items in related files were resolved -> delete them (fixed = deleted; git has history).
 
 **THIS IS REQUIRED.** Zero issues may be silently discarded.
 

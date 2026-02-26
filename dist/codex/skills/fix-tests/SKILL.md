@@ -1,6 +1,6 @@
 ---
 name: fix-tests
-description: "Batch repair of systematic test quality issues. Runs Batch Diagnosis greps, identifies affected files, spawns parallel fixer agents per pattern. Use: /fix-tests --pattern P-41 [path] or /fix-tests --triage. NOT when tests need full rewrite (use /refactor or /test-audit first)."
+description: "Batch repair of systematic test quality issues. Runs Batch Diagnosis greps, identifies affected files, fixes per pattern (parallel agents in Claude Code, sequential inline in other environments). Use: /fix-tests --pattern P-41 [path] or /fix-tests --triage. NOT when tests need full rewrite (use /refactor or /test-audit first)."
 ---
 
 # /fix-tests -- Batch Test Repair

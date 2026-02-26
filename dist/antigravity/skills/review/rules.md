@@ -89,8 +89,7 @@ For large reviews, `/review` splits audit steps across 2 custom agents in parall
 5. Feed merged list to Confidence Re-Scorer (`confidence-rescorer` agent)
 
 **When NOT to use team audit:**
-- TIER 1 (too few steps)
-- TIER 2 with < 5 files (overhead > benefit)
+- TIER 0, TIER 1, TIER 2 (team audit is TIER 3 only)
 - User says "solo" or "no team" (explicit override)
 
 ### Code Quality on Execute

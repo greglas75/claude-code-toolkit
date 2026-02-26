@@ -251,8 +251,14 @@ Within any tier, additional dimensions may become N/A by context (e.g., D7=N/A i
 
 Split endpoints into batches by controller/module. Each batch covers one controller/module and all its endpoints.
 
-**If Task tool is available** (Claude Code):
-Spawn parallel agents with the prompt from `agent-prompt.md`:
+**Execution strategy** — choose based on tool availability:
+
+| Environment | Strategy | How |
+|-------------|----------|-----|
+| Claude Code (`Task` available) | **Parallel** | Spawn one agent per batch (max 6 concurrent). Each gets `agent-prompt.md` instructions + endpoint list. |
+| Cursor, Codex, Antigravity (`Task` NOT available) | **Sequential inline** | Evaluate each batch yourself, one at a time, following `agent-prompt.md` instructions and output format. |
+
+**Parallel agent template** (Claude Code only):
 ```
 Task(
   subagent_type: "general-purpose",
@@ -260,10 +266,6 @@ Task(
   prompt: [agent-prompt.md content with endpoint list]
 )
 ```
-Max 6 parallel agents.
-
-**If Task tool is NOT available** (Cursor, Codex, other IDEs):
-Evaluate each controller/module sequentially inline, following the same `agent-prompt.md` instructions and output format.
 
 ---
 

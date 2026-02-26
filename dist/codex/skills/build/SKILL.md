@@ -57,9 +57,9 @@ BACKLOG: [N open items in related files, or "none"]
 
 ---
 
-## Phase 1: Analysis (sequential)
+## Phase 1: Analysis (background -- runs during Phase 2)
 
-Before planning, perform 2 analyses to gather context:
+Spawn 2 sub-agents to gather context. Both run in background while you proceed to Phase 2 planning. Incorporate their results into the plan when they complete -- do not block on them.
 
 **Agent 1: Blast Radius Mapper** -- uses `references/dependency-mapper.md`
 Read `references/dependency-mapper.md` and perform this analysis yourself.
@@ -69,7 +69,7 @@ Read `references/dependency-mapper.md` and perform this analysis yourself.
 Read `references/existing-code-scanner.md` and perform this analysis yourself.
 
 
-Don't wait -- start Phase 2 immediately. Incorporate results when ready.
+Both agents run in background (``). Proceed to Phase 2 immediately.
 
 ---
 
@@ -265,7 +265,7 @@ For each item -> persist to `memory/backlog.md`:
    - **Fingerprint:** `file|rule-id|signature` (e.g., `order.service.ts|CQ8|missing-try-catch`). Search the `Fingerprint` column for an existing match. If found -> increment `Seen`, update date, keep highest severity
    - **New:** append with next `B-{N}` ID, category: Code/Test (infer from source), source: `build/{source}` (e.g., `build/test-quality-auditor`, `build/cq-self-eval`, `build/review`), date: today
 
-If any OPEN backlog items in related files were resolved -> mark FIXED.
+If any OPEN backlog items in related files were resolved -> delete them (fixed = deleted; git has history).
 
 **THIS IS REQUIRED.** Zero issues may be silently discarded.
 

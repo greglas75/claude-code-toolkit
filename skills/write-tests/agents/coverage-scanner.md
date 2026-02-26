@@ -24,22 +24,31 @@ You receive:
 
 ### For each production file:
 
-1. Find its test file (same name + `.test.ts`/`.spec.ts`, or in `__tests__/`)
+1. Find its test file by checking ALL common patterns:
+   - Same dir: `[name].test.ts`, `[name].spec.ts`, `[name].test.tsx`, `[name].spec.tsx`
+   - `__tests__/[name].test.ts`, `__tests__/[name].spec.ts` (and `.tsx` variants)
+   - Python: `test_[name].py`, `[name]_test.py`, `tests/test_[name].py`, `tests/[name]_test.py`
 2. If NO test file exists → report as **UNCOVERED**
 3. If test file exists → read both files and identify:
    a. All exported functions/methods/classes in production file
-   b. Which ones have at least one `it()` block in the test file
-   c. Which ones have NO coverage → **UNTESTED**
-   d. Estimate branch coverage: count if/else/switch in production code, check if test exercises both/all branches
+   b. Which ones have at least one `it()` / `test()` / `def test_` block in the test file
+   c. Which ones have NO coverage → if gaps exist, report as **PARTIAL** (with list of untested methods)
+   d. If all methods covered → report as **COVERED**
+   e. Estimate branch coverage: count if/else/switch in production code, check if test exercises both/all branches
 
 ### Auto-discovery mode (TARGET=auto)
 
 Glob all `.ts`/`.tsx`/`.py` files, **EXCLUDING**:
 - `node_modules`, `.next`, `dist`, `build`, `out`, `coverage`, `__generated__`
 - `*.config.*`, `*.d.ts`, `scripts/`, `migrations/`, `*.generated.*`, `*.min.*`
+- **Test files**: `*.test.*`, `*.spec.*`, `__tests__/**`, `tests/**`, `test_*.py`, `*_test.py`
 
-Find those with no `.test.*` sibling and no entry in `__tests__/`.
-Return list sorted by file size DESC.
+For each file, check all test-file patterns (Step 1 above):
+- No test file found → **UNCOVERED**
+- Test file found but has gaps → **PARTIAL** (read both files, identify untested methods)
+- Test file found and all methods covered → **COVERED** (skip from results)
+
+Return list sorted by status (UNCOVERED first, then PARTIAL), then file size DESC.
 
 ## Output Format
 

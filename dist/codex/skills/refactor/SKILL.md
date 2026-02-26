@@ -310,9 +310,14 @@ After each sub-agent (Agent 3 and Agent 4) completes, check their output for a `
 
 ## Phase 5: Completion
 
+**Mode gates (check BEFORE executing any sub-step):**
+- **QUICK mode:** skip Metrics, skip Pre-Tag Review, skip Tag. Go directly to Completion Output.
+- **no-commit mode:** skip Pre-Tag Review (no commits to review), skip Tag (nothing to tag), skip metrics commit. Metrics file still updated (local tracking). Completion Output replaces `Commit:`/`Tag:` with staged diff summary (see no-commit Mode section above).
+- **FULL / AUTO mode:** execute all sub-steps below.
+
 ### Metrics
 
-Append to `refactoring-session/metrics.jsonl`:
+**Skip if QUICK mode.** Otherwise append to `refactoring-session/metrics.jsonl`:
 
 ```json
 {
@@ -338,6 +343,8 @@ Append to `refactoring-session/metrics.jsonl`:
 
 ### Pre-Tag Review
 
+**Skip if QUICK or no-commit mode.** Otherwise:
+
 Before tagging, run `/review` on all commits made during this refactor session.
 Use the commit count from metrics (`"commits": N`) to scope the review:
 
@@ -354,6 +361,8 @@ This reviews only the refactoring commits -- not the whole codebase.
 
 ### Tag (after review passes)
 
+**Skip if QUICK or no-commit mode.** Otherwise:
+
 Stage 4E creates one commit per phase during ETAP-2. Phase 5 only adds a tag on the final commit:
 
 1. `git tag refactor-[YYYY-MM-DD]-[short-slug]` (e.g., `refactor-2026-02-22-split-offer-service`)
@@ -369,6 +378,9 @@ This creates a clean rollback point. User can `git reset --hard <tag>` if needed
 
 ### Completion Output
 
+Use the template matching the current mode:
+
+**FULL / AUTO mode:**
 ```
 REFACTORING COMPLETE
 
@@ -384,6 +396,36 @@ Next steps:
   /docs update [file]          -> Update docs if API or module structure changed
   /code-audit [new-files]      -> Verify CQ on new modules (if SPLIT_FILE or multi-file EXTRACT)
   Push                         -> git push origin [branch]
+  Continue                     -> /refactor to start next task
+```
+
+**QUICK mode:**
+```
+REFACTORING COMPLETE (QUICK)
+
+Type: [TYPE]
+File: [path] -- [before] -> [after] lines (-[X]%)
+Tests: affected specs pass
+Commit: [hash] -- [message]
+
+Next steps:
+  Push                         -> git push origin [branch]
+  Continue                     -> /refactor to start next task
+```
+
+**no-commit mode:**
+```
+REFACTORING COMPLETE (no-commit)
+
+Type: [TYPE]
+File: [path] -- [before] -> [after] lines (-[X]%)
+Tests: [N] written, [N] passing
+Staged: [N files] -- run 'git diff --staged' to review
+Commits deferred: user controls git history
+
+Next steps:
+  git commit                   -> Commit when ready (see proposed messages above)
+  /review HEAD~N               -> Review after committing
   Continue                     -> /refactor to start next task
 ```
 

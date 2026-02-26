@@ -587,25 +587,21 @@ FIXES TO APPLY:
 ===============================================================
 ```
 
-2. Apply fixes -- choose execution mode:
+2. Apply fixes:
 
    **Fix scope:**
    - MODE 2 ("fix"): ALL issues (CRITICAL + HIGH + MEDIUM + LOW)
    - MODE 3 ("BLOCKING"): CRITICAL + HIGH only
    - "Execute [ID]": specified issues only
 
-   **Solo execution (default):** Apply fixes sequentially.
+   **Execution strategy** -- choose ONE based on fix count and file overlap:
 
-   **Parallel execution (when 3+ fixes touch DIFFERENT files):**
-   Analyze which fixes can be applied independently (different target files, no interaction).
-   Perform these fixes sequentially -- each gets:
-   - The issue(s) assigned to them (from report, with full fix code)
-   - Allowed files (only files their issues touch)
-   - Scope fence rules
-   - Stack + test runner info
-   Wait for all agents, then verify combined result.
+   | Condition | Strategy | How |
+   |-----------|----------|-----|
+   | <3 fixes, OR fixes share files | **Sequential** | Apply each fix one by one in severity order |
+   | 3+ fixes AND all touch different files AND no import dependencies between them | **Parallel** | Spawn up to 3 general-purpose agents (one per fix group), each gets: issue list + fix code + allowed files + scope fence. Wait for all, then verify combined result. |
 
-   Do NOT parallelize fixes that touch the same file or that interact (e.g., one fix changes an interface, another uses that interface).
+   **Before choosing parallel:** check with grep that target files don't import each other. If ANY dependency exists -> fall back to sequential.
 
 3. Write ALL required tests (complete, runnable -- not stubs). Per CHANGE INTENT rules.
    If parallel execution was used, each agent writes tests for their own fixes (separate spec files). Lead verifies no conflicts.
@@ -679,7 +675,7 @@ Tag: [tag name] (rollback: git reset --hard [tag])
 After Execute completes, persist unfixed issues to backlog:
 - If `Execute BLOCKING`: all MEDIUM + LOW issues -> backlog
 - If `Execute [ID]`: all issues NOT in the ID list -> backlog
-- Mark any previously open backlog items as FIXED if the fix resolved them
+- Delete any backlog items whose issues were resolved by Execute (fixed = deleted; git has history)
 
 ---
 

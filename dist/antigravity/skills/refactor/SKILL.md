@@ -256,9 +256,14 @@ After each agent (@test-quality-auditor and @post-extraction-verifier) completes
 
 ## Phase 5: Completion
 
+**Mode gates (check BEFORE executing any sub-step):**
+- **QUICK mode:** skip Metrics, skip Tag. Go directly to Completion Output.
+- **no-commit mode:** skip Tag (nothing to tag), skip metrics commit. Metrics file still updated (local tracking). Completion Output replaces `Commit:`/`Tag:` with staged diff summary (see no-commit Mode section above).
+- **FULL / AUTO mode:** execute all sub-steps below.
+
 ### Metrics
 
-Append to `refactoring-session/metrics.jsonl`:
+**Skip if QUICK mode.** Otherwise append to `refactoring-session/metrics.jsonl`:
 
 ```json
 {
@@ -280,6 +285,8 @@ Append to `refactoring-session/metrics.jsonl`:
 
 ### Tag (commits already done per-phase in Stage 4E)
 
+**Skip if QUICK or no-commit mode.** Otherwise:
+
 Stage 4E creates one commit per phase during ETAP-2. Phase 5 only adds a tag on the final commit:
 
 1. `git tag refactor-[YYYY-MM-DD]-[short-slug]` (e.g., `refactor-2026-02-22-split-offer-service`)
@@ -295,6 +302,9 @@ This creates a clean rollback point. User can `git reset --hard <tag>` if needed
 
 ### Completion Output
 
+Use the template matching the current mode:
+
+**FULL / AUTO mode:**
 ```
 REFACTORING COMPLETE
 
@@ -308,6 +318,35 @@ Next steps:
   /review   -> Review the refactored code
   Push      -> git push origin [branch]
   Continue  -> /refactor to start next task
+```
+
+**QUICK mode:**
+```
+REFACTORING COMPLETE (QUICK)
+
+Type: [TYPE]
+File: [path] -- [before] -> [after] lines (-[X]%)
+Tests: affected specs pass
+Commit: [hash] -- [message]
+
+Next steps:
+  Push      -> git push origin [branch]
+  Continue  -> /refactor to start next task
+```
+
+**no-commit mode:**
+```
+REFACTORING COMPLETE (no-commit)
+
+Type: [TYPE]
+File: [path] -- [before] -> [after] lines (-[X]%)
+Tests: [N] written, [N] passing
+Staged: [N files] -- run 'git diff --staged' to review
+Commits deferred: user controls git history
+
+Next steps:
+  git commit  -> Commit when ready (see proposed messages above)
+  Continue    -> /refactor to start next task
 ```
 
 ---

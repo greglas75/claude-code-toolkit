@@ -386,7 +386,7 @@ After generating the report, persist findings to `memory/backlog.md`:
    - **Fingerprint:** `file|CQ-id|signature` (e.g., `order.service.ts|CQ8|missing-try-catch`). Search the `Fingerprint` column for an existing match.
    - **Duplicate**: increment `Seen` count, add date, keep highest severity
    - **New**: append with next `B-{N}` ID, category: Code, source: `code-audit/{date}`, date: today
-5. **Tier A files**: if any OPEN backlog items exist for Tier A files, mark as FIXED
+5. **Tier A files**: if any OPEN backlog items exist for Tier A files, delete them (fixed = deleted; git has history)
 
 **THIS IS REQUIRED, NOT OPTIONAL.** Every finding from the audit must end up either fixed (Step 8) or in the backlog. Zero issues may be silently discarded.
 
