@@ -11,7 +11,14 @@ Lightweight workflow for building new features with quality gates. Lighter than 
 **When to use:** New features touching 3+ files, or any feature where blast radius matters.
 **When NOT to use:** Simple fixes (<3 files), pure refactoring (`/refactor`), code review (`/review`).
 
-Parse $ARGUMENTS as the feature description.
+### Argument Parsing
+
+Parse $ARGUMENTS with these flags:
+- `--auto` -- skip user approval at Phase 2 (plan auto-approved)
+- `--auto-commit` -- commit without asking at Phase 5 (default: ask before committing)
+- Everything else = the feature description
+
+Example: `/build add offer export --auto` -> feature: "add offer export", auto-plan, ask before commit.
 
 ## Path Resolution
 
@@ -33,7 +40,12 @@ Before starting ANY work, read ALL files below. Confirm each with check or X:
 4. check/X  ~/.cursor/rules/file-limits.md          -- 250-line file limit, 50-line function limit
 ```
 
-**If ANY file cannot be read, STOP. Do not proceed with a partial rule set.**
+### Degraded Mode (if mandatory files missing)
+
+If ANY file cannot be read:
+1. Log which file(s) are missing and why
+2. **If 1-2 files missing:** proceed in DEGRADED MODE -- skip the rules from missing files, note "DEGRADED: [file] unavailable" in Phase 5 output. Apply remaining rules normally.
+3. **If 3+ files missing:** STOP. Environment is misconfigured -- ask user to verify installation.
 
 ---
 
@@ -55,21 +67,21 @@ BACKLOG: [N open items in related files, or "none"]
 
 Before planning, delegate to 2 agents for context gathering:
 
-**Agent 1: Blast Radius Mapper** -- uses `~/.cursor/skills/refactor/agents/dependency-mapper.md`
+**Agent 1: Blast Radius Mapper** -- uses `~/.cursor/skills/build/agents/dependency-mapper.md`
 
 Delegate to @dependency-mapper to trace blast radius:
 - FEATURE: [description]
 - TARGET FILES: [files the feature will likely touch]
 - PROJECT ROOT: [cwd]
-- INSTRUCTIONS: Read `~/.cursor/skills/refactor/agents/dependency-mapper.md` for full protocol. Trace all importers/callers of the target files. Identify what might break or need updates. Read project CLAUDE.md for import conventions.
+- INSTRUCTIONS: Read `~/.cursor/skills/build/agents/dependency-mapper.md` for full protocol. Trace all importers/callers of the target files. Identify what might break or need updates. Read project CLAUDE.md for import conventions.
 
-**Agent 2: Existing Code Scanner** -- uses `~/.cursor/skills/refactor/agents/existing-code-scanner.md`
+**Agent 2: Existing Code Scanner** -- uses `~/.cursor/skills/build/agents/existing-code-scanner.md`
 
 Delegate to @existing-code-scanner to find overlapping code:
 - FEATURE: [description]
 - PLANNED NEW CODE: [functions/components/services to create]
 - PROJECT ROOT: [cwd]
-- INSTRUCTIONS: Read `~/.cursor/skills/refactor/agents/existing-code-scanner.md` for full protocol. Search for existing services/helpers/components similar to what's planned. Prevent duplication. Read project CLAUDE.md for file organization conventions.
+- INSTRUCTIONS: Read `~/.cursor/skills/build/agents/existing-code-scanner.md` for full protocol. Search for existing services/helpers/components similar to what's planned. Prevent duplication. Read project CLAUDE.md for file organization conventions.
 
 Don't wait for results -- start Phase 2 immediately. Incorporate results when ready.
 
@@ -77,7 +89,9 @@ Don't wait for results -- start Phase 2 immediately. Incorporate results when re
 
 ## Phase 2: Plan
 
-Present your plan with ALL of these sections:
+Present your plan to the user and wait for approval. If `--auto` flag is set, skip the approval wait.
+
+Create a plan with ALL of these sections:
 
 ### Required Plan Sections
 
@@ -108,7 +122,8 @@ FORBIDDEN: files outside scope, unrelated improvements
 
 ## 7. File Size Check
 [For each file to modify: current LOC + estimated after change]
-[Flag any file that will exceed 250 lines -> plan split]
+[Read limits from ~/.cursor/rules/file-limits.md or project CLAUDE.md override]
+[Flag any file that will exceed the production file limit -> plan split]
 
 ## 8. Questions for Author
 [Only if genuine uncertainty about requirements or approach -- e.g. two valid architectures,
@@ -138,7 +153,7 @@ If section 8 is empty, proceed directly.
 Before coding, verify:
 - [ ] @dependency-mapper + @existing-code-scanner results incorporated (if not in plan, add now)
 - [ ] Scope fence defined
-- [ ] No file will exceed 250 lines (plan splits if needed)
+- [ ] No file will exceed production file limit from `file-limits.md` (plan splits if needed)
 
 ### 3.2: Code
 
@@ -146,7 +161,11 @@ Implement the feature following the plan. Rules:
 - **Stay in scope** -- only touch ALLOWED files
 - **Business logic in services** -- not in components or API routes
 - **Follow project conventions** -- from CLAUDE.md and `.cursor/rules/`
-- **Check file size after each file** -- if approaching 250 lines, split NOW. Ad-hoc splits to respect the 250-line limit automatically expand Scope Fence to include newly created helper/sub-files. Justify in execution output.
+- **Check file size after each file** -- if approaching the production file limit (from `file-limits.md`), split NOW
+- **Scope Fence expansion** -- if a split or dependency requires touching a file outside the ALLOWED list:
+  1. Log the expansion: `SCOPE EXPANDED: [file] -- reason: [justification]`
+  2. Only structural splits (extracting helpers/sub-components to respect file limits) auto-expand
+  3. Any other scope change -> ask user for approval before proceeding
 
 ### 3.3: Code Quality Self-Eval
 
@@ -189,7 +208,7 @@ Delegate to @test-quality-auditor to verify test quality:
 - TEST FILES: [list of test files written/modified]
 - CODE TYPE: [function/component/endpoint/hook]
 - COMPLEXITY: [Low/Medium/High]
-- INSTRUCTIONS: Read `~/.cursor/skills/refactor/agents/test-quality-auditor.md` for full protocol. Verify 11 hard gates and run 17-question self-eval (Q1-Q17) on each test file. Read project CLAUDE.md and `.cursor/rules/` for project-specific test conventions.
+- INSTRUCTIONS: Read `~/.cursor/skills/build/agents/test-quality-auditor.md` for full protocol. Verify 11 hard gates and run 17-question self-eval (Q1-Q17) on each test file. Read project CLAUDE.md and `.cursor/rules/` for project-specific test conventions.
 
 **If FAIL/BLOCK:** fix issues, re-run auditor. Do not proceed until PASS or FIX (with fixes applied).
 
@@ -213,7 +232,7 @@ EXECUTE VERIFICATION
 [x]/[ ]  SCOPE: No extra features/refactoring beyond what the plan specifies
 [x]/[ ]  TESTS PASS: Full test suite green (not just new files)
 [x]/[ ]  TYPES: tsc --noEmit passes (no type errors)
-[x]/[ ]  FILE LIMITS: All created/modified files <= 250 lines (production) / <= 400 lines (test)
+[x]/[ ]  FILE LIMITS: All created/modified files within limits from file-limits.md (production + test)
 [x]/[ ]  CQ1-CQ20: Self-eval on each new/modified PRODUCTION file (scores + evidence)
 [x]/[ ]  Q1-Q17: Self-eval on each new/modified TEST file (individual scores + critical gate)
 -------------------------------------
@@ -221,7 +240,7 @@ EXECUTE VERIFICATION
 
 **If ANY is [ ], fix before committing.** Common failures:
 - Scope creep: adding helpers or refactoring existing code not in the plan -> revert
-- File limit: new files exceed 250 lines -> split into modules
+- File limit: new files exceed production limit -> split into modules
 - CQ/Q not run: every production file needs CQ1-CQ20, every test file needs Q1-Q17
 
 ---
@@ -230,19 +249,29 @@ EXECUTE VERIFICATION
 
 ### 5.1: Backlog Persistence (MANDATORY)
 
-1. Check Test Quality Auditor output for `BACKLOG ITEMS` section
-2. If present -> persist to `memory/backlog.md`:
-   - Next available B-{N} ID
-   - Source: `build/test-quality-auditor`
-   - Status: OPEN
-   - Date: today
-3. If any OPEN backlog items in related files were resolved -> mark FIXED
+Collect items from ALL sources:
+1. **Test Quality Auditor** -- `BACKLOG ITEMS` section from Phase 4.1
+2. **CQ Self-Eval** -- any CQ scored 0 that was not fixed (CONDITIONAL PASS items)
+3. **Review warnings** -- warnings from `/review` (if run)
+
+For each item -> persist to `memory/backlog.md`:
+- Next available B-{N} ID
+- Source: `build/{source}` (e.g., `build/test-quality-auditor`, `build/cq-self-eval`, `build/review`)
+- Status: OPEN
+- Date: today
+- **Dedup:** before adding, check if `memory/backlog.md` already has an item with same file + same issue description. If found -> skip (do not create duplicate).
+
+If any OPEN backlog items in related files were resolved -> mark FIXED.
 
 **THIS IS REQUIRED.** Zero issues may be silently discarded.
 
-### 5.2: Auto-Commit + Tag
+### 5.2: Commit + Tag
 
-After verification passes, automatically commit and tag:
+**Commit policy:**
+- **Default (no flag):** show staged file list + proposed commit message, ask user: _"Commit these changes? (y/n)"_. Wait for confirmation.
+- **`--auto-commit` flag:** commit without asking -- the user pre-approved by passing the flag.
+
+After approval (or with `--auto-commit`):
 
 1. `git add [list of created/modified files -- specific names, not -A]`
 2. `git commit -m "build: [feature description]"`
@@ -262,6 +291,7 @@ Files created: [N]
 Files modified: [N]
 Tests written: [N], all passing
 Verification: tests PASS | types PASS | lint PASS
+Review: PASS | [N warnings -> added to backlog]
 Backlog: [N items persisted | "none"]
 Commit: [hash] -- [message]
 Tag: [tag name] (rollback: git reset --hard [tag])
@@ -274,9 +304,13 @@ Next steps:
 
 ---
 
-## Quick Mode (`/build auto`)
+## Flags Reference
 
-If $ARGUMENTS contains "auto":
-- Skip user approval at Phase 2 (plan auto-approved)
-- Still run all agents and quality gates
-- Still require tests to pass
+| Flag | Effect |
+|------|--------|
+| `--auto` | Skip user approval at Phase 2 (plan auto-approved) |
+| `--auto-commit` | Skip commit confirmation at Phase 5.2 |
+
+Both flags can be combined: `/build add export --auto --auto-commit`
+
+All agents and quality gates still run regardless of flags. Tests must still pass.

@@ -24,6 +24,7 @@ Before starting ANY work, read ALL files below. Confirm each with ✅ or ❌:
 
 If running in Antigravity, Cursor, or other IDEs where `~/.claude/` is not accessible, resolve paths from `_agent/` in project root:
 - `~/.claude/test-patterns.md` → `_agent/test-patterns.md`
+- `~/.claude/rules/testing.md` → `_agent/rules/testing.md`
 
 ## Progress Tracking
 
@@ -46,8 +47,9 @@ This skill uses `Task` tool to spawn parallel sub-agents for batch evaluation. *
 | `[file]` | Audit single test file (deep mode) |
 | `--deep` | Include per-file fix recommendations (slower) |
 | `--quick` | Binary checklist only, skip evidence (faster) |
+| `--commit=ask\|auto\|off` | Commit mode after fix workflow (default: `ask`) |
 
-Default: `all --quick`
+Default: `all --quick --commit=ask`
 
 ## Step 1: Discover Test Files
 
@@ -79,7 +81,9 @@ This prevents systematic over/under-scoring across the entire audit.
 
 ## Step 3: Parallel Evaluation
 
-Split files into batches of 8-10. For each batch, spawn a Task agent (subagent_type: "general-purpose") with this prompt:
+**Pre-batch grouping:** Before splitting into batches, group test files by production file. If multiple test files target the same production file (e.g., `foo.test.ts` + `foo.errors.test.ts`), they MUST go into the same batch so suite-aware Q7/Q11 evaluation works correctly.
+
+After grouping, split into batches of 8-10 files. For each batch, spawn a Task agent (subagent_type: "general-purpose") with this prompt:
 
 ---
 
@@ -139,21 +143,34 @@ AP16: Fixture:assertion ratio > 20:1 — AUTO TIER-D
 AP17: Unused test data declared but never used in any test
 AP18: Duplicate test numbers/names (copy-paste indicator)
 
-N/A HANDLING: N/A counts as 1, score out of 17. Q3/Q5/Q6 score as 1 (N/A) for pure functions with zero mocks. Q16 scores as 1 (N/A) for simple single-responsibility units.
+N/A HANDLING: N/A counts as 1 (yes). Score = (yes-count + N/A-count) out of 17. Q3/Q5/Q6 score as 1 (N/A) for pure functions with zero mocks. Q16 scores as 1 (N/A) for simple single-responsibility units.
 Q17 AUDIT RULE: If ≥50% of assertions check values that are direct copies of input/request/mock-return without transformation → Q17=0.
 
 CRITICAL GATE: Q7, Q11, Q13, Q15, Q17 — any = 0 → capped at Tier B (Fix) regardless of total.
 
-FOR EACH FILE, output this exact format:
+SCORING MATH (aligned with testing.md):
+  Total = (yes-count + N/A-count) - AP-deductions
+  No normalization. N/A=1 is the only adjustment.
+  Example: 12 yes + 3 N/A = 15, minus 2 APs = 13 → Tier B
+
+FOR AUTO TIER-D FILES (red flag triggered), output SHORT format:
 ```
 ### [filename]
 Production file: [path or ORPHAN]
-Red flags: [AP13/AP14/AP16 = auto Tier-D; AP15 = warning only; or "none"] → [AUTO TIER-D or "continue"]
+Red flags: [AP13/AP14/AP16 found] → AUTO TIER-D
+Reason: [brief — e.g., "6/10 tests have zero expect() calls (AP13)"]
+Top 3 gaps: [brief]
+```
+
+FOR ALL OTHER FILES, output FULL format:
+```
+### [filename]
+Production file: [path or ORPHAN]
+Red flags: [AP15 = warning only; or "none"] → continue
 Untested methods: [list of public methods in production file with no test coverage, or "all covered"]
 Score: Q1=[0/1] Q2=[0/1] Q3=[0/1/N/A] Q4=[0/1] Q5=[0/1/N/A] Q6=[0/1/N/A] Q7=[0/1] Q8=[0/1] Q9=[0/1] Q10=[0/1] Q11=[0/1] Q12=[0/1] Q13=[0/1] Q14=[0/1] Q15=[0/1] Q16=[0/1/N/A] Q17=[0/1]
 Anti-patterns: [AP IDs found, or "none"]
-Applicable: [N]/17 | Raw: [yes-count]/[applicable] | Normalized: [score]/17
-Total (after AP): [normalized] - [AP count] = [final]
+Total: [yes+N/A]/17 - [AP count] = [final]/17
 Critical gate: Q7=[0/1] Q11=[0/1] Q13=[0/1] Q15=[0/1] Q17=[0/1] → [PASS/FAIL]
 Tier: [A/B/C/D]
 Top 3 gaps: [brief description of worst 3 issues]
@@ -183,7 +200,6 @@ IMPORTANT:
 - NestJS specific: check for `spyOn(service, service.ownMethod)` self-mock pattern → likely AP10
 - NestJS specific: count providers in TestingModule — 10+ is a red flag for quality
 - SmartMock/Proxy pattern: if tests use `as Record<string, jest.Mock>` or Proxy-based mock factories, Q5=0 is correct (no type safety) but note this is a deliberate trade-off vs boilerplate. Recommend typed accessor helper (e.g., `mockMethod(service, 'findOne')`) rather than full typed mocks.
-- N/A normalization math: if 3 Qs are N/A → applicable=14. If raw yes=12 → normalized = (12/14)*17 = 14.6/17. Use normalized for tier classification.
 - SUITE-AWARE MODE: If you see sibling test files for same production file (e.g., `foo.test.ts`, `foo.errors.test.ts`, `foo.edge-cases.test.ts`), evaluate Q7/Q11 at suite level — error paths in `foo.errors.test.ts` satisfy Q7 for the suite group. Report as: "Suite group: [files] — Q7 covered by [file]".
 
 Files to audit:
@@ -322,11 +338,15 @@ EXECUTE VERIFICATION
 - Q1-Q17 not run: after rewriting test files, re-eval is mandatory
 - No tier improvement: fix didn't address root cause → revisit top gaps
 
-4. **Auto-Commit + Tag** — after verification passes:
-   - `git add [specific test files]`
-   - `git commit -m "test-fix: [brief description]"`
-   - `git tag test-fix-[YYYY-MM-DD]-[short-slug]`
-4. **Re-audit** — optionally re-run `/test-audit` on fixed files to verify tier improvement
+4. **Commit** — behavior depends on `--commit` flag:
+   - `--commit=ask` (default): show staged diff, ask user before committing
+   - `--commit=auto`: commit without asking (for CI/batch runs)
+   - `--commit=off`: skip commit entirely
+   - If committing:
+     - `git add [specific test files]`
+     - `git commit -m "test-fix: [brief description]"`
+     - `git tag test-fix-[YYYY-MM-DD]-[short-slug]`
+5. **Re-audit** — optionally re-run `/test-audit` on fixed files to verify tier improvement
 
 **Do NOT push.** Push is a separate user decision.
 
@@ -337,4 +357,9 @@ EXECUTE VERIFICATION
 - Max 6 parallel agents for batch evaluation
 - Each agent gets 8-10 files per batch
 - Total time estimate: ~2 min for quick (50 files), ~10 min for deep (50 files)
-- Always run `npm run test:run` first to confirm baseline passes
+- Always run the project's test suite first to confirm baseline passes. Auto-detect runner:
+  - `vitest.config.*` or `vitest` in devDeps → `npx vitest run`
+  - `jest.config.*` or `jest` in devDeps → `npx jest`
+  - `pyproject.toml` with pytest → `pytest`
+  - `turbo.json` with test task → `turbo run test`
+  - Fallback: `npm run test` (check package.json scripts)

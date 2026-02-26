@@ -11,7 +11,14 @@ Lightweight workflow for building new features with quality gates. Lighter than 
 **When to use:** New features touching 3+ files, or any feature where blast radius matters.
 **When NOT to use:** Simple fixes (<3 files), pure refactoring (`/refactor`), code review (`/review`).
 
-Parse $ARGUMENTS as the feature description.
+### Argument Parsing
+
+Parse $ARGUMENTS with these flags:
+- `--auto` — skip user approval at Phase 2 (plan auto-approved)
+- `--auto-commit` — commit without asking at Phase 5 (default: ask before committing)
+- Everything else = the feature description
+
+Example: `/build add offer export --auto` → feature: "add offer export", auto-plan, ask before commit.
 
 ## Progress Tracking
 
@@ -35,7 +42,7 @@ This skill uses `Task` tool to spawn parallel sub-agents. **If `Task` tool is no
 | Existing Code Scanner | Haiku | Explore | Phase 1 (background) |
 | Test Quality Auditor | Sonnet | Explore | Phase 4 (after tests) |
 
-**All agents are read-only (Explore type).** Reuses agent definitions from `~/.claude/skills/refactor/agents/`.
+**All agents are read-only (Explore type).** Uses agent definitions from `~/.claude/skills/build/agents/`.
 
 ## Path Resolution (non-Claude-Code environments)
 
@@ -54,10 +61,15 @@ Before starting ANY work, read ALL files below. Confirm each with ✅ or ❌:
 1. ✅/❌  ~/.claude/rules/code-quality.md         — CQ1-CQ20 production code checklist
 2. ✅/❌  ~/.claude/rules/testing.md              — Q1-Q17 test self-eval checklist
 3. ✅/❌  ~/.claude/test-patterns.md              — Q1-Q17 protocol, lookup table → routes to catalog/domain files
-4. ✅/❌  ~/.claude/rules/file-limits.md          — 250-line file limit, 50-line function limit
+4. ✅/❌  ~/.claude/rules/file-limits.md          — file/function line limits
 ```
 
-**If ANY file is ❌ → STOP. Do not proceed with a partial rule set.**
+### Degraded Mode (if mandatory files missing)
+
+If ANY file is ❌:
+1. Log which file(s) are missing and why
+2. **If 1-2 files missing:** proceed in DEGRADED MODE — skip the rules from missing files, note "DEGRADED: [file] unavailable" in Phase 5 output. Apply remaining rules normally.
+3. **If 3+ files missing:** STOP. Environment is misconfigured — ask user to verify installation.
 
 ---
 
@@ -79,13 +91,13 @@ BACKLOG: [N open items in related files, or "none"]
 
 Before planning, spawn 2 sub-agents to gather context:
 
-**Agent 1: Blast Radius Mapper** — uses `~/.claude/skills/refactor/agents/dependency-mapper.md`
+**Agent 1: Blast Radius Mapper** — uses `~/.claude/skills/build/agents/dependency-mapper.md`
 ```
 Spawn via Task tool with:
   subagent_type: "Explore"
   model: "sonnet"
   run_in_background: true
-  prompt: "You are a Dependency Mapper. Read ~/.claude/skills/refactor/agents/dependency-mapper.md for full instructions.
+  prompt: "You are a Dependency Mapper. Read ~/.claude/skills/build/agents/dependency-mapper.md for full instructions.
 
 FEATURE: [description]
 TARGET FILES/DIRECTORIES: [files the feature will likely touch]
@@ -95,13 +107,13 @@ Trace all importers/callers of the target files. Identify what might break or ne
 Read project CLAUDE.md for import conventions."
 ```
 
-**Agent 2: Existing Code Scanner** — uses `~/.claude/skills/refactor/agents/existing-code-scanner.md`
+**Agent 2: Existing Code Scanner** — uses `~/.claude/skills/build/agents/existing-code-scanner.md`
 ```
 Spawn via Task tool with:
   subagent_type: "Explore"
   model: "haiku"
   run_in_background: true
-  prompt: "You are an Existing Code Scanner. Read ~/.claude/skills/refactor/agents/existing-code-scanner.md for full instructions.
+  prompt: "You are an Existing Code Scanner. Read ~/.claude/skills/build/agents/existing-code-scanner.md for full instructions.
 
 FEATURE: [description]
 PLANNED NEW CODE: [functions/components/services to create]
@@ -117,7 +129,16 @@ Don't wait — start Phase 2 immediately. Incorporate results when ready.
 
 ## Phase 2: Plan
 
-Enter plan mode (`EnterPlanMode`) and create a plan with ALL of these sections:
+### Plan Mode Fallback
+
+If `EnterPlanMode` is available → use it.
+If NOT available (no plan mode in this environment):
+1. Present the plan as a markdown block in your response
+2. End with: **"Approve this plan to proceed, or request changes."**
+3. Wait for explicit user approval before Phase 3
+4. `--auto` flag skips this wait (same as with EnterPlanMode)
+
+Create a plan with ALL of these sections:
 
 ### Required Plan Sections
 
@@ -148,7 +169,8 @@ FORBIDDEN: files outside scope, unrelated improvements
 
 ## 7. File Size Check
 [For each file to modify: current LOC + estimated after change]
-[Flag any file that will exceed 250 lines → plan split]
+[Read limits from ~/.claude/rules/file-limits.md or project CLAUDE.md override]
+[Flag any file that will exceed the production file limit → plan split]
 
 ## 8. Questions for Author
 [Only if genuine uncertainty about requirements or approach — e.g. two valid architectures,
@@ -160,14 +182,14 @@ ambiguous business rules, conflicting patterns found in codebase. Leave empty if
 ### Questions Gate (before ExitPlanMode)
 
 If section 8 is non-empty:
-1. Use `AskUserQuestion` to ask each question interactively — max 4 at a time
+1. Use `AskUserQuestion` (if available) or ask inline to get answers — max 4 at a time
 2. Wait for answers
 3. Update the plan based on answers (revise approach, scope, implementation strategy)
-4. Then call `ExitPlanMode`
+4. Then exit plan mode / proceed
 
-If section 8 is empty → call `ExitPlanMode` directly.
+If section 8 is empty → exit plan mode / proceed directly.
 
-Wait for user approval via `ExitPlanMode`.
+Wait for user approval (via `ExitPlanMode` or inline confirmation).
 
 ---
 
@@ -178,7 +200,7 @@ Wait for user approval via `ExitPlanMode`.
 Before coding, verify:
 - [ ] Agent 1 + Agent 2 results incorporated (if not in plan, add now)
 - [ ] Scope fence defined
-- [ ] No file will exceed 250 lines (plan splits if needed)
+- [ ] No file will exceed production file limit from `file-limits.md` (plan splits if needed)
 
 ### 3.2: Code
 
@@ -186,7 +208,11 @@ Implement the feature following the plan. Rules:
 - **Stay in scope** — only touch ALLOWED files
 - **Business logic in services** — not in components or API routes
 - **Follow project conventions** — from CLAUDE.md and `.claude/rules/`
-- **Check file size after each file** — if approaching 250 lines, split NOW. Ad-hoc splits to respect the 250-line limit automatically expand Scope Fence to include newly created helper/sub-files. Justify in execution output.
+- **Check file size after each file** — if approaching the production file limit (from `file-limits.md`), split NOW
+- **Scope Fence expansion** — if a split or dependency requires touching a file outside the ALLOWED list:
+  1. Log the expansion: `SCOPE EXPANDED: [file] — reason: [justification]`
+  2. Only structural splits (extracting helpers/sub-components to respect file limits) auto-expand
+  3. Any other scope change → ask user for approval before proceeding
 
 ### 3.3: Code Quality Self-Eval
 
@@ -231,7 +257,7 @@ Spawn the auditor:
 Spawn via Task tool with:
   subagent_type: "Explore"
   model: "sonnet"
-  prompt: "You are a Test Quality Auditor. Read ~/.claude/skills/refactor/agents/test-quality-auditor.md for full instructions.
+  prompt: "You are a Test Quality Auditor. Read ~/.claude/skills/build/agents/test-quality-auditor.md for full instructions.
 
 TEST FILES: [list of test files written/modified]
 CODE TYPE: [function/component/endpoint/hook]
@@ -263,7 +289,7 @@ EXECUTE VERIFICATION
 ✅/❌  SCOPE: No extra features/refactoring beyond what the plan specifies
 ✅/❌  TESTS PASS: Full test suite green (not just new files)
 ✅/❌  TYPES: `tsc --noEmit` passes (no type errors)
-✅/❌  FILE LIMITS: All created/modified files ≤ 250 lines (production) / ≤ 400 lines (test)
+✅/❌  FILE LIMITS: All created/modified files within limits from file-limits.md (production + test)
 ✅/❌  CQ1-CQ20: Self-eval on each new/modified PRODUCTION file (scores + evidence)
 ✅/❌  Q1-Q17: Self-eval on each new/modified TEST file (individual scores + critical gate)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -271,7 +297,7 @@ EXECUTE VERIFICATION
 
 **If ANY is ❌ → fix before committing.** Common failures:
 - Scope creep: adding helpers or refactoring existing code not in the plan → revert
-- File limit: new files exceed 250 lines → split into modules
+- File limit: new files exceed production limit → split into modules
 - CQ/Q not run: every production file needs CQ1-CQ20, every test file needs Q1-Q17
 
 ---
@@ -280,13 +306,19 @@ EXECUTE VERIFICATION
 
 ### 5.1: Backlog Persistence (MANDATORY)
 
-1. Check Test Quality Auditor output for `BACKLOG ITEMS` section
-2. If present → persist to `memory/backlog.md`:
-   - Next available B-{N} ID
-   - Source: `build/test-quality-auditor`
-   - Status: OPEN
-   - Date: today
-3. If any OPEN backlog items in related files were resolved → mark FIXED
+Collect items from ALL sources:
+1. **Test Quality Auditor** — `BACKLOG ITEMS` section from Phase 4.1
+2. **CQ Self-Eval** — any CQ scored 0 that was not fixed (CONDITIONAL PASS items)
+3. **Review warnings** — warnings from Phase 5.2 `/review` (if run)
+
+For each item → persist to `memory/backlog.md`:
+- Next available B-{N} ID
+- Source: `build/{source}` (e.g., `build/test-quality-auditor`, `build/cq-self-eval`, `build/review`)
+- Status: OPEN
+- Date: today
+- **Dedup:** before adding, check if `memory/backlog.md` already has an item with same file + same issue description. If found → skip (do not create duplicate).
+
+If any OPEN backlog items in related files were resolved → mark FIXED.
 
 **THIS IS REQUIRED.** Zero issues may be silently discarded.
 
@@ -309,9 +341,13 @@ This reviews ONLY the staged files — not the whole codebase.
 **If review finds BLOCKING issues:** unstage (`git reset HEAD [file]`), fix, re-stage, re-run review.
 **If review finds warnings only:** proceed to commit. Add warnings to backlog.
 
-### 5.3: Auto-Commit + Tag
+### 5.3: Commit + Tag
 
-After review passes, execute these commands **without asking for confirmation** — the user pre-approved auto-commit by invoking `/build`:
+**Commit policy:**
+- **Default (no flag):** show staged file list + proposed commit message, ask user: _"Commit these changes? (y/n)"_. Wait for confirmation.
+- **`--auto-commit` flag:** commit without asking — the user pre-approved by passing the flag.
+
+After approval (or with `--auto-commit`):
 
 ```
 git commit -m "build: [feature description]"
@@ -348,9 +384,13 @@ Next steps:
 
 ---
 
-## Quick Mode (`/build auto`)
+## Flags Reference
 
-If $ARGUMENTS contains "auto":
-- Skip user approval at Phase 2 (plan auto-approved)
-- Still run all agents and quality gates
-- Still require tests to pass
+| Flag | Effect |
+|------|--------|
+| `--auto` | Skip user approval at Phase 2 (plan auto-approved) |
+| `--auto-commit` | Skip commit confirmation at Phase 5.3 |
+
+Both flags can be combined: `/build add export --auto --auto-commit`
+
+All agents and quality gates still run regardless of flags. Tests must still pass.

@@ -125,11 +125,22 @@ PROJECT_CONTEXT (from Step 2.5 — use for CQ8 evaluation):
 [INSERT: global error handler info, or "No global error handler detected"]
 
 STEP 0 — RED FLAG PRE-SCAN (do this FIRST, before full checklist):
-Scan the file for these. If any AUTO TIER-D trigger found → report it and skip full checklist:
+Scan the file for these. If any AUTO TIER-D trigger found → use TIER-D SHORT FORMAT below and skip full CQ1-CQ20 checklist:
 - Hardcoded secret (API key, password, token in source) → AUTO TIER-D
 - SQL string concatenation with user input → AUTO TIER-D
 - eval() / new Function() with non-literal input → AUTO TIER-D
 - dangerouslySetInnerHTML without DOMPurify → AUTO TIER-D
+
+TIER-D SHORT FORMAT (for files with red flags — do NOT output full CQ1-CQ20):
+```
+### [filename]
+Code type: [TYPE]
+Lines: [count]
+Red flags: [CAP5/CAP6/CAP7/CAP8] → AUTO TIER-D
+Details: [what was found, line number]
+Tier: D
+(Full CQ1-CQ20 checklist skipped — fix red flag first, then re-audit)
+```
 
 QUICK HEURISTICS (not Tier-D triggers, but predict score):
 - 5+ `as any` casts → likely score ≤10
@@ -205,7 +216,7 @@ Top 3 issues: [brief description of worst 3 problems]
 ```
 
 TIER CLASSIFICATION:
-  A (≥16 normalized, all active gates PASS): Production-ready
+  A (≥16/20, all active gates PASS): Production-ready
   B (14-15, all active gates PASS): Conditional pass — targeted fixes
   C (10-13, or any critical gate FAIL with score ≥10): Significant rework needed
   D (<10 or AUTO TIER-D red flag): Critical — immediate fix or rewrite
@@ -220,7 +231,7 @@ IMPORTANT:
 - For CQ14: actually LIST methods >20 lines. Compare pairs for structural similarity.
 - For CQ16: search for parseFloat, Number(), arithmetic operators on fields named price/cost/cpi/amount/total/discount/rate.
 - For CQ17: search for `await` inside for/for...of/while/forEach. Check if batch alternative exists.
-- For CQ19: CONTROLLER type = CQ19 always critical. Check both request DTO AND response shape.
+- For CQ19: CONTROLLER type = CQ19 critical unless thin controller exception applies (see conditional gate section). Check both request DTO AND response shape.
 - For CQ20: search for patterns: field_id + field_name, field: number + field: "X currency_code".
 - Evidence is REQUIRED for --deep mode. For --quick mode, evidence is optional but critical gate failures still need explanation.
 - CQ15 TRAP: In async functions, `return somePromise` (without await) is NOT a bug. `async` wraps the return in Promise, and Promise<Promise<T>> auto-flattens to Promise<T>. Caller's `await` unwraps correctly. Only flag when a promise is neither returned nor awaited — true dropped promise.
@@ -360,7 +371,12 @@ The report must end with a concrete action plan:
 After generating the report, persist ALL findings (confidence 26+) to `memory/backlog.md`:
 
 1. **Read** the project's `memory/backlog.md` (from the auto memory directory shown in system prompt)
-2. **If file doesn't exist**: create it from the template in `~/.claude/skills/review/rules.md`
+2. **If file doesn't exist**: create it with this template (or use the one in `~/.claude/skills/review/rules.md` if available):
+   ```markdown
+   # Tech Debt Backlog
+   | ID | File | Issue | Severity | Source | Status | Seen | Dates |
+   |----|------|-------|----------|--------|--------|------|-------|
+   ```
 3. For each finding (Tier B/C/D):
    - Search backlog for same file + same CQ/issue
    - **Duplicate**: increment `Seen` count, add date, keep highest severity
@@ -458,7 +474,7 @@ EXECUTE VERIFICATION
    - `git commit -m "code-audit-fix: [brief description of CQs fixed]"`
    - `git tag audit-fix-[YYYY-MM-DD]-[short-slug]` (e.g., `audit-fix-2026-02-22-cq8-cq14`)
    - This creates a clean rollback point. User can `git reset --hard <tag>` if needed.
-4. **Review** — run `/review` on changed files to verify fixes are correct and didn't introduce new issues.
+5. **Review** — run `/review` on changed files to verify fixes are correct and didn't introduce new issues.
 
 **User can request fixes at any granularity:**
 - `"napraw wszystko z Tier D"` — start from worst files
