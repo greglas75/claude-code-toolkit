@@ -96,9 +96,11 @@ If baseline run fails on infrastructure (no test runner, missing deps) -> note i
 
 ---
 
-## Phase 1: Analysis (parallel, background)
+## Phase 1: Analysis
 
-Perform these analyses sequentially. Start Phase 2 immediately -- incorporate results when ready.
+### Non-auto mode (explicit file/dir)
+
+Spawn 2 sub-agents **in parallel** (target files are known upfront):
 
 **Agent 1: Coverage Scanner**
 
@@ -122,27 +124,67 @@ Analysis to perform (execute inline):
     You are a Pattern Selector. Read ~/.cursor/skills/write-tests/agents/pattern-selector.md
     for full instructions.
 
-    TARGET FILES: [list of production files]
+    TARGET FILES: [list of production files from $ARGUMENTS]
     PROJECT ROOT: [cwd]
 
     Read project CLAUDE.md for project-specific conventions.
 ```
 
-### Auto-Mode: Batch Limit + Priority (when `auto`)
+Start Phase 2 immediately -- incorporate results when ready.
 
-When Coverage Scanner returns discovered files, apply these rules:
+### Auto mode: Sequential Discovery -> Classify -> Prioritize
 
-1. **Hard cap: 15 files per run.** If more discovered -> take top 15, note remainder as `DEFERRED: [N] files (next run)`.
-2. **Priority ordering** (process highest risk first):
-   | Priority | Criteria | Why |
-   |----------|----------|-----|
-   | 1 (highest) | UNCOVERED (0%) + SERVICE, CONTROLLER, GUARD | Core logic / security surface, zero safety net |
-   | 2 | UNCOVERED + HOOK, ORCHESTRATOR, API-CALL | Complex async / coordination code |
-   | 3 | UNCOVERED + PURE, COMPONENT, ORM | Lower blast radius |
-   | 4 | PARTIAL (<50% methods covered) | Some coverage, gaps are surgical |
-   | 5 (lowest) | PARTIAL (>=50% methods covered) | Diminishing returns |
-3. Within same priority -> sort by file size descending (larger = more risk).
-4. Log in Phase 2 plan: `AUTO BATCH: [N]/[total] files, priority 1: [N], priority 2: [N], ...`
+In `auto` mode, Pattern Selector cannot run until Coverage Scanner discovers the files. Execute sequentially:
+
+**Step 1: Coverage Scanner** (discover + classify coverage)
+
+```
+Analysis to perform (execute inline):
+  prompt: |
+    You are a Coverage Scanner. Read ~/.cursor/skills/write-tests/agents/coverage-scanner.md
+    for full instructions.
+
+    TARGET FILES: auto
+    PROJECT ROOT: [cwd]
+
+    Read project CLAUDE.md for test file location conventions.
+```
+
+Wait for results. Scanner returns a list of UNCOVERED and PARTIAL files.
+
+**Step 2: Pattern Selector** (classify code types for discovered files)
+
+```
+Analysis to perform (execute inline):
+  prompt: |
+    You are a Pattern Selector. Read ~/.cursor/skills/write-tests/agents/pattern-selector.md
+    for full instructions.
+
+    TARGET FILES: [list of UNCOVERED + PARTIAL files from Step 1]
+    PROJECT ROOT: [cwd]
+
+    Read project CLAUDE.md for project-specific conventions.
+```
+
+Wait for results. Selector returns code types per file.
+
+**Step 3: Merge + Prioritize**
+
+Merge both agent results -- each file now has coverage status (from Scanner) AND code type (from Selector). Apply priority table:
+
+| Priority | Criteria | Why |
+|----------|----------|-----|
+| 1 (highest) | UNCOVERED + SERVICE, CONTROLLER, GUARD | Core logic / security surface, zero safety net |
+| 2 | UNCOVERED + HOOK, ORCHESTRATOR, API-CALL | Complex async / coordination code |
+| 3 | UNCOVERED + PURE, COMPONENT, ORM | Lower blast radius |
+| 4 | PARTIAL (<50% methods covered) | Some coverage, gaps are surgical |
+| 5 (lowest) | PARTIAL (>=50% methods covered) | Diminishing returns |
+
+Within same priority -> sort by file size descending (larger = more risk).
+
+**Hard cap: 15 files per run.** Take top 15 from priority-sorted list. If more -> note `DEFERRED: [N] files (next run)`.
+
+Log: `AUTO BATCH: [N]/[total] files, priority 1: [N], priority 2: [N], ...`
 
 ---
 
