@@ -56,7 +56,7 @@ Before starting ANY work, read ALL files below. Confirm each with [x] or [ ]:
 |----------|----------|
 | `[file.ts]` | Write tests for single production file |
 | `[directory/]` | Write tests for all production files in directory |
-| `auto` | **Full autonomy.** Discover uncovered files, write tests, commit -- no approval gates, no questions, no stops. Batch limit: 15 files per run. |
+| `auto` | **Full autonomy.** Discover uncovered files, write tests, commit -- no approval gates, no questions. Quality gates (mandatory reads, Q1-Q17, verification checklist) still enforced. Batch limit: 15 files per run. |
 | `--dry-run` | Plan only, do NOT write files (output plan + stop before Phase 3) |
 
 Output:
@@ -103,7 +103,7 @@ Read `references/coverage-scanner.md` and perform this analysis yourself.
 Read `references/pattern-selector.md` and perform this analysis yourself.
 
 
-Start Phase 2 immediately -- incorporate results when ready.
+Wait for both agents to complete before starting Phase 2 -- the plan requires coverage status and code types from both.
 
 ### Auto mode: Sequential Discovery -> Classify -> Prioritize
 
