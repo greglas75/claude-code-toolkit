@@ -1,6 +1,6 @@
 ---
 name: test-audit
-description: "Audit all test files against Q1-Q17 checklist + AP/P-* anti-patterns (see test-patterns.md lookup table -> catalog/domain files). Produces tiered report with scores, gaps, and fix recommendations. Use: /test-audit [path] or /test-audit all"
+description: "Audit all test files against Q1-Q17 checklist + AP/P-* anti-patterns (see test-patterns.md lookup table -> catalog/domain files). Produces tiered report with scores, gaps, and fix recommendations. Use: /test-audit [path] or /test-audit all. NOT for immediate fixes (use /fix-tests)."
 ---
 
 # /test-audit -- Test Quality Triage
@@ -126,7 +126,7 @@ AP16: Fixture:assertion ratio > 20:1 -- AUTO TIER-D
 AP17: Unused test data declared but never used in any test
 AP18: Duplicate test numbers/names (copy-paste indicator)
 
-N/A HANDLING: Q3/Q5/Q6 score as 1 (N/A) for pure functions with zero mocks. Q16 scores as 1 (N/A) for simple single-responsibility units.
+N/A HANDLING: N/A counts as 1, score out of 17. Q3/Q5/Q6 score as 1 (N/A) for pure functions with zero mocks. Q16 scores as 1 (N/A) for simple single-responsibility units.
 Q17 AUDIT RULE: If >=50% of assertions check values that are direct copies of input/request/mock-return without transformation -> Q17=0.
 
 CRITICAL GATE: Q7, Q11, Q13, Q15, Q17 -- any = 0 -> capped at Tier B (Fix) regardless of total.

@@ -1,6 +1,6 @@
 ---
 name: review
-description: "Code review with triage, audit, confidence scoring, and auto-fix. Use when reviewing code changes, PRs, or diffs."
+description: "Code review with triage, audit, confidence scoring, and auto-fix. Use when reviewing code changes, PRs, or diffs. NOT before writing any code."
 ---
 
 # /review -- Code Review
@@ -9,16 +9,27 @@ Triage + full audit in one step. No separate "Go" command needed.
 
 ## File Loading (Tier-Aware)
 
-Load files in two phases to minimize token cost. Phase 1 is always required. Phase 2 is conditional.
+Load files in two phases to minimize token cost. Do a quick diff stat FIRST to detect TIER 0.
 
-### Phase 1: Always Load (before triage)
+### Pre-load check (before Phase 1)
+
+Run `git diff --stat [scope]` (1 command). Count total lines changed and new files.
+
+```
+IF total lines < 15 AND no new production files (.ts/.tsx/.py -- not *.test.*) -> TIER 0
+  Load Phase 1: rules.md ONLY (skip code-quality.md)
+ELSE
+  Load Phase 1: rules.md + code-quality.md
+```
+
+### Phase 1: Always Load
 
 ```
 1. [x]/[ ]  ~/.codex/skills/review/rules.md        -- Iron Rules, severity, confidence, backlog
-2. [x]/[ ]  ~/.codex/rules/code-quality.md         -- CQ1-CQ20 production code checklist
+2. [x]/[ ]  ~/.codex/rules/code-quality.md         -- CQ1-CQ20 (skip if TIER 0)
 ```
 
-**If ANY Phase 1 file is [ ] -> STOP.**
+**If ANY required Phase 1 file is [ ] -> STOP.**
 
 ### Phase 2: Conditional Loading (after triage Step 4 -- tier known)
 
@@ -26,10 +37,10 @@ Load each file ONLY when its trigger condition is met:
 
 | File | Load When | Skip When |
 |------|-----------|-----------|
-| `~/.codex/review-protocol.md` | TIER 2+ | TIER 1 (only runs steps 0->1->2.1->6.1, covered by rules.md) |
-| `~/.codex/rules/testing.md` | TIER 2+, OR diff contains `*.test.*`/`*.spec.*` files | TIER 1 with no test files in diff |
+| `~/.codex/review-protocol.md` | TIER 2+ | TIER 0 or TIER 1 |
+| `~/.codex/rules/testing.md` | TIER 2+, OR diff contains `*.test.*`/`*.spec.*` files | TIER 0-1 with no test files |
 | `~/.codex/test-patterns.md` | Diff contains `*.test.*`/`*.spec.*` files | No test files in diff |
-| `~/.codex/rules/security.md` | Triage Step 6 flags SECURITY conditional section, OR TIER 3 | TIER 1-2 with no security signals |
+| `~/.codex/rules/security.md` | Triage Step 6 flags SECURITY conditional section, OR TIER 3 | TIER 0-2 with no security signals |
 
 Print loaded files after triage:
 ```
@@ -58,6 +69,34 @@ If running in Antigravity, Cursor, or other IDEs where `~/.codex/` is not access
 - `~/.codex/review-protocol.md` -> `_agent/review-protocol.md`
 - `~/.codex/test-patterns.md` -> `_agent/test-patterns.md`
 
+## Tool Availability (Cursor / Codex / Antigravity)
+
+Different environments have different tools. Adapt as follows:
+
+| Tool | Claude Code | Cursor | Codex | Antigravity |
+|------|-------------|--------|-------|-------------|
+| `Task` (spawn agents) | [x] | [ ] | [ ] | [ ] |
+| ask the user | [x] | [ ] | [ ] | [ ] |
+| task creation (progress tracking) | [x] | [ ] | [ ] | [ ] |
+| File read/write, Bash, git | [x] | [x] | [x] | [x] |
+
+**If inline analysis NOT available:**
+- Skip all "Spawn via inline analysis" blocks -- do NOT attempt to call tools that don't exist
+- Execute agent work **inline**, sequentially -- read the agent's prompt and perform that analysis directly
+- Model routing is ignored -- use whatever model you are running on
+
+**If ask the user NOT available (Cursor, Codex, Antigravity):**
+- Skip all interactive prompts/gates that use ask the user
+- MODE 1 (report only): after report -> go directly to Execute (apply ALL fixes automatically)
+- Questions Gate (QUESTIONS FOR AUTHOR): skip -- proceed with original severity assessments
+- Post-Execute "Next step?" prompt: skip -- automatically proceed to Push if tests pass
+
+**If task creation NOT available:**
+- Skip task creation -- instead print step status inline:
+  `STEP: Triage [START]` -> `STEP: Triage [DONE]`
+
+Quality gates, checklists, and output format are identical in all environments.
+
 ## Step 0: Parse $ARGUMENTS
 
 $ARGUMENTS controls WHAT gets reviewed AND which mode to use.
@@ -70,16 +109,24 @@ $ARGUMENTS controls WHAT gets reviewed AND which mode to use.
 | `new` | Commits since last review | `git diff --stat reviewed..HEAD` (tag) |
 | `HEAD~1` | Last commit only | `git diff --stat HEAD~1..HEAD` |
 | `HEAD~3` | Last 3 commits | `git diff --stat HEAD~3..HEAD` |
-| `HEAD~2..HEAD~1` | Specific commit range | `git diff --stat HEAD~2..HEAD~1` |
+| `HEAD~2..HEAD~1` | Specific commit range (relative) | `git diff --stat HEAD~2..HEAD~1` |
+| `abc123..def456` | Specific commit range (by hash) | `git diff --stat abc123..def456` |
+| `abc123..HEAD` | From specific commit to now | `git diff --stat abc123..HEAD` |
+| `abc123~1..abc123` | Single commit by hash | `git diff --stat abc123~1..abc123` |
 | `apps/designer/` | Only this directory (uncommitted) | `git diff --stat HEAD -- apps/designer/` |
 | `auth.controller.ts` | Only files matching name (uncommitted) | `git diff --stat HEAD -- '**/auth.controller.ts'` |
 | `apps/api/ apps/runner/` | Multiple paths (uncommitted) | `git diff --stat HEAD -- apps/api/ apps/runner/` |
 | `staged` | Only staged changes | `git diff --stat --cached` |
 
-**Special: `new` keyword**
-- Uses git tag `reviewed` as the baseline (set automatically after Push)
-- If tag doesn't exist -> show warning and fall back to `git diff --stat HEAD` (all uncommitted)
-- Combines with paths: `new apps/api/` -> only unreviewed changes in API dir
+**Special: `new` keyword** -- baseline resolution order:
+1. Read `memory/last-reviewed.txt` -> if file exists and hash is valid in current repo -> use it
+2. Fallback: git tag `reviewed` -> if tag exists -> use it
+3. Fallback: `git merge-base HEAD main` -> diverge point from main (accurate for feature branches)
+4. Final fallback: warn + `HEAD~5` (if merge-base fails or HEAD is main)
+
+Reason for file-first: in Codex/Cursor, review fixes land on a separate branch. After merge to main, the `memory/last-reviewed.txt` file is already present with the correct hash -- the git tag may be on the wrong branch.
+
+Combines with paths: `new apps/api/` -> only unreviewed changes in API dir
 
 Multiple tokens can combine: `HEAD~1 apps/designer/` -> last commit, only designer dir.
 
@@ -90,8 +137,16 @@ Multiple tokens can combine: `HEAD~1 apps/designer/` -> last commit, only design
 | _(none)_ | MODE 1 | Report only. Wait for Execute. |
 | `fix` | MODE 2 | Auto-fix ALL + tests + loop (Mode 2 gate applies) |
 | `blocking` | MODE 3 | Fix CRITICAL/HIGH only + tests + loop |
+| `tag` | UTIL | No audit. Just mark current HEAD as reviewed (updates file + tag). |
 
 Examples: `/review`, `/review fix`, `/review HEAD~1 blocking`, `/review new apps/worker/ fix`
+
+**Special: `tag` argument** -- use after merging a review branch to main:
+1. Run `git rev-parse HEAD` to get current hash
+2. Write hash to `memory/last-reviewed.txt`
+3. Run `git tag -f reviewed HEAD`
+4. Print: "Marked [hash] as reviewed. Next `/review new` starts from here."
+5. STOP -- no audit, no report.
 
 ---
 
@@ -100,6 +155,25 @@ Examples: `/review`, `/review fix`, `/review HEAD~1 blocking`, `/review new apps
 ### Step 1: Detect Changes
 
 Run the git command determined in Step 0 from the current working directory (git repo root).
+
+**Filter noise files BEFORE counting lines.** Exclude from diff stat (these inflate tier and waste tokens):
+```
+Noise patterns (exclude from line count AND from audit):
+  *.lock, package-lock.json, pnpm-lock.yaml, yarn.lock
+  dist/, build/, .next/, out/, coverage/
+  *.snap, __snapshots__/
+  *.generated.*, *.min.js, *.min.css, *.map
+  *.svg, *.png, *.jpg, *.ico (binary assets)
+```
+Use: `git diff --stat [scope] -- . ':!*.lock' ':!package-lock.json' ':!dist/' ':!*.snap' ':!*.min.*' ':!*.map' ':!*.generated.*'`
+
+If ALL changed files are noise -> print "Only noise files changed (locks, snapshots, dist). Nothing to review." -> STOP.
+
+**Capture `REVIEWED_THROUGH` hash** -- the end of the reviewed range. This is used in Phase C to mark the correct baseline (not the fix branch HEAD, which may not exist after squash merge):
+- If scope = `HEAD`, `HEAD~N`, `staged`, or `new` -> `REVIEWED_THROUGH = git rev-parse HEAD`
+- If scope = `abc123..HEAD` -> `REVIEWED_THROUGH = git rev-parse HEAD`
+- If scope = `abc123..def456` -> `REVIEWED_THROUGH = git rev-parse def456`
+- Store this hash -- it will be written to `memory/last-reviewed.txt` in Phase C.
 
 Also check for new untracked files in scope: `git status --short` filtered by pathspec.
 
@@ -127,9 +201,10 @@ Risk signals:
   [ ] API contract changes
   [ ] Payment/money flow
   [ ] >500 lines changed
+  [ ] New production files added (.ts/.tsx/.py -- not *.test.*)
   [ ] AI-generated code suspected
 
-Tier:       [1-LIGHT / 2-STANDARD / 3-DEEP]
+Tier:       [0-NANO / 1-LIGHT / 2-STANDARD / 3-DEEP]
 Mode 2 OK:  [YES / NO -- reason]
 ------------------------------------
 ```
@@ -147,9 +222,14 @@ Heuristics (check commit messages + diff content):
 
 | Condition | Tier |
 |-----------|------|
-| <50 lines, no risk signals | TIER 1 (LIGHT) |
-| 50-500 lines, max 1 risk signal | TIER 2 (STANDARD) |
-| >500 lines OR 2+ risk signals | TIER 3 (DEEP) |
+| <15 lines, no risk signals | TIER 0 (NANO) |
+| 15-100 lines, no risk signals | TIER 1 (LIGHT) |
+| 100-500 lines OR 5-15 files OR 1 risk signal | TIER 2 (STANDARD) |
+| >500 lines OR 15+ files OR 2+ risk signals | TIER 3 (DEEP) |
+
+**Intent downgrade (apply after table above):**
+- `REFACTOR` + < 10 files + no DB/security/API/money signal -> cap at TIER 2 (file count alone cannot push to TIER 3)
+- `INFRA` (config, CI, Dockerfile, terraform only -- no production code) -> cap at TIER 1 unless > 300 lines
 
 ### Step 5: Mode 2 Blocker Check
 
@@ -159,6 +239,7 @@ Mode 2 (`/review fix`) is **FORBIDDEN** if ANY:
 - Security/auth changes
 - API contract changes
 - Payment/money flow changes
+- New production files + TIER 2 (suggest `blocking` instead -- Behavior Auditor may find issues needing manual judgment)
 
 If blocked and user requested `fix` -> warn, downgrade to MODE 1 (report only), suggest `Execute BLOCKING` after report.
 
@@ -188,7 +269,7 @@ CODE REVIEW [+ AUTO-FIX if Mode 2/3]
 ===============================================================
 REVIEWING: [1-2 sentence summary]
 FILES: [X files, +Y/-Z lines]
-TIER: [1/2/3] - [LIGHT/STANDARD/DEEP]
+TIER: [0/1/2/3] - [NANO/LIGHT/STANDARD/DEEP]
 AUDIT: [SOLO / TEAM (2 auditors)]
 CHANGE INTENT: [BUGFIX/REFACTOR/FEATURE/INFRA]
 ===============================================================
@@ -201,39 +282,48 @@ CHANGE INTENT: [BUGFIX/REFACTOR/FEATURE/INFRA]
 **Agent spawning is gated by tier to avoid unnecessary API calls:**
 
 ```
+IF TIER 0:
+  -> NO agents. Lead does inline audit only. Skip CQ self-eval (diff too small).
+  -> Confidence scoring inline.
+
 IF TIER 1:
-  -> NO background agents. Lead does blast radius (single grep) and blame (single git blame) inline.
-  -> NO Confidence Re-Scorer (max 2-3 issues -- lead scores inline).
+  -> NO background agents. Lead does blast radius (single grep) and blame inline.
+  -> Confidence scoring inline.
 
-IF TIER 2 solo (< 5 files):
-  -> Blast Radius Mapper: ONLY if files_changed >= 3 (otherwise lead does inline grep)
-  -> Pre-Existing Checker: YES (50-500 lines justifies dedicated blame agent)
-  -> Confidence Re-Scorer: YES (issue list can be large)
+IF TIER 2:
+  -> NO Blast Radius, Pre-Existing, or Structure Auditor.
+  -> Behavior Auditor: ONLY IF "New production files" risk signal is set.
+  -> Confidence Re-Scorer: ONLY IF Behavior Auditor spawned (otherwise lead scores inline).
+  -> Lead audits sequentially using protocol.md.
 
-IF TIER 2 team (5+ files) OR TIER 3:
-  -> ALL agents spawned (Blast Radius, Pre-Existing, Structure/Behavior Auditors, Re-Scorer)
+IF TIER 3:
+  -> ALL agents spawned (Blast Radius, Pre-Existing, Structure/Behavior Auditors, Re-Scorer).
 ```
 
 **Agent model table (when spawned):**
 
 |-------|-------|---------------|--------------|
-| Blast Radius Mapper | **sonnet** | Explore | TIER 2 (3+ files) or TIER 3 |
-| Pre-Existing Checker | **haiku** | Explore | TIER 2+ |
-| Structure Auditor | **sonnet** | Explore | Team audit only |
-| Behavior Auditor | **sonnet** or **opus** | Explore | Team audit only (see Model Routing below) |
-| Confidence Re-Scorer | **haiku** | Explore | TIER 2+ |
+| Blast Radius Mapper | **sonnet** | Explore | TIER 3 only |
+| Pre-Existing Checker | **haiku** | Explore | TIER 3 only |
+| Structure Auditor | **sonnet** | Explore | TIER 3 only |
+| Behavior Auditor | **sonnet** or **opus** | Explore | TIER 2 (new files) or TIER 3 |
+| Confidence Re-Scorer | **haiku** | Explore | TIER 3 only (TIER 2: lead scores inline) |
 
-#### TIER 1 Inline Analysis (no agents)
+#### TIER 0 and TIER 1 Inline Analysis (no agents)
 
 Instead of spawning agents, the lead does this directly:
 
-**Blast radius (inline):** Run a single `grep -r 'import.*[changed-file]'` or `grep -r 'from.*[module]'` to find importers. For 1 file / <50 lines, this is 1 tool call vs an entire agent.
+**Blast radius (inline):** Run a single `grep -r 'import.*[changed-file]'` or `grep -r 'from.*[module]'` to find importers. For 1-4 files / <100 lines, this is 1-2 tool calls vs an entire agent.
 
-**Pre-existing check (inline):** Run `git blame -L <start>,<end> <file>` on changed hunks. For <50 lines, this is 1-2 Bash calls.
+**Pre-existing check (inline):** Run `git blame -L <start>,<end> <file>` on changed hunks. For <100 lines, this is 1-2 Bash calls.
 
-**Confidence scoring (inline):** With max 2-3 issues from TIER 1 audit, lead assigns confidence scores directly using the scoring table from rules.md (Confidence Re-Scoring section -- already loaded in Phase 1).
+**Confidence scoring (inline):** With max 2-4 issues from TIER 0-1 audit, lead assigns confidence scores directly using the scoring table from rules.md.
 
-#### TIER 2+ Agent Spawning
+#### TIER 2 Inline Analysis (no agents unless new files)
+
+Lead runs all audit steps sequentially using protocol.md. No background agents unless "New production files" risk signal is set -- in that case spawn Behavior Auditor only (see TIER 2 in agent table above).
+
+#### TIER 3 Agent Spawning (+ Behavior Auditor for TIER 2 new files)
 
 Perform these analyses sequentially. Start auditing immediately.
 
@@ -250,19 +340,23 @@ Perform this analysis inline.
 After Steps 0-1 (context), decide audit execution mode:
 
 ```
-IF TIER 1:
-  -> SOLO AUDIT (too few steps for parallelism)
+IF TIER 0 OR TIER 1:
+  -> SOLO AUDIT (inline, no agents)
 
-IF (TIER 2 AND files_changed >= 5) OR TIER 3:
-  -> TEAM AUDIT (parallel step execution)
+IF TIER 2 AND "New production files" risk signal:
+  -> SOLO AUDIT + Behavior Auditor (single background agent)
 
-ELSE:
-  -> SOLO AUDIT
+IF TIER 2 (no new files):
+  -> SOLO AUDIT (lead runs protocol sequentially, no agents)
+
+IF TIER 3:
+  -> TEAM AUDIT (all agents parallel)
 ```
 
 ### Audit Steps by Tier
 
-**TIER 1 (LIGHT):** Steps 0 -> 1 -> 2.1 -> 6.1 -> Confidence Gate -> Report (always SOLO)
+**TIER 0 (NANO):** Steps 0 -> 1 -> 2.1 -> Confidence Gate (inline) -> Report (SOLO, skip CQ self-eval)
+**TIER 1 (LIGHT):** Steps 0 -> 1 -> 2.1 -> 6.1 -> Confidence Gate (inline) -> Report (always SOLO)
 **TIER 2 (STANDARD):** Steps 0 -> 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7.0 -> 9 -> Confidence Gate -> Report
 **TIER 3 (DEEP):** ALL steps 0-11 -> Confidence Gate -> Report
 
@@ -284,17 +378,17 @@ Before spawning audit agents, preprocess the diff to give each agent only the da
 
 3. Pass the scoped fragment in each agent's prompt where it says `DIFF: [scoped diff]`
 
-**TIER 1:** No diff scoping needed (lead processes everything inline, no agents spawned).
+**TIER 0-1:** No diff scoping needed (lead processes everything inline, no agents spawned).
 
-**TIER 2 solo:** Diff scoping applies only to Blast Radius Mapper and Pre-Existing Checker (if spawned). Lead processes the full diff directly.
+**TIER 2 (new files):** Pass only production code diff to Behavior Auditor (exclude test files, config). Lead processes full diff directly.
 
-**Fallback:** If diff is small (<100 lines total), skip scoping -- pass full diff to all agents. The overhead of preprocessing exceeds the savings.
+**Fallback:** If diff is small (<100 lines total), skip scoping -- pass full diff to agent. The overhead of preprocessing exceeds the savings.
 
 ### Solo Audit (default)
 
-Lead executes all steps sequentially. Current behavior, no changes.
+Lead executes all steps sequentially. Used for TIER 0, TIER 1, and TIER 2.
 
-### Team Audit (TIER 2 with 5+ files OR TIER 3)
+### Team Audit (TIER 3 only)
 
 After Steps 0-1 (lead, sequential -- these set context for everything), spawn 2 audit agents in parallel. Each is read-only -- they analyze the same diff through different "lenses."
 
@@ -303,7 +397,7 @@ After Steps 0-1 (lead, sequential -- these set context for everything), spawn 2 
 The Behavior Auditor model depends on review complexity:
 
 ```
-IF TIER 2 team:
+IF TIER 2 (new files only):
   -> Behavior Auditor model: "sonnet"
 
 IF TIER 3 AND (files_changed >= 15 OR risk_signals include SECURITY or MONEY):
@@ -617,11 +711,21 @@ Options:
 
 **"Push":**
 1. `git push origin [branch]`
-2. Move the `reviewed` tag to HEAD: `git tag -f reviewed HEAD`
-3. Show pushed confirmation: "Tag `reviewed` updated -- use `/review new` next time to see only unreviewed commits"
+2. Write `REVIEWED_THROUGH` hash (captured in Step 1) to `memory/last-reviewed.txt`
+   -- This is the end of the ORIGINAL reviewed range, not the fix branch HEAD.
+   -- Survives squash merges because it's a hash from the original branch history.
+3. Move the `reviewed` tag: `git tag -f reviewed [REVIEWED_THROUGH]`
+4. Show pushed confirmation:
+   ```
+   Marked [REVIEWED_THROUGH short-hash] as reviewed.
+   memory/last-reviewed.txt updated -- works across branches (Codex, Cursor, squash merges).
+   Next: /review new
+   ```
 
 **"Done":**
-1. Show summary of what was fixed
-2. Stop -- don't push (commit already done)
+1. Write `REVIEWED_THROUGH` hash to `memory/last-reviewed.txt`
+2. Show summary of what was fixed
+3. Print: "Not pushed. Marked [REVIEWED_THROUGH] as reviewed -- run `/review new` after merging to main."
+4. Stop -- don't push (commit already done)
 
 $ARGUMENTS

@@ -185,7 +185,7 @@ N/A is scored as 1 (per code-quality.md). Score is always /20. Do NOT normalize 
 STATIC CRITICAL GATE: CQ3, CQ4, CQ5, CQ6, CQ8, CQ14 — any = 0 → capped at Tier C regardless of total.
 CONDITIONAL CRITICAL GATE (per code type):
 - CQ16 → critical if file handles money (prices, costs, discounts, invoices, CPI)
-- CQ19 → critical if file is CONTROLLER or API-CALL type, or calls external API. **Thin controller exception:** if CONTROLLER only returns data constructed by typed service code (not forwarding external/unvalidated data), CQ19=0 is LOW severity and tier cap = B (not C). Gate still FAILS but impact is reduced.
+- CQ19 → critical if file is CONTROLLER or API-CALL type, or calls external API. **Thin controller exception:** if CONTROLLER only returns data constructed by typed service code (not forwarding external/unvalidated data), the conditional gate does NOT activate — CQ19=0 counts as a normal score deduction (not a critical gate FAIL). Tier cap = B (not C).
 - CQ20 → critical if file defines entities with *_id + *_name pairs or mixed money formats
 
 FOR EACH FILE, output this exact format:

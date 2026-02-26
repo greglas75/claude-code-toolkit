@@ -1,6 +1,6 @@
 ---
 name: debug
-description: "Structured debugging session -- find and fix issues systematically. Use when investigating a bug, error, or unexpected behavior. Works with error messages, stack traces, code snippets, or descriptions."
+description: "Structured debugging session -- find and fix issues systematically. Use when investigating a bug, error, or unexpected behavior. Works with error messages, stack traces, code snippets, or descriptions. NOT for code quality issues (use /code-audit or /review)."
 ---
 
 # /debug -- Structured Debugging
@@ -117,6 +117,13 @@ it('should [describe the bug scenario] -- [ticket ref if known]', () => {
   // Assert it no longer occurs
 });
 ```
+
+### Next Steps
+
+1. Apply the fix to `[file:line]`
+2. Add the regression test to `[test-file]`
+3. `/review [file]` -- verify fix quality before committing
+4. `git commit -m "fix: [issue summary]"`
 ```
 
 ---
@@ -127,7 +134,7 @@ If debugging reveals multiple problems, surface them all but focus the fix on th
 
 1. **Root cause** -- fix this first
 2. **Contributing factors** -- note these but don't fix speculatively
-3. **Unrelated issues spotted** -- add to `/backlog` with `/backlog add`, don't fix now
+3. **Unrelated issues spotted** -- MANDATORY: add to `/backlog add [description]`, don't fix now
 
 ---
 

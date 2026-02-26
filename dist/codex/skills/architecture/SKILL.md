@@ -1,6 +1,6 @@
 ---
 name: architecture
-description: "Architecture skill -- three modes: (1) review existing project architecture, (2) create ADRs for decisions, (3) design new systems. Use for 'review the architecture of [path]', 'should we use X or Y', 'design a system for', 'document this decision', or any technical decision needing structured trade-off analysis."
+description: "Architecture skill -- three modes: (1) review existing project architecture, (2) create ADRs for decisions, (3) design new systems. Use for 'review the architecture of [path]', 'should we use X or Y', 'design a system for', 'document this decision', or any technical decision needing structured trade-off analysis. NOT for 1-2 file changes (overkill -- use /review)."
 ---
 
 # /architecture -- Review, ADR & System Design
@@ -121,7 +121,7 @@ Prioritized by impact:
 2. [Second priority]
 3. [Third priority]
 
-Consider running `/backlog add` for each Critical issue.
+MANDATORY: run /backlog add for each Critical issue before finishing.
 ```
 
 ---

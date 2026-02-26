@@ -1,6 +1,6 @@
 ---
 name: code-audit
-description: "Audit production code files against CQ1-CQ20 checklist + CAP1-CAP13 anti-patterns. Produces tiered report with scores, evidence gaps, and fix priorities. Use: /code-audit [path] or /code-audit all"
+description: "Audit production code files against CQ1-CQ20 checklist + CAP1-CAP13 anti-patterns. Produces tiered report with scores, evidence gaps, and fix priorities. Use: /code-audit [path] or /code-audit all. NOT for immediate fixes (use /review fix)."
 ---
 
 # /code-audit -- Production Code Quality Triage
@@ -170,7 +170,7 @@ N/A is scored as 1 (per code-quality.md). Score is always /20. Do NOT normalize 
 STATIC CRITICAL GATE: CQ3, CQ4, CQ5, CQ6, CQ8, CQ14 -- any = 0 -> capped at Tier C regardless of total.
 CONDITIONAL CRITICAL GATE (per code type):
 - CQ16 -> critical if file handles money (prices, costs, discounts, invoices, CPI)
-- CQ19 -> critical if file is CONTROLLER or API-CALL type, or calls external API. **Thin controller exception:** if CONTROLLER only returns data constructed by typed service code (not forwarding external/unvalidated data), CQ19=0 is LOW severity and tier cap = B (not C). Gate still FAILS but impact is reduced.
+- CQ19 -> critical if file is CONTROLLER or API-CALL type, or calls external API. **Thin controller exception:** if CONTROLLER only returns data constructed by typed service code (not forwarding external/unvalidated data), the conditional gate does NOT activate -- CQ19=0 counts as a normal score deduction (not a critical gate FAIL). Tier cap = B (not C).
 - CQ20 -> critical if file defines entities with *_id + *_name pairs or mixed money formats
 
 FOR EACH FILE, output this exact format:
@@ -369,6 +369,7 @@ Analyze the audit results and select the most impactful action:
 | CQ14=0 in 2+ files (shared duplication) | "Run `/refactor` to extract shared logic" | Duplication across files = structural problem, needs CONTRACT+ETAP |
 | Same CQ fails in 3+ files (e.g., CQ8=0 in 5 services) | "Fix [CQ] across all affected files" | Pattern fix -- same fix applied repeatedly |
 | CQ18=0 (multi-store sync needs new mechanism) | "Run `/build` to add sync mechanism" | New infrastructure needed |
+| A1/A2/A3 structural issues (wrong layers, circular deps, god modules) | "Run `/architecture review [path]`" | Code quality fixes won't solve structural problems -- needs architectural view first |
 | Only Tier B/C with varied issues | "Fix top 3 critical gate failures" | Highest ROI |
 | All Tier A | Skip -- print "All files production-ready" | Nothing to fix |
 
