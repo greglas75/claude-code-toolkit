@@ -81,6 +81,13 @@ transform_skill() {
     /^[[:space:]]*subagent_type:/ { next }
     /^[[:space:]]*run_in_background:/ { next }
 
+    # Replace Claude Code tool references with generic instructions
+    { gsub(/run_in_background=true/, "in the background") }
+    { gsub(/Use `AskUserQuestion` to surface each question/, "Present each question to the user") }
+    { gsub(/Each question becomes one `AskUserQuestion` question/, "Each question is presented") }
+    { gsub(/use `AskUserQuestion` to prompt/, "prompt the user") }
+    { gsub(/Use `AskUserQuestion` to prompt/, "Prompt the user") }
+
     { print }
   ' "$src" | normalize_unicode > "$dst"
 }
@@ -117,6 +124,7 @@ echo "  + rules/ ($(ls "$TOOLKIT_DIR"/rules/*.md 2>/dev/null | wc -l | tr -d ' '
 for f in "$TOOLKIT_DIR"/*.md; do
   base=$(basename "$f")
   [ "$base" = "README.md" ] && continue
+  [ "$base" = "MEMORY.md" ] && continue
   sed \
     -e 's|~/.claude/skills/|~/.cursor/skills/|g' \
     -e 's|~/.claude/rules/|~/.cursor/rules/|g' \
@@ -201,17 +209,27 @@ done
 
 # Check for Claude Code-specific tool references in ALL dist SKILL.md files
 # (skip shared docs like rules.md where terms may appear in documentation tables)
-claude_refs=$(grep -rln \
+# Exclude lines that document tool UNAVAILABILITY (fallback instructions for Cursor/Codex)
+claude_refs=$(grep -rn \
   'TaskCreate\|TaskUpdate\|TaskList\|EnterPlanMode\|ExitPlanMode\|AskUserQuestion\|run_in_background\|TeamCreate\|SendMessage' \
-  "$DIST"/skills/*/SKILL.md "$DIST"/agents/*.md 2>/dev/null || true)
+  "$DIST"/skills/*/SKILL.md "$DIST"/agents/*.md 2>/dev/null \
+  | grep -iv 'NOT available\|not available\|Skip\|skip\|\[ \]\|fallback\|Tool Availability\|IF.*available' \
+  || true)
 
 if [ -n "$claude_refs" ]; then
+  # Get unique file list from remaining references
+  claude_files=$(echo "$claude_refs" | cut -d: -f1 | sort -u)
   echo "  ERROR: Claude Code-specific references found (build blocked):"
-  echo "$claude_refs" | while IFS= read -r f; do
+  echo "$claude_files" | while IFS= read -r f; do
     echo "    $(echo "$f" | sed "s|$DIST/||")"
+  done
+  echo "  Offending lines:"
+  echo "$claude_refs" | head -10 | while IFS= read -r line; do
+    echo "    $line" | sed "s|$DIST/||"
   done
   echo ""
   echo "  Fix: update the overlay or source file to remove Claude Code tool references."
+  echo "  Note: lines with 'NOT available', 'Skip', 'fallback' are excluded from this check."
   exit 1
 fi
 

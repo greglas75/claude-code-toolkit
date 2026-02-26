@@ -913,11 +913,23 @@ After extraction/refactoring, before Stage 4C — run CQ1-CQ20 self-eval (from `
 
 ### Standard Checks (all types)
 
+**Per phase (intermediate):**
+
 | Check | Command | Required |
 |-------|---------|----------|
-| Tests | `npm test [spec-file]` | YES |
+| Affected tests | `npm test [spec-files-for-this-phase]` | YES |
+| TypeScript | `npx tsc --noEmit` | YES |
+| Lint | `npm run lint` | If project has lint script |
+
+**Last phase only (final):**
+
+| Check | Command | Required |
+|-------|---------|----------|
+| Full test suite | `npm test` / `npx turbo test --force` | YES |
 | TypeScript | `npx tsc --noEmit` | YES |
 | Lint | `npm run lint` | YES |
+
+This reduces verification cost for multi-phase refactors: affected tests per phase, full suite once at the end. If a phase changes >5 files, run the full suite for that phase too.
 
 ### Type-Specific Verification
 
@@ -1014,6 +1026,8 @@ Quick check after each phase:
 
 After each phase passes verification (Stage 4C + 4D), commit immediately. **This is an ACTION, not documentation.** Run these commands now:
 
+### Standard mode (default)
+
 ```bash
 # 1. Stage only files from this phase (CONTRACT allowlist)
 git add [list of modified/created files from this phase]
@@ -1035,6 +1049,29 @@ CONTRACT: [reference]"
 - The `Commit: [hash]` in the completion output MUST be a real commit hash from `git log` — never fabricate it
 
 **Verification:** After committing, run `git status` to confirm working directory is clean (or only has files for future phases).
+
+### no-commit mode
+
+Instead of committing, stage files and show the user what would be committed:
+
+```bash
+# 1. Stage files
+git add [list of modified/created files from this phase]
+
+# 2. Show staged diff
+git diff --staged --stat
+```
+
+Then output the proposed commit message:
+```
+PROPOSED COMMIT (Phase N of M):
+  Message: refactor([scope]): [phase description]
+  Files: [list]
+
+  Run when ready: git commit -m "refactor([scope]): [phase description]"
+```
+
+Continue to next phase without committing. User decides when to commit.
 
 ---
 

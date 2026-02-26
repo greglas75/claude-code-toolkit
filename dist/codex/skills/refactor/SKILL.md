@@ -1,27 +1,40 @@
 ---
 name: refactor
-description: "Smart refactoring runner with structured workflow (ETAP-1A/1B/2). Use when refactoring code, extracting methods, splitting files, or restructuring."
+description: "Smart refactoring runner with structured workflow (ETAP-1A/1B/2). Use when refactoring code, extracting methods, splitting files, or restructuring. NOT for new features (use /build)."
 ---
 
 # /refactor -- Smart Refactoring Runner
 
 You are a senior software architect executing a structured refactoring workflow.
 
-## Mandatory File Reading (NON-NEGOTIABLE)
+## File Reading (Conditional)
 
-Before starting ANY work, read ALL files below. Confirm each with [x] or [ ]:
+Read files based on mode and refactoring type. Parse $ARGUMENTS first to determine mode.
+
+### Core files (ALWAYS read -- missing = STOP)
 
 ```
 1. [x]/[ ]  ~/.codex/skills/refactor/rules.md      -- types, iron rules, hard gates, scope fence, sub-agents
-2. [x]/[ ]  ~/.codex/refactoring-protocol.md       -- full ETAP-1A -> 1B -> 2 protocol
-3. [x]/[ ]  ~/.codex/rules/code-quality.md         -- CQ1-CQ20 production code checklist
-4. [x]/[ ]  ~/.codex/rules/testing.md              -- Q1-Q17 test self-eval checklist
-5. [x]/[ ]  ~/.codex/test-patterns.md              -- Q1-Q17 protocol, lookup table -> routes to catalog/domain files
+2. [x]/[ ]  ~/.codex/refactoring-protocol.md       -- full ETAP-1A -> 1B -> 2 protocol (QUICK mode: skip)
 ```
 
-**If ANY file is [ ] -> STOP. Do not proceed with a partial rule set.**
+### Conditional files (read when needed -- missing = DEGRADED MODE)
 
-Parse $ARGUMENTS to determine mode, then follow the protocol.
+| File | Read when | Skip when |
+|------|-----------|-----------|
+| `~/.codex/rules/code-quality.md` | Production refactor (any type except IMPROVE_TESTS) | IMPROVE_TESTS, QUICK mode |
+| `~/.codex/rules/testing.md` | Test mode = WRITE_NEW, IMPROVE_TESTS, RUN_EXISTING+NEW_EDGES | RUN_EXISTING, VERIFY_COMPILATION |
+| `~/.codex/test-patterns.md` | Test mode = WRITE_NEW, IMPROVE_TESTS | All other test modes |
+
+### DEGRADED MODE
+
+If a **conditional** file is missing (not found at `~/.codex/` or `_agent/`):
+- **Continue** -- do not STOP
+- Mark `confidence: LOW` in CONTRACT
+- List skipped checks in plan output (e.g., "CQ1-CQ20 skipped -- code-quality.md not found")
+- Quality self-evals that depend on missing file are skipped with explicit note
+
+If a **core** file is missing -> **STOP. Do not proceed.**
 
 ## Path Resolution (non-Claude-Code environments)
 
@@ -38,12 +51,43 @@ If running in Antigravity, Cursor, or other IDEs where `~/.codex/` is not access
 ## Argument Parsing
 
 ```
-$ARGUMENTS = empty     -> FULL mode (STOPs at plan approval + test approval)
-$ARGUMENTS = "auto"    -> AUTO mode (only STOP at plan approval)
+$ARGUMENTS = empty       -> FULL mode (STOPs at plan approval + test approval)
+$ARGUMENTS = "auto"      -> AUTO mode (only STOP at plan approval)
+$ARGUMENTS = "quick"     -> QUICK mode (lightweight -- see below)
+$ARGUMENTS = "no-commit" -> FULL mode but skip auto-commits (show staged diff + commit plan instead)
 $ARGUMENTS = "plan-only" -> PLAN mode (ETAP-1A only -- analyze, no execution)
 $ARGUMENTS = "continue"  -> RESUME mode (load existing CONTRACT.json)
-$ARGUMENTS = other     -> treat as task description, FULL mode
+$ARGUMENTS = other       -> treat as task description, FULL mode
 ```
+
+### QUICK Mode
+
+For small, low-risk refactors. Skips sub-agents, backup branch, CONTRACT.json, multi-phase.
+
+**Auto-detection (AUTO-QUICK):** If ALL conditions are true, auto-switch to QUICK:
+- Target file <= 120 lines
+- <= 1 file being changed (not counting test files)
+- Type ∈ {EXTRACT_METHODS, SIMPLIFY, RENAME_MOVE, DELETE_DEAD}
+- No GOD_CLASS, security, API, or migration signals detected
+
+**QUICK flow:**
+1. Stack detection (Phase 0)
+2. Type detection (Phase 1) -- inline, no sub-agents
+3. Inline audit (Stage 1 light -- file size, function sizes, direct imports only)
+4. Plan -> STOP for approval (1 phase only, no CONTRACT.json)
+5. Run existing tests (baseline must pass)
+6. Execute extraction/change
+7. Verify: tsc + affected tests + CQ self-eval on modified files
+8. Single commit
+
+**QUICK skips:** Dependency Mapper, Existing Code Scanner, Test Quality Auditor, Post-Extraction Verifier, backup branch, CONTRACT.json, multi-phase, Team mode, backlog check, metrics.jsonl.
+
+### no-commit Mode
+
+Identical to FULL mode except Stage 4E (Commit Checkpoint):
+- Instead of committing: show `git diff --staged` + proposed commit message
+- User decides when and how to commit
+- Iron Rule 4 (COMMIT PER PHASE) is suspended -- user controls git history
 
 ---
 
@@ -147,6 +191,7 @@ If no uncertainty -> skip questions, go directly to HARD STOP.
 ## Phase 2: Sub-Agent Spawn (parallel, background)
 
 **Skip this phase for IMPROVE_TESTS type** -- no production code analysis needed. Go directly to Phase 3.
+**Skip this phase for QUICK mode** -- overhead not justified for small refactors. Go directly to Phase 3.
 
 Spawn two sub-agents in background using the inline analysis:
 
@@ -207,6 +252,8 @@ Execute in order:
 
 ## Phase 4: Post-Execution Sub-Agents
 
+**Skip this phase for QUICK mode** -- inline CQ self-eval in Phase 3 is sufficient.
+
 After ETAP-1B completes, spawn:
 
 **Agent 3: Test Quality Auditor** -- uses `references/test-quality-auditor.md`
@@ -253,13 +300,14 @@ After each sub-agent (Agent 3 and Agent 4) completes, check their output for a `
 
 1. **Read** the project's `memory/backlog.md` (from the auto memory directory shown in system prompt)
 2. **If file doesn't exist**: create it with the template from `~/.codex/skills/review/rules.md`
-3. **Append** each backlog item with:
+3. **Dedup check (MANDATORY):** Before appending, check if an OPEN item with the same fingerprint already exists. Fingerprint = `file|rule|signature` (e.g., `src/order.service.ts|CQ8|missing try-catch`). If match found -> update `occurrence` count and date instead of creating a new B-{N} ID. This prevents duplicate backlog items from repeated runs.
+4. **Append** new (non-duplicate) items with:
    - Next available B-{N} ID
    - Source: `refactor/{agent-name}`
    - Status: OPEN
    - Date: today
    - Confidence: N/A (these are verified observations, not scored)
-4. **Items that ARE fixed during refactoring**: mark any matching OPEN backlog items as FIXED
+5. **Items that ARE fixed during refactoring**: mark any matching OPEN backlog items as FIXED
 
 **THIS IS REQUIRED, NOT OPTIONAL.** Every issue found by sub-agents that isn't fixed in this session must be persisted. Zero issues may be silently discarded.
 
@@ -295,7 +343,23 @@ Append to `refactoring-session/metrics.jsonl`:
 }
 ```
 
-### Tag (commits already done per-phase in Stage 4E)
+### Pre-Tag Review
+
+Before tagging, run `/review` on all commits made during this refactor session.
+Use the commit count from metrics (`"commits": N`) to scope the review:
+
+```
+/review HEAD~[N]
+```
+
+Note: unlike /build (which reviews staged files before committing), /refactor reviews after per-phase commits because each ETAP phase is independently verified by Test Quality Auditor and Post-Extraction Verifier before commit. /review here is a final cross-phase check, not the primary gate.
+
+This reviews only the refactoring commits -- not the whole codebase.
+
+**If review finds BLOCKING issues:** fix -> commit fix -> re-run review.
+**If review finds warnings only:** proceed to tag. Add warnings to backlog.
+
+### Tag (after review passes)
 
 Stage 4E creates one commit per phase during ETAP-2. Phase 5 only adds a tag on the final commit:
 
@@ -318,14 +382,16 @@ REFACTORING COMPLETE
 Type: [TYPE]
 File: [path] -- [before] -> [after] lines (-[X]%)
 Tests: [N] written, [N] passing
+Review: PASS | [N warnings -> added to backlog]
 Commit: [hash] -- [message]
 Tag: [tag name] (rollback: git reset --hard [tag])
 Execution: [SOLO / TEAM (N agents, M parallel tasks)]
 
 Next steps:
-  /review   -> Review the refactored code
-  Push      -> git push origin [branch]
-  Continue  -> /refactor to start next task
+  /docs update [file]          -> Update docs if API or module structure changed
+  /code-audit [new-files]      -> Verify CQ on new modules (if SPLIT_FILE or multi-file EXTRACT)
+  Push                         -> git push origin [branch]
+  Continue                     -> /refactor to start next task
 ```
 
 ---

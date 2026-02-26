@@ -235,6 +235,7 @@ echo "  + rules/ ($(ls "$TOOLKIT_DIR"/rules/*.md 2>/dev/null | wc -l | tr -d ' '
 for f in "$TOOLKIT_DIR"/*.md; do
   base=$(basename "$f")
   [ "$base" = "README.md" ] && continue
+  [ "$base" = "MEMORY.md" ] && continue
   cat "$f" \
     | replace_paths \
     | strip_team_sections \

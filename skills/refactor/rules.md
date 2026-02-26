@@ -76,10 +76,10 @@ After writing tests: run Step 4 self-eval checklist (17 yes/no questions, scored
 For SPLIT_FILE/EXTRACT_METHODS: (a) run Step 4 on EACH existing test file during Stage 1 audit — files < 14 → gaps into CONTRACT; (b) resolve ALL gaps in ETAP-1B — unresolved gaps block ETAP-2; (c) re-run Step 4 on each NEW split file — must score ≥ 14 and not lower than pre-split. A split that only moves code without improving test quality is a failed split.
 
 ### 3. VERIFY APPROPRIATELY
-After each TASK: run relevant spec. After each PHASE: full test suite + tsc + lint. Use commands from project CLAUDE.md/package.json if present; else use defaults.
+After each TASK: run relevant spec. After each PHASE: `tsc --noEmit` + affected spec files + lint. After LAST PHASE: full test suite (`npm test` / `npx turbo test`). Use commands from project CLAUDE.md/package.json if present; else use defaults. QUICK mode: single verification pass at the end (tsc + affected tests + CQ self-eval).
 
 ### 4. COMMIT PER PHASE
-One commit per phase = easy rollback. Never push mid-phases. Never start Phase N+1 until Phase N commit + verification PASS.
+One commit per phase = easy rollback. Never push mid-phases. Never start Phase N+1 until Phase N commit + verification PASS. **Exception:** `no-commit` mode — show staged diff + commit plan instead of committing. User controls git history.
 
 ### 5. NO TRUNCATION
 Output complete files, not snippets. For files >250 lines: use chunking (100% coverage, no omissions).
@@ -221,6 +221,8 @@ If team mode fails mid-execution: dissolve team → revert to solo → resume fr
 |---------|----------|
 | `/refactor` | Full flow with STOPs (plan approval + test approval) |
 | `/refactor auto` | Minimal STOPs (only plan approval) |
+| `/refactor quick` | Lightweight — no sub-agents, no CONTRACT.json, single phase. Auto-detected for ≤120 lines, ≤1 file, simple types |
+| `/refactor no-commit` | Full flow but skip auto-commits — show staged diff + commit plan instead |
 | `/refactor plan-only` | ETAP-1A only — analyze and plan, no execution |
 | `/refactor continue` | Resume from existing CONTRACT.json |
 

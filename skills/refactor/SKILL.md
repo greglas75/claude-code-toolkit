@@ -8,21 +8,34 @@ user-invocable: true
 
 You are a senior software architect executing a structured refactoring workflow.
 
-## Mandatory File Reading (NON-NEGOTIABLE)
+## File Reading (Conditional)
 
-Before starting ANY work, read ALL files below. Confirm each with ✅ or ❌:
+Read files based on mode and refactoring type. Parse $ARGUMENTS first to determine mode.
+
+### Core files (ALWAYS read — missing = STOP)
 
 ```
 1. ✅/❌  ~/.claude/skills/refactor/rules.md      — types, iron rules, hard gates, scope fence, sub-agents
-2. ✅/❌  ~/.claude/refactoring-protocol.md       — full ETAP-1A → 1B → 2 protocol
-3. ✅/❌  ~/.claude/rules/code-quality.md         — CQ1-CQ20 production code checklist
-4. ✅/❌  ~/.claude/rules/testing.md              — Q1-Q17 test self-eval checklist
-5. ✅/❌  ~/.claude/test-patterns.md              — Q1-Q17 protocol, lookup table → routes to catalog/domain files
+2. ✅/❌  ~/.claude/refactoring-protocol.md       — full ETAP-1A → 1B → 2 protocol (QUICK mode: skip)
 ```
 
-**If ANY file is ❌ → STOP. Do not proceed with a partial rule set.**
+### Conditional files (read when needed — missing = DEGRADED MODE)
 
-Parse $ARGUMENTS to determine mode, then follow the protocol.
+| File | Read when | Skip when |
+|------|-----------|-----------|
+| `~/.claude/rules/code-quality.md` | Production refactor (any type except IMPROVE_TESTS) | IMPROVE_TESTS, QUICK mode |
+| `~/.claude/rules/testing.md` | Test mode = WRITE_NEW, IMPROVE_TESTS, RUN_EXISTING+NEW_EDGES | RUN_EXISTING, VERIFY_COMPILATION |
+| `~/.claude/test-patterns.md` | Test mode = WRITE_NEW, IMPROVE_TESTS | All other test modes |
+
+### DEGRADED MODE
+
+If a **conditional** file is missing (not found at `~/.claude/` or `_agent/`):
+- **Continue** — do not STOP
+- Mark `confidence: LOW` in CONTRACT
+- List skipped checks in plan output (e.g., "CQ1-CQ20 skipped — code-quality.md not found")
+- Quality self-evals that depend on missing file are skipped with explicit note
+
+If a **core** file is missing → **STOP. Do not proceed.**
 
 ## Path Resolution (non-Claude-Code environments)
 
@@ -51,12 +64,43 @@ This skill uses `Task` tool to spawn parallel sub-agents. **If `Task` tool is no
 ## Argument Parsing
 
 ```
-$ARGUMENTS = empty     → FULL mode (STOPs at plan approval + test approval)
-$ARGUMENTS = "auto"    → AUTO mode (only STOP at plan approval)
+$ARGUMENTS = empty       → FULL mode (STOPs at plan approval + test approval)
+$ARGUMENTS = "auto"      → AUTO mode (only STOP at plan approval)
+$ARGUMENTS = "quick"     → QUICK mode (lightweight — see below)
+$ARGUMENTS = "no-commit" → FULL mode but skip auto-commits (show staged diff + commit plan instead)
 $ARGUMENTS = "plan-only" → PLAN mode (ETAP-1A only — analyze, no execution)
 $ARGUMENTS = "continue"  → RESUME mode (load existing CONTRACT.json)
-$ARGUMENTS = other     → treat as task description, FULL mode
+$ARGUMENTS = other       → treat as task description, FULL mode
 ```
+
+### QUICK Mode
+
+For small, low-risk refactors. Skips sub-agents, backup branch, CONTRACT.json, multi-phase.
+
+**Auto-detection (AUTO-QUICK):** If ALL conditions are true, auto-switch to QUICK:
+- Target file ≤ 120 lines
+- ≤ 1 file being changed (not counting test files)
+- Type ∈ {EXTRACT_METHODS, SIMPLIFY, RENAME_MOVE, DELETE_DEAD}
+- No GOD_CLASS, security, API, or migration signals detected
+
+**QUICK flow:**
+1. Stack detection (Phase 0)
+2. Type detection (Phase 1) — inline, no sub-agents
+3. Inline audit (Stage 1 light — file size, function sizes, direct imports only)
+4. Plan → STOP for approval (1 phase only, no CONTRACT.json)
+5. Run existing tests (baseline must pass)
+6. Execute extraction/change
+7. Verify: tsc + affected tests + CQ self-eval on modified files
+8. Single commit
+
+**QUICK skips:** Dependency Mapper, Existing Code Scanner, Test Quality Auditor, Post-Extraction Verifier, backup branch, CONTRACT.json, multi-phase, Team mode, backlog check, metrics.jsonl.
+
+### no-commit Mode
+
+Identical to FULL mode except Stage 4E (Commit Checkpoint):
+- Instead of committing: show `git diff --staged` + proposed commit message
+- User decides when and how to commit
+- Iron Rule 4 (COMMIT PER PHASE) is suspended — user controls git history
 
 ---
 
@@ -165,6 +209,7 @@ Definitions at `~/.claude/skills/refactor/agents/`.
 ## Phase 2: Sub-Agent Spawn (parallel, background)
 
 **Skip this phase for IMPROVE_TESTS type** — no production code analysis needed. Go directly to Phase 3.
+**Skip this phase for QUICK mode** — overhead not justified for small refactors. Go directly to Phase 3.
 
 Spawn two sub-agents in background using the Task tool:
 
@@ -247,6 +292,8 @@ Execute in order:
 
 ## Phase 4: Post-Execution Sub-Agents
 
+**Skip this phase for QUICK mode** — inline CQ self-eval in Phase 3 is sufficient.
+
 After ETAP-1B completes, spawn:
 
 **Agent 3: Test Quality Auditor** — uses `~/.claude/skills/refactor/agents/test-quality-auditor.md`
@@ -318,13 +365,14 @@ After each sub-agent (Agent 3 and Agent 4) completes, check their output for a `
 
 1. **Read** the project's `memory/backlog.md` (from the auto memory directory shown in system prompt)
 2. **If file doesn't exist**: create it with the template from `~/.claude/skills/review/rules.md`
-3. **Append** each backlog item with:
+3. **Dedup check (MANDATORY):** Before appending, check if an OPEN item with the same fingerprint already exists. Fingerprint = `file|rule|signature` (e.g., `src/order.service.ts|CQ8|missing try-catch`). If match found → update `occurrence` count and date instead of creating a new B-{N} ID. This prevents duplicate backlog items from repeated runs.
+4. **Append** new (non-duplicate) items with:
    - Next available B-{N} ID
    - Source: `refactor/{agent-name}`
    - Status: OPEN
    - Date: today
    - Confidence: N/A (these are verified observations, not scored)
-4. **Items that ARE fixed during refactoring**: mark any matching OPEN backlog items as FIXED
+5. **Items that ARE fixed during refactoring**: mark any matching OPEN backlog items as FIXED
 
 **THIS IS REQUIRED, NOT OPTIONAL.** Every issue found by sub-agents that isn't fixed in this session must be persisted. Zero issues may be silently discarded.
 
