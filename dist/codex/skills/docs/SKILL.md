@@ -20,6 +20,10 @@ Generates or updates documentation by reading the actual codebase -- not from te
 | `onboarding` | Write onboarding guide for new developers |
 | `update [file]` | Read existing doc + source code, update stale sections (see Update Mode below) |
 
+**If no arguments and user interaction is NOT available** (Codex, Antigravity): default to `readme` for project root. Do not wait for input.
+
+**If "ask before overwriting"** and user interaction is NOT available: proceed with overwrite (Codex creates a branch for review anyway).
+
 ---
 
 ## Mode: Update (Staleness Check)

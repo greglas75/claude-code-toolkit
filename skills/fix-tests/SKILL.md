@@ -42,7 +42,19 @@ If `~/.claude/` is not accessible, resolve from `_agent/` in project root:
 
 ## Progress Tracking
 
-Use `TaskCreate` at the start for multi-step visibility. Update status as you progress.
+Track progress through the steps below, marking each as in_progress → completed as you go.
+
+## Multi-Agent Compatibility
+
+This skill uses `Task` tool to spawn parallel fixer agents (Step 4). **If `Task` tool is not available** (Cursor, Codex, Antigravity):
+- Skip all "Spawn via Task tool" blocks — fix files inline, sequentially
+- Model routing is ignored — use whatever model you are running on
+- Quality gates and output format remain identical
+
+**If user interaction is NOT available** (Codex, Antigravity):
+- `--triage` mode: show triage table, then fix ALL patterns with count > 0 (skip user selection)
+- "ask user which to fix" → fix all non-zero patterns in descending count order
+- Scope Discovery: use auto-detect, do not ask for directory selection
 
 ---
 
