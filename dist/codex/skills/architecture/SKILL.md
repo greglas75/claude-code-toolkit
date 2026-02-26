@@ -46,6 +46,26 @@ Before any assessment, read actual files. In order:
 3. Entry points: `main.ts`, `app.module.ts`, `index.ts`, `server.ts` etc.
 4. Key domain files: services, controllers, models (sample, not all)
 5. `README.md`, `CLAUDE.md`, any `docs/` folder
+6. **Test infrastructure** -- discover test locations and runner config (see below)
+
+#### Test discovery (MANDATORY for A6 scoring)
+
+Tests can live in multiple locations. Check ALL of these -- do NOT stop at the first miss:
+
+| Location type | Where to look |
+|--------------|---------------|
+| Co-located | `*.test.ts`, `*.spec.ts`, `*.test.tsx` next to source files |
+| Centralized dirs | `__tests__/`, `tests/`, `test/`, `spec/` at root or inside `src/` |
+| Runner config | `jest.config.*` -> `testMatch`/`roots`; `vitest.config.*` -> `include`; `pytest.ini`/`pyproject.toml` -> `testpaths`; `phpunit.xml` -> `<testsuite>` paths; `codeception.yml` -> `paths: tests:` |
+| CI config | `.github/workflows/` or CI config -- check which test command runs and from which directory |
+
+**Procedure:**
+1. Read test runner config file to determine configured test paths
+2. Check each configured path for actual test files
+3. If no runner config found -> glob for `**/*.test.*`, `**/*.spec.*`, `**/__tests__/**` across the project
+4. Record: test location pattern (co-located / centralized / mixed), approximate test count, coverage config presence
+
+**Never score A6 without completing test discovery.** "No tests found" is only valid after checking ALL location types above.
 
 **Never write the review from memory. Read first.**
 
@@ -78,7 +98,7 @@ Report these in a `## Structural Metrics` section before the dimension scores.
 | A3 | **Dependency direction** | Dependencies point inward (domain doesn't depend on infra)? |
 | A4 | **Single responsibility** | God classes / god modules? One module doing too many things? |
 | A5 | **Scalability** | Horizontal scaling possible? Any shared mutable state blocking it? |
-| A6 | **Testability** | Pure business logic isolated from I/O? Easy to unit test core? |
+| A6 | **Testability** | Tests exist and cover core logic? (use Step 1 test discovery results) Pure business logic isolated from I/O? Easy to unit test? |
 | A7 | **Observability** | Logging, metrics, tracing present? Correlation IDs? |
 | A8 | **Security boundary** | Auth/authz at layer boundary? Input validated at entry point only? |
 

@@ -21,13 +21,6 @@ Example: `/build add offer export --auto` -> feature: "add offer export", auto-p
 
 ---
 
-## Path Resolution (non-Claude-Code environments)
-
-If running in Antigravity, Cursor, or other IDEs where `~/.codex/` is not accessible, resolve paths from `_agent/` in project root:
-- `~/.codex/skills/` -> `_agent/skills/`
-- `~/.codex/rules/` -> `_agent/rules/`
-- `~/.codex/test-patterns.md` -> `_agent/test-patterns.md`
-
 ---
 
 ## Mandatory File Reading (NON-NEGOTIABLE)

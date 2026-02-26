@@ -94,10 +94,11 @@ transform_skill_for_codex() {
     in_fm && /^(name|description):/ { print; next }
     in_fm { next }
 
-    # --- Skip sections: Progress Tracking, Multi-Agent Compatibility, Model Routing ---
+    # --- Skip sections: Progress Tracking, Multi-Agent Compatibility, Model Routing, Path Resolution ---
     /^## Progress Tracking/ { skip_section=1; next }
     /^## Multi-Agent Compatibility/ { skip_section=1; next }
     /^## Model Routing/ { skip_section=1; next }
+    /^## Path Resolution/ { skip_section=1; next }
     skip_section && /^## / { skip_section=0 }
     skip_section && /^---$/ { skip_section=0 }
     skip_section { next }

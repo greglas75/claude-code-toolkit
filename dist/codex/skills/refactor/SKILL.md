@@ -36,16 +36,6 @@ If a **conditional** file is missing (not found at `~/.codex/` or `_agent/`):
 
 If a **core** file is missing -> **STOP. Do not proceed.**
 
-## Path Resolution (non-Claude-Code environments)
-
-If running in Antigravity, Cursor, or other IDEs where `~/.codex/` is not accessible, resolve paths from `_agent/` in project root:
-- `~/.codex/skills/` -> `_agent/skills/`
-- `~/.codex/rules/` -> `_agent/rules/`
-- `~/.codex/refactoring-protocol.md` -> `_agent/refactoring-protocol.md`
-- `~/.codex/refactoring-god-class.md` -> `_agent/refactoring-god-class.md`
-- `~/.codex/refactoring-examples/` -> `_agent/refactoring-examples/`
-- `~/.codex/test-patterns.md` -> `_agent/test-patterns.md`
-
 ---
 
 ## Argument Parsing

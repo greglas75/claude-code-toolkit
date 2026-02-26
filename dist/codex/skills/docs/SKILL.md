@@ -18,7 +18,51 @@ Generates or updates documentation by reading the actual codebase -- not from te
 | `api [path]` | Generate API reference from route/controller files at [path] |
 | `runbook [topic]` | Write operational runbook for a specific process |
 | `onboarding` | Write onboarding guide for new developers |
-| `update [file]` | Read existing doc + source code, update stale sections |
+| `update [file]` | Read existing doc + source code, update stale sections (see Update Mode below) |
+
+---
+
+## Mode: Update (Staleness Check)
+
+When `update [file]` is invoked, follow this strict procedure -- **never rewrite from scratch**.
+
+### Step 1: Read existing doc
+Read the full file. Extract every factual claim as a checklist item:
+- Commands (`npm install`, `docker-compose up`, etc.)
+- File paths (`src/features/`, `prisma/schema.prisma`)
+- Env var names and defaults
+- API endpoints, request/response shapes
+- Architecture descriptions (what connects to what)
+
+### Step 2: Verify each claim against source
+For each extracted claim, read the source file it references:
+
+| Claim type | Where to verify |
+|------------|----------------|
+| Shell commands | `package.json` scripts, `Makefile`, `pyproject.toml`, CI config |
+| File paths | `ls` / `Glob` -- does the path still exist? |
+| Env vars | `.env.example`, config loader file |
+| API endpoints | Route/controller files -- path, method, auth, params |
+| Architecture | Import graph, docker-compose, infrastructure config |
+
+Mark each claim: [x] still true, [ ] stale, ❓ cannot verify (source missing).
+
+### Step 3: Patch only stale sections
+- **[x] claims** -> leave unchanged (preserve original wording)
+- **[ ] claims** -> update with correct information from source
+- **❓ claims** -> add `<!-- TODO: verify -- source not found -->` comment
+- **Missing info** -> add new sections only if source code reveals undocumented features
+
+### Step 4: Output a change summary
+```
+Update summary for [file]:
+  [x] [N] sections unchanged
+  [ ] [N] sections updated: [list section names]
+  ❓ [N] sections unverifiable: [list section names]
+  + [N] new sections added: [list section names]
+```
+
+**Rule:** If <=2 claims are stale -> patch in place. If >50% of claims are stale -> suggest full rewrite with `readme [path]` instead.
 
 ---
 
@@ -35,6 +79,29 @@ For every doc type, read the relevant source files first:
 
 ---
 
+## Stack-Aware Commands (MANDATORY)
+
+Before writing any doc with shell commands, detect the project's package manager and tooling. **Never hardcode `npm` -- use what the project actually uses.**
+
+| Signal | Install | Run dev | Run tests | Build |
+|--------|---------|---------|-----------|-------|
+| `pnpm-lock.yaml` | `pnpm install` | `pnpm dev` | `pnpm test` | `pnpm build` |
+| `yarn.lock` | `yarn` | `yarn dev` | `yarn test` | `yarn build` |
+| `bun.lockb` | `bun install` | `bun dev` | `bun test` | `bun run build` |
+| `package-lock.json` | `npm install` | `npm run dev` | `npm test` | `npm run build` |
+| `pyproject.toml` (poetry) | `poetry install` | `poetry run python manage.py runserver` | `poetry run pytest` | `poetry build` |
+| `requirements.txt` | `pip install -r requirements.txt` | `python manage.py runserver` | `pytest` | -- |
+| `go.mod` | `go mod download` | `go run .` | `go test ./...` | `go build` |
+| `Makefile` | Check `make install` target | Check `make dev`/`make run` target | Check `make test` target | Check `make build` target |
+| `Cargo.toml` | `cargo build` | `cargo run` | `cargo test` | `cargo build --release` |
+| `composer.json` | `composer install` | `php artisan serve` / `php yii serve` | `vendor/bin/phpunit` / `vendor/bin/codecept run` | -- |
+
+**Detection order:** lockfile -> config file -> Makefile -> fallback to asking user.
+
+If commands come from `package.json` scripts or `Makefile` targets -- use the **exact script name** (e.g. `pnpm run dev:local`, not `pnpm dev`).
+
+---
+
 ## Doc Type: README
 
 ### When to use
@@ -45,10 +112,10 @@ For every doc type, read the relevant source files first:
 ### What to read first
 ```bash
 # Read these before writing:
-cat package.json | jq '{name, description, scripts}'
-ls src/ or app/        # understand structure
-cat .env.example       # document required config
-cat docker-compose.yml # if applicable
+cat package.json | jq '{name, description, scripts}'  # or pyproject.toml / Makefile
+ls src/ app/ 2>/dev/null   # understand structure
+cat .env.example           # document required config
+cat docker-compose.yml     # if applicable
 ```
 
 ### Output format
@@ -61,10 +128,10 @@ cat docker-compose.yml # if applicable
 
 ```bash
 # Minimum steps to get it running locally:
-npm install
-cp .env.example .env   # fill in required values
-npm run dev
-# -> runs at http://localhost:3000
+[INSTALL_CMD]                   # ← from Stack-Aware Commands table
+cp .env.example .env            # fill in required values
+[DEV_CMD]                       # ← from Stack-Aware Commands table
+# -> runs at http://localhost:[PORT]
 ```
 
 ## Configuration
@@ -78,10 +145,10 @@ npm run dev
 ## Development
 
 ```bash
-npm run dev      # start with hot reload
-npm test         # run test suite
-npm run lint     # lint + type check
-npm run build    # production build
+[DEV_CMD]        # start with hot reload
+[TEST_CMD]       # run test suite
+[LINT_CMD]       # lint + type check   ← from package.json scripts / Makefile
+[BUILD_CMD]      # production build
 ```
 
 ## Project Structure
@@ -107,7 +174,7 @@ src/
 ### Quality checklist (before output)
 - [ ] Quick start works in <5 commands
 - [ ] All required env vars documented
-- [ ] Commands section matches actual `package.json` scripts
+- [ ] Commands match actual scripts in `package.json` / `Makefile` / `pyproject.toml` (see Command Validation Gate)
 - [ ] No copy-paste from a template -- everything is project-specific
 
 ---
@@ -299,8 +366,8 @@ Entire project structure: root config files, CI config, `docker-compose.yml`, ke
 ### 1. Prerequisites
 
 Install these first:
-- Node.js [version] (use `nvm use` if nvm is installed)
-- Docker Desktop
+- [Runtime] [version] (e.g. Node.js via nvm, Python via pyenv, Go, Rust)
+- Docker Desktop (if services use containers)
 - [Other tools]
 
 ### 2. Clone and Install
@@ -308,8 +375,8 @@ Install these first:
 ```bash
 git clone [repo-url]
 cd [project]
-npm install
-cp .env.example .env  # then fill in the values below
+[INSTALL_CMD]                   # ← from Stack-Aware Commands table
+cp .env.example .env            # then fill in the values below
 ```
 
 ### 3. Required Config (`.env`)
@@ -323,8 +390,8 @@ cp .env.example .env  # then fill in the values below
 ### 4. Start the App
 
 ```bash
-docker-compose up -d   # start Postgres + Redis
-npm run dev            # start the app
+docker-compose up -d   # start Postgres + Redis (if applicable)
+[DEV_CMD]              # ← from Stack-Aware Commands table
 ```
 
 -> App runs at http://localhost:3000
@@ -342,9 +409,9 @@ npm run dev            # start the app
 
 ### Run tests
 ```bash
-npm test              # all tests
-npm test -- --watch   # watch mode
-npm test [path]       # single file
+[TEST_CMD]                  # all tests
+[TEST_CMD] -- --watch       # watch mode (if supported)
+[TEST_CMD] [path]           # single file
 ```
 
 ### Add a new API endpoint
@@ -376,9 +443,80 @@ npm test [path]       # single file
 
 ---
 
+## Evidence Map (MANDATORY)
+
+Every doc output must include an Evidence Map -- a hidden comment or appendix that traces each section to its source.
+
+**Purpose:** Prevents hallucination. If you can't point to a source file, you can't write the claim.
+
+### Format (append to generated doc as HTML comment)
+
+```markdown
+<!-- Evidence Map
+| Section | Source file(s) |
+|---------|---------------|
+| Quick Start | package.json:scripts (line 5-12) |
+| Configuration | .env.example (line 1-15), src/config/env.ts:3-20 |
+| API: GET /users | src/routes/users.controller.ts:24-45 |
+| Project Structure | ls src/ (verified directory listing) |
+| Deploy steps | .github/workflows/deploy.yml:18-42 |
+-->
+```
+
+### Rules
+- Every section with factual claims -> must have >=1 source entry
+- Commands -> source is the script definition file (`package.json`, `Makefile`, CI config)
+- If a section has no source -> mark it `<!-- TODO: needs source verification -->`
+- Evidence Map is included in the output file but hidden from readers (HTML comment)
+
+---
+
+## Command Validation Gate (before finalizing)
+
+After writing any doc that contains shell commands, validate they actually exist:
+
+1. **Extract** all `bash` code blocks from the generated doc
+2. **Check** each command against its source:
+   - `package.json` -> does the script name exist in `"scripts": {}`?
+   - `Makefile` -> does the target exist?
+   - `pyproject.toml` -> does the script exist in `[tool.poetry.scripts]` or `[project.scripts]`?
+   - `docker-compose.yml` -> do the referenced services exist?
+   - CI config -> do the referenced jobs/steps exist?
+3. **Flag** any command that doesn't match a real script/target:
+   ```
+   ⚠ Command validation:
+     [x] pnpm dev -> matches package.json scripts.dev
+     [x] pnpm test -> matches package.json scripts.test
+     [ ] pnpm run lint -> no "lint" in package.json scripts (found "lint:check" instead)
+     Fix: replace with `pnpm run lint:check`
+   ```
+4. **Fix** all [ ] items before outputting the doc
+
+---
+
+## Output Paths
+
+### Default output locations
+
+| Doc type | Default path | Flag override |
+|----------|-------------|---------------|
+| `readme` | `[target-path]/README.md` | `--out [path]` |
+| `api` | `docs/api/[service-name].md` | `--out [path]` |
+| `runbook` | `docs/runbooks/[topic].md` | `--out [path]` |
+| `onboarding` | `docs/onboarding.md` | `--out [path]` |
+
+### Path resolution
+- `readme [path]` -> writes `README.md` inside `[path]` (e.g. `readme apps/api` -> `apps/api/README.md`)
+- `readme` (no path) -> writes `./README.md` (project root)
+- `api [path]` -> `docs/api/` with service name derived from `[path]`
+- If `docs/` doesn't exist -> create it
+- If target file exists -> ask before overwriting (unless `update` mode)
+
+---
+
 ## Principles
 
-1. **Read the code, write the docs** -- never invent. Every claim in the docs must be verifiable in the source.
+1. **Read the code, write the docs** -- never invent. Every claim in the docs must be verifiable in the source (see Evidence Map).
 2. **Write for the reader** -- README is for a developer who just found the repo. API docs are for someone building a client. Runbook is for someone at 2am.
 3. **Start with the most useful information** -- Quick Start before architecture details. Copy-paste command before explanation.
 4. **Stale docs are worse than no docs** -- Mark what you're unsure about. Add `TODO: verify this` rather than leaving incorrect information.

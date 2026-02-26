@@ -67,6 +67,9 @@ transform_skill() {
     # Skip "## Multi-Agent Compatibility" section
     /^## Multi-Agent Compatibility$/ { skip=1; next }
 
+    # Skip "## Path Resolution" section (contains literal cross-env paths)
+    /^## Path Resolution/ { skip=1; next }
+
     # End skip at next heading or horizontal rule
     skip && /^(## |---)/ { skip=0 }
     skip { next }

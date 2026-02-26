@@ -19,12 +19,6 @@ Before starting ANY work, read ALL files below. Confirm each with [x] or [ ]:
 
 **If ANY file is [ ] -> STOP. Do not proceed with a partial rule set.**
 
-## Path Resolution (non-Claude-Code environments)
-
-If running in Antigravity, Cursor, or other IDEs where `~/.codex/` is not accessible, resolve paths from `_agent/` in project root:
-- `~/.codex/test-patterns.md` -> `_agent/test-patterns.md`
-- `~/.codex/rules/testing.md` -> `_agent/rules/testing.md`
-
 ## Step 0: Parse $ARGUMENTS
 
 | Argument | Behavior |
