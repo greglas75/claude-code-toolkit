@@ -65,7 +65,7 @@ find . \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -nam
   ! -name "*.config.*" ! -name "*.setup.*" ! -name "*.d.ts" | sort
 ```
 
-Count total. If >80 files, use `--quick` mode automatically.
+Count total. If >80 files **and no explicit `--deep` flag was provided**, switch to `--quick` mode automatically. An explicit `--deep` always takes precedence — never auto-downgrade a user's explicit mode choice.
 
 **Filter heuristic:** Prioritize files by risk. If >80 files, audit in this order:
 1. Services / business logic (`*.service.*`, `*.repository.*`)
@@ -205,7 +205,7 @@ FOR EACH FILE, output this exact format:
 Code type: [SERVICE/CONTROLLER/GUARD/REACT/ORM/ORCHESTRATOR/PURE/API-CALL]
 Lines: [count]
 Red flags: [CAP5/CAP6/CAP7/CAP8 = auto Tier-D; or "none"] → [AUTO TIER-D or "continue"]
-Score: CQ1=[0/1] CQ2=[0/1] CQ3=[0/1] CQ4=[0/1/N/A] CQ5=[0/1] CQ6=[0/1/N/A] CQ7=[0/1/N/A] CQ8=[0/1] CQ9=[0/1/N/A] CQ10=[0/1] CQ11=[0/1] CQ12=[0/1] CQ13=[0/1] CQ14=[0/1] CQ15=[0/1/N/A] CQ16=[0/1/N/A] CQ17=[0/1/N/A] CQ18=[0/1/N/A] CQ19=[0/1/N/A] CQ20=[0/1/N/A]
+Score: CQ1=[0/1] CQ2=[0/1] CQ3=[0/1/N/A] CQ4=[0/1/N/A] CQ5=[0/1/N/A] CQ6=[0/1/N/A] CQ7=[0/1/N/A] CQ8=[0/1/N/A] CQ9=[0/1/N/A] CQ10=[0/1] CQ11=[0/1] CQ12=[0/1] CQ13=[0/1] CQ14=[0/1] CQ15=[0/1/N/A] CQ16=[0/1/N/A] CQ17=[0/1/N/A] CQ18=[0/1/N/A] CQ19=[0/1/N/A] CQ20=[0/1/N/A]
 Anti-patterns: [CAP IDs found, or "none"]
 Total: [score]/20 (N/A counted as 1, no normalization)
 Static gate: CQ3=[0/1/N/A] CQ4=[0/1/N/A] CQ5=[0/1/N/A] CQ6=[0/1/N/A] CQ8=[0/1/N/A] CQ14=[0/1/N/A] → [PASS/FAIL] (N/A gates are skipped, not converted to 1)
@@ -233,7 +233,7 @@ IMPORTANT:
 - For CQ17: search for `await` inside for/for...of/while/forEach. Check if batch alternative exists.
 - For CQ19: CONTROLLER type = CQ19 critical unless thin controller exception applies (see conditional gate section). Check both request DTO AND response shape.
 - For CQ20: search for patterns: field_id + field_name, field: number + field: "X currency_code".
-- Evidence is REQUIRED for --deep mode. For --quick mode, evidence is optional but critical gate failures still need explanation.
+- Evidence is REQUIRED for --deep mode (all CQs). For --quick mode: evidence is REQUIRED for critical gate CQs scored as 1 (per code-quality.md: "Without evidence → score as 0"). Evidence is optional for non-critical CQs in quick mode.
 - CQ15 TRAP: In async functions, `return somePromise` (without await) is NOT a bug. `async` wraps the return in Promise, and Promise<Promise<T>> auto-flattens to Promise<T>. Caller's `await` unwraps correctly. Only flag when a promise is neither returned nor awaited — true dropped promise.
 - CQ12 vs CQ20 BOUNDARY: CQ12 = representation inconsistency (same boolean as `false` literal AND `ACTION_STATUS.INACTIVE` constant). CQ20 = dual source of truth (two independent fields storing same data, e.g., `country_id` + `country_name` stored separately). If it's the same field expressed inconsistently → CQ12. If it's two different fields duplicating the same data → CQ20.
 - GATE N/A REPORTING: When a CQ in the static/conditional gate is N/A, show it as N/A in the gate line — do NOT convert to 1. N/A gates are skipped (not evaluated), only 0/1 gates determine PASS/FAIL. Example: `Static gate: CQ3=N/A CQ4=N/A CQ5=1 CQ6=1 CQ8=N/A CQ14=0 → FAIL (CQ14)`.
@@ -368,7 +368,7 @@ The report must end with a concrete action plan:
 
 ## Step 7.5: Backlog Persistence (MANDATORY)
 
-After generating the report, persist ALL findings (confidence 26+) to `memory/backlog.md`:
+After generating the report, persist findings to `memory/backlog.md`:
 
 1. **Read** the project's `memory/backlog.md` (from the auto memory directory shown in system prompt)
 2. **If file doesn't exist**: create it with this template (or use the one in `~/.claude/skills/review/rules.md` if available):
@@ -377,12 +377,16 @@ After generating the report, persist ALL findings (confidence 26+) to `memory/ba
    | ID | File | Issue | Severity | Source | Status | Seen | Dates |
    |----|------|-------|----------|--------|--------|------|-------|
    ```
-3. For each finding (Tier B/C/D):
+3. **Which findings to persist** (tier-based — no arbitrary score threshold):
+   - **Tier D** (red flags, <10): ALL findings — CRITICAL severity
+   - **Tier C** (critical gate FAIL or 10-13): ALL critical gate failures — HIGH severity
+   - **Tier B** (14-15): only critical gate near-misses (CQ scored 1 with weak evidence) — MEDIUM severity
+   - **Tier A** (≥16): do NOT persist (production-ready)
+4. For each finding to persist:
    - Search backlog for same file + same CQ/issue
    - **Duplicate**: increment `Seen` count, add date, keep highest severity
    - **New**: append with next `B-{N}` ID, source: `code-audit/{date}`, status: OPEN
-4. **Tier A files**: if any OPEN backlog items exist for Tier A files, mark as FIXED
-5. **Tier D red flags** (CAP5-CAP8): always persist as CRITICAL regardless of confidence
+5. **Tier A files**: if any OPEN backlog items exist for Tier A files, mark as FIXED
 
 **THIS IS REQUIRED, NOT OPTIONAL.** Every finding from the audit must end up either fixed (Step 8) or in the backlog. Zero issues may be silently discarded.
 
@@ -400,7 +404,7 @@ Analyze the audit results and select the most impactful action:
 | CQ14=0 in 2+ files (shared duplication) | "Run `/refactor` to extract shared logic" | Duplication across files = structural problem, needs CONTRACT+ETAP |
 | Same CQ fails in 3+ files (e.g., CQ8=0 in 5 services) | "Fix [CQ] across all affected files" | Pattern fix — same fix applied repeatedly |
 | CQ18=0 (multi-store sync needs new mechanism) | "Run `/build` to add sync mechanism" | New infrastructure needed |
-| A1/A2/A3 structural issues (wrong layers, circular deps, god modules) | "Run `/architecture review [path]`" | Code quality fixes won't solve structural problems — needs architectural view first |
+| Structural issues (wrong layers, circular deps, god modules — CQ14=0 from cross-module duplication, CQ4=0 from missing layering) | "Run `/architecture review [path]`" | Code quality fixes won't solve structural problems — needs architectural view first |
 | Only Tier B/C with varied issues | "Fix top 3 critical gate failures" | Highest ROI |
 | All Tier A | Skip — print "All files production-ready" | Nothing to fix |
 
