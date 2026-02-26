@@ -13,19 +13,20 @@ Turns a bug report or error into a root cause + fix using a four-phase framework
 | Input | Action |
 |-------|--------|
 | _(empty)_ | Ask: "What's the issue? Share the error, stack trace, or describe what's happening." |
-| error message / stack trace | Start at Phase 2 (Narrow) -- reproduction already known |
+| error message / stack trace | Start at Phase 1.5 (Minimal Repro) -- verify reproducibility before narrowing |
 | code snippet | Start at Phase 3 (Diagnose) -- read the code, trace the path |
 | "why does X…" / "X is broken" | Start at Phase 1 (Reproduce) -- gather more context |
 
 ---
 
-## Framework: 4 Phases
+## Framework: 5 Phases
 
 ```
-Phase 1: REPRODUCE   -> understand expected vs. actual behavior
-Phase 2: NARROW      -> find exact failure point (logs, scope, recent changes)
-Phase 3: DIAGNOSE    -> trace the code path, form + test hypotheses
-Phase 4: FIX         -> propose fix, check side effects, add regression test
+Phase 1:   REPRODUCE    -> understand expected vs. actual behavior
+Phase 1.5: MINIMAL REPRO -> verify stack trace is reproducible (skip if from Phase 1)
+Phase 2:   NARROW       -> baseline check + find exact failure point
+Phase 3:   DIAGNOSE     -> trace the code path, form + test hypotheses
+Phase 4:   FIX + VERIFY -> implement fix, run tests, write regression test, confirm green
 ```
 
 ---
@@ -42,9 +43,37 @@ Establish a clear, reproducible failure description. Ask if not provided:
 
 If reproduction is inconsistent (flaky) -> flag as potential race condition, environment-specific config, or test order dependency.
 
+## Phase 1.5: Minimal Repro (when starting from stack trace)
+
+A stack trace proves an error occurred -- it does NOT prove you can reproduce it now. Before narrowing:
+
+1. **Run the failing test/endpoint** -- can you trigger the same error?
+2. **If YES** -> proceed to Phase 2 with confirmed reproduction
+3. **If NO** -> the trace may be from a different state (stale data, config, deploy). Treat as Phase 1: gather expected vs actual, steps, scope.
+4. **If INTERMITTENT** -> run 3× to confirm flakiness, then proceed with flaky flag
+
+Skip this phase only when the reproduction is self-evident (e.g., type error visible in code, compilation failure).
+
 ## Phase 2: Narrow
 
-Reduce the search space. Work through in order:
+### 2.0: Baseline Check (pre-existing vs introduced)
+
+Before diving in, establish whether this is a new regression or a pre-existing issue:
+
+1. **Run existing tests** for the affected area -> were they already failing?
+2. **Check recent commits** -- `git log --oneline -10 -- [affected-files]`
+3. **If regression suspected** -- `git log --oneline --since="[when it broke]"` to narrow the introducing commit
+4. **Tag baseline state** -- note which tests pass/fail NOW, before you change anything
+
+Output:
+```
+BASELINE: [N] tests passing, [M] failing in affected area
+REGRESSION: YES (commit [hash]) / NO (pre-existing) / UNKNOWN
+```
+
+### 2.1: Reduce the search space
+
+Work through in order:
 
 1. **Error message / stack trace** -- read the full trace, not just the last line. The root error is usually earlier in the chain.
 2. **Logs around the time of failure** -- what happened just before the error?
@@ -73,13 +102,82 @@ Common root causes by error type:
 | Flaky failure | Race condition, global state, test order dep |
 | Works in dev, fails in prod | Env var missing, prod data edge case, timezone |
 
-## Phase 4: Fix
+### Debug Profiles (stack-specific playbooks)
 
-1. **Propose the fix** -- be specific: which file, which line, what change
-2. **Explain why** -- connect the fix to the root cause
+Choose the profile matching the bug area -- each has a focused diagnostic sequence:
+
+**API / Backend:**
+1. Reproduce with `curl` / test runner against the endpoint
+2. Check request validation -- does the schema reject it or let bad data through?
+3. Check auth context -- is the user/token/session correct at point of failure?
+4. Check DB query -- does the query return expected data? Add `EXPLAIN` for slow queries
+5. Check error handling -- does the catch block swallow, transform, or propagate correctly?
+
+**Frontend / UI:**
+1. Open browser DevTools -> Console (errors), Network (failed requests), React DevTools (component state)
+2. Check if the data from API is correct -- if yes, bug is in rendering/state management
+3. Check component props flow -- is the data reaching the failing component?
+4. Check event handlers -- is the user action triggering the expected dispatch/callback?
+5. Check hydration -- does the server-rendered HTML match client expectations? (SSR bugs)
+
+**DB / Performance:**
+1. Identify the slow/failing query -- check query logs or ORM debug mode
+2. Run `EXPLAIN ANALYZE` on the query -- missing index? full table scan? cartesian join?
+3. Check for N+1 -- is the same query executed in a loop?
+4. Check connection pool -- are connections exhausted? timeouts?
+5. Check data volume -- did the dataset grow beyond what the query handles efficiently?
+
+**Async / Flaky:**
+1. Run the failing test 5× -- consistent or intermittent?
+2. Check for shared mutable state -- global variables, singletons, DB state between tests
+3. Check timing assumptions -- `setTimeout`, `sleep`, `waitFor` with inadequate duration
+4. Check execution order -- does the test depend on another test running first?
+5. Check resource cleanup -- are ports, connections, file handles properly released?
+
+## Phase 4: Fix + Verify
+
+### 4.1: Implement the fix
+
+1. **Apply the fix** -- edit the specific file(s). Be minimal: fix the root cause only.
+2. **Explain why** -- connect the fix to the root cause (comment in code if non-obvious)
 3. **Check side effects** -- does the fix break other paths? does it change behavior for other callers?
 4. **Edge cases** -- does the fix hold for null, empty, concurrent, high-load scenarios?
-5. **Regression test** -- suggest a specific test that would have caught this bug (and will prevent recurrence)
+
+### 4.2: Run targeted tests
+
+Run only the tests for the affected area:
+```bash
+[test-runner] [affected-test-files]
+```
+- If failing -> fix is incomplete or introduced a new issue. Iterate.
+- If passing -> proceed.
+
+### 4.3: Run full suite
+
+```bash
+[test-runner]
+```
+- Compare with Phase 2.0 baseline: no NEW failures should appear.
+- If new failures -> the fix has side effects. Investigate before proceeding.
+
+### 4.4: Confirm original reproduction is resolved
+
+Re-run the exact reproduction from Phase 1 / Phase 1.5:
+- If the bug still occurs -> root cause was wrong. Return to Phase 3.
+- If fixed -> proceed.
+
+### 4.5: Write regression test
+
+Write a test that:
+1. Reproduces the exact bug condition
+2. Asserts it no longer occurs
+3. Would have caught this bug if it existed before
+
+Run Q1-Q17 self-eval (from `~/.cursor/rules/testing.md`) on the regression test. Critical gates must pass.
+
+### 4.6: CQ self-eval (if production code changed)
+
+Run CQ1-CQ20 (from `~/.cursor/rules/code-quality.md`) on each modified production file. Critical gates must pass.
 
 ---
 
@@ -93,13 +191,22 @@ Common root causes by error type:
 - **Actual:** [what happens instead]
 - **Steps:** [how to reproduce]
 - **Scope:** [always / intermittent / specific conditions]
+- **Baseline:** [N] tests passing, [M] failing before fix
+
+### Diagnosis (Hypothesis -> Evidence -> Verdict)
+
+| # | Hypothesis | Evidence | Verdict |
+|---|-----------|----------|---------|
+| 1 | [most likely cause] | [what you found: file:line, log output, test result] | CONFIRMED / RULED OUT |
+| 2 | [alternative cause] | [evidence] | CONFIRMED / RULED OUT |
+
+**Confidence:** HIGH / MEDIUM / LOW -- [why]
 
 ### Root Cause
 [1-3 sentences explaining WHY the bug occurs -- not just where]
+File: [file:line]
 
-### Fix
-[Specific code change with file + line reference]
-
+### Fix Applied
 ```[language]
 // Before:
 [broken code]
@@ -107,6 +214,13 @@ Common root causes by error type:
 // After:
 [fixed code]
 ```
+
+### Verification
+- Targeted tests: [x] PASS ([N] tests)
+- Full suite: [x] PASS (no new failures vs baseline)
+- Original reproduction: [x] RESOLVED
+- CQ self-eval: [score]/20 -> [PASS/CONDITIONAL PASS]
+- Regression test: Q self-eval [score]/17 -> [PASS]
 
 ### Side Effects
 [Any other paths affected, or "None -- change is isolated to X"]
@@ -118,13 +232,6 @@ it('should [describe the bug scenario] -- [ticket ref if known]', () => {
   // Assert it no longer occurs
 });
 ```
-
-### Next Steps
-
-1. Apply the fix to `[file:line]`
-2. Add the regression test to `[test-file]`
-3. `/review [file]` -- verify fix quality before committing
-4. `git commit -m "fix: [issue summary]"`
 ```
 
 ---
@@ -135,7 +242,30 @@ If debugging reveals multiple problems, surface them all but focus the fix on th
 
 1. **Root cause** -- fix this first
 2. **Contributing factors** -- note these but don't fix speculatively
-3. **Unrelated issues spotted** -- MANDATORY: add to `/backlog add [description]`, don't fix now
+3. **Unrelated issues spotted** -- MANDATORY: add to `memory/backlog.md`, don't fix now
+
+---
+
+## Completion
+
+After Phase 4 verification passes:
+
+```
+DEBUG COMPLETE
+------------------------------
+Issue: [summary]
+Root cause: [1-line explanation]
+Files fixed: [list]
+Regression test: [test-file]
+Verification: targeted PASS | full suite PASS | repro RESOLVED
+Confidence: HIGH / MEDIUM / LOW
+Backlog: [N items added | "none"]
+
+Next steps:
+  /review [fixed-files]  -> verify fix quality
+  git commit -m "fix: [issue summary]"
+------------------------------
+```
 
 ---
 
