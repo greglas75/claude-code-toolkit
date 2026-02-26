@@ -11,21 +11,24 @@ Fixes systematic test quality issues in batches. One pattern at a time -- no sho
 
 ---
 
-## Mandatory File Reading (NON-NEGOTIABLE)
+## Mandatory File Reading
 
-Before starting ANY work, read ALL files below:
+Before starting ANY work, read the applicable files:
 
+**Core (always required):**
 ```
 1. [x]/[ ]  ~/.codex/test-patterns.md         -- Q1-Q17 protocol, lookup table, scoring
 2. [x]/[ ]  ~/.codex/test-patterns-catalog.md  -- G-*/P-* pattern definitions (grep matched IDs)
-3. [x]/[ ]  ~/.codex/test-patterns-redux.md    -- Redux patterns: G-41–G-45, P-40, P-41, P-44
-4. [x]/[ ]  ~/.codex/rules/testing.md         -- quality gates, Batch Diagnosis greps
-5. [x]/[ ]  ~/.codex/test-patterns-nestjs.md   -- NestJS patterns: G-33–G-34, NestJS-G1–G2, NestJS-AP1, NestJS-P1–P3, S1–S7
+3. [x]/[ ]  ~/.codex/rules/testing.md         -- quality gates, Batch Diagnosis greps
 ```
 
-**If ANY file is [ ] -> STOP. Do not proceed.**
-File 3 only needed when fixing Redux patterns (P-40, P-41, P-44, G-41–G-45).
-File 5 only needed when fixing NestJS controller patterns (NestJS-AP1, NestJS-P1–P3, G-33, G-34).
+**Conditional (load only when pattern matches):**
+```
+4. [x]/[ ]/SKIP  ~/.codex/test-patterns-redux.md    -- LOAD when pattern is P-40, P-41, P-44, G-41–G-45
+5. [x]/[ ]/SKIP  ~/.codex/test-patterns-nestjs.md   -- LOAD when pattern is NestJS-AP1, NestJS-P1–P3, G-33, G-34
+```
+
+**If any CORE file (1-3) is [ ] -> STOP.** Conditional files: SKIP with note if not needed for current pattern.
 
 ## Path Resolution (non-Claude-Code environments)
 
@@ -61,16 +64,29 @@ If `~/.codex/` is not accessible, resolve from `_agent/` in project root:
 | `--pattern AP5` | Replace `as any`/`as never` mock casts with typed factories |
 | `--pattern Q3-CalledWith` | Upgrade `toHaveBeenCalled()` to `toHaveBeenCalledWith(expectedArgs)` |
 | `--triage` | Run Batch Diagnosis greps, report counts, ask user which to fix |
-| `[path]` | Limit scope to specific directory (default: `src/`) |
+| `[path]` | Limit scope to specific directory (default: auto-detect, see Scope Discovery) |
 | `--dry-run` | Show what would be changed, don't write files |
+| `--bundle-gates` | When fixing a pattern, also apply adjacent quality gates (Q7 error tests, Q12 symmetry) |
 
 Default with no args: `--triage`
 
+### Scope Discovery
+
+If no `[path]` specified, auto-detect test locations:
+1. Check project `CLAUDE.md` or config for test directories
+2. Search for test files: `find . -name "*.test.*" -o -name "*.spec.*" | head -5` -- infer root directory
+3. Common locations to check: `src/`, `tests/`, `test/`, `packages/`, `apps/`
+4. If multiple directories found -> list them and ask user which to scan
+
 ---
 
-## Step 1: Triage (ALWAYS -- even if pattern specified)
+## Step 1: Triage
 
-Run Batch Diagnosis greps from `~/.codex/rules/testing.md` to quantify scope. Report counts BEFORE fixing.
+**Mode depends on invocation:**
+- `--triage` (or no args): Run ALL Batch Diagnosis greps. Report full triage table. Ask user which patterns to fix.
+- `--pattern P-41`: Run ONLY the grep relevant to P-41. Report count. Proceed directly to Step 2.
+
+Run from `~/.codex/rules/testing.md` to quantify scope. Report counts BEFORE fixing.
 
 ```bash
 # P-41: Loading-only assertions
@@ -96,7 +112,7 @@ grep -rn "not\.toBeInTheDocument\(\)" [path] --include="*.test.*" | wc -l
 grep -rn "is required\|is invalid\|Please enter\|Field required" [path] --include="*.test.*" -i | wc -l
 
 # P-62: Over-mocking (files with >15 mock declarations)
-for f in $(find [path] -name "*.test.*" -type f); do
+find [path] -name "*.test.*" -type f -print0 | while IFS= read -r -d '' f; do
   count=$(grep -c "vi\.mock\|vi\.hoisted\|jest\.mock" "$f" 2>/dev/null || echo 0)
   [ "$count" -gt 15 ] && echo "$f: $count mocks"
 done
@@ -108,7 +124,7 @@ grep -rn "if.*isVisible\(\)\|if.*\.\$(" [path] --include="*.spec.*" | wc -l
 grep -rn "password.*=.*['\"][^'\"]\+['\"]" [path] --include="*.test.*" --include="*.spec.*" --include="fixtures.*" -i | wc -l
 
 # P-65: API route test density (count tests per file)
-for f in $(find [path] -name "route.test.*" -type f); do
+find [path] -name "route.test.*" -type f -print0 | while IFS= read -r -d '' f; do
   count=$(grep -c "it(\|test(" "$f" 2>/dev/null || echo 0)
   echo "$f: $count tests"
 done
@@ -124,7 +140,7 @@ grep -rn "spyOn(service\|spyOn(controller\|jest\.spyOn.*service\|jest\.spyOn.*co
 
 # AP14: toBeDefined/toBeTruthy as SOLE assertion (files where it's the majority pattern)
 # Step 1: count files with high density
-for f in $(find [path] -name "*.test.*" -o -name "*.spec.*" | grep -v node_modules); do
+find [path] \( -name "*.test.*" -o -name "*.spec.*" \) -not -path "*/node_modules/*" -print0 | while IFS= read -r -d '' f; do
   total=$(grep -c "expect(" "$f" 2>/dev/null || echo 0)
   weak=$(grep -c "\.toBeDefined()\|\.toBeTruthy()" "$f" 2>/dev/null || echo 0)
   [ "$total" -gt 0 ] && ratio=$((weak * 100 / total)) || ratio=0
@@ -137,19 +153,19 @@ grep -rn "if (" [path] --include="*.test.*" --include="*.spec.*" | grep "expect\
 grep -rn "^    if " [path] --include="test_*.py" | grep -v "node_modules"
 
 # Q7-API: API wrapper files with zero error tests
-for f in $(find [path] -name "*.api.test.*" -o -name "*.api.spec.*" -o -name "*.client.test.*" | grep -v node_modules); do
+find [path] \( -name "*.api.test.*" -o -name "*.api.spec.*" -o -name "*.client.test.*" \) -not -path "*/node_modules/*" -print0 | while IFS= read -r -d '' f; do
   rejected=$(grep -c "mockRejectedValue\|rejects\|\.reject\b" "$f" 2>/dev/null || echo 0)
   [ "$rejected" -eq 0 ] && echo "$f: 0 error tests"
 done
 
 # AP5: as any / as never in test mocks (files with high density)
-for f in $(find [path] -name "*.test.*" -o -name "*.spec.*" | grep -v node_modules); do
+find [path] \( -name "*.test.*" -o -name "*.spec.*" \) -not -path "*/node_modules/*" -print0 | while IFS= read -r -d '' f; do
   count=$(grep -c "as any\|as never" "$f" 2>/dev/null || echo 0)
   [ "$count" -gt 5 ] && echo "$f: $count as-any casts"
 done
 
 # Q3-CalledWith: toHaveBeenCalled() without any CalledWith in same file
-for f in $(grep -rln "\.toHaveBeenCalled()\|\.toHaveBeenCalledTimes(" [path] --include="*.test.*" --include="*.spec.*" | grep -v node_modules); do
+grep -rln "\.toHaveBeenCalled()\|\.toHaveBeenCalledTimes(" [path] --include="*.test.*" --include="*.spec.*" | grep -v node_modules | while IFS= read -r f; do
   has_with=$(grep -c "toHaveBeenCalledWith\|toHaveBeenLastCalledWith\|toHaveBeenNthCalledWith" "$f" 2>/dev/null || echo 0)
   called=$(grep -c "\.toHaveBeenCalled()\|\.toHaveBeenCalledTimes(" "$f" 2>/dev/null || echo 0)
   [ "$has_with" -eq 0 ] && [ "$called" -gt 0 ] && echo "$f: $called bare .toHaveBeenCalled(), 0 CalledWith"

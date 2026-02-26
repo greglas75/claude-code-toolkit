@@ -12,21 +12,24 @@ Fixes systematic test quality issues in batches. One pattern at a time — no sh
 
 ---
 
-## Mandatory File Reading (NON-NEGOTIABLE)
+## Mandatory File Reading
 
-Before starting ANY work, read ALL files below:
+Before starting ANY work, read the applicable files:
 
+**Core (always required):**
 ```
 1. ✅/❌  ~/.claude/test-patterns.md         — Q1-Q17 protocol, lookup table, scoring
 2. ✅/❌  ~/.claude/test-patterns-catalog.md  — G-*/P-* pattern definitions (grep matched IDs)
-3. ✅/❌  ~/.claude/test-patterns-redux.md    — Redux patterns: G-41–G-45, P-40, P-41, P-44
-4. ✅/❌  ~/.claude/rules/testing.md         — quality gates, Batch Diagnosis greps
-5. ✅/❌  ~/.claude/test-patterns-nestjs.md   — NestJS patterns: G-33–G-34, NestJS-G1–G2, NestJS-AP1, NestJS-P1–P3, S1–S7
+3. ✅/❌  ~/.claude/rules/testing.md         — quality gates, Batch Diagnosis greps
 ```
 
-**If ANY file is ❌ → STOP. Do not proceed.**
-File 3 only needed when fixing Redux patterns (P-40, P-41, P-44, G-41–G-45).
-File 5 only needed when fixing NestJS controller patterns (NestJS-AP1, NestJS-P1–P3, G-33, G-34).
+**Conditional (load only when pattern matches):**
+```
+4. ✅/❌/SKIP  ~/.claude/test-patterns-redux.md    — LOAD when pattern is P-40, P-41, P-44, G-41–G-45
+5. ✅/❌/SKIP  ~/.claude/test-patterns-nestjs.md   — LOAD when pattern is NestJS-AP1, NestJS-P1–P3, G-33, G-34
+```
+
+**If any CORE file (1-3) is ❌ → STOP.** Conditional files: SKIP with note if not needed for current pattern.
 
 ## Path Resolution (non-Claude-Code environments)
 
@@ -66,16 +69,29 @@ Use `TaskCreate` at the start for multi-step visibility. Update status as you pr
 | `--pattern AP5` | Replace `as any`/`as never` mock casts with typed factories |
 | `--pattern Q3-CalledWith` | Upgrade `toHaveBeenCalled()` to `toHaveBeenCalledWith(expectedArgs)` |
 | `--triage` | Run Batch Diagnosis greps, report counts, ask user which to fix |
-| `[path]` | Limit scope to specific directory (default: `src/`) |
+| `[path]` | Limit scope to specific directory (default: auto-detect, see Scope Discovery) |
 | `--dry-run` | Show what would be changed, don't write files |
+| `--bundle-gates` | When fixing a pattern, also apply adjacent quality gates (Q7 error tests, Q12 symmetry) |
 
 Default with no args: `--triage`
 
+### Scope Discovery
+
+If no `[path]` specified, auto-detect test locations:
+1. Check project `CLAUDE.md` or config for test directories
+2. Search for test files: `find . -name "*.test.*" -o -name "*.spec.*" | head -5` — infer root directory
+3. Common locations to check: `src/`, `tests/`, `test/`, `packages/`, `apps/`
+4. If multiple directories found → list them and ask user which to scan
+
 ---
 
-## Step 1: Triage (ALWAYS — even if pattern specified)
+## Step 1: Triage
 
-Run Batch Diagnosis greps from `~/.claude/rules/testing.md` to quantify scope. Report counts BEFORE fixing.
+**Mode depends on invocation:**
+- `--triage` (or no args): Run ALL Batch Diagnosis greps. Report full triage table. Ask user which patterns to fix.
+- `--pattern P-41`: Run ONLY the grep relevant to P-41. Report count. Proceed directly to Step 2.
+
+Run from `~/.claude/rules/testing.md` to quantify scope. Report counts BEFORE fixing.
 
 ```bash
 # P-41: Loading-only assertions
@@ -101,7 +117,7 @@ grep -rn "not\.toBeInTheDocument\(\)" [path] --include="*.test.*" | wc -l
 grep -rn "is required\|is invalid\|Please enter\|Field required" [path] --include="*.test.*" -i | wc -l
 
 # P-62: Over-mocking (files with >15 mock declarations)
-for f in $(find [path] -name "*.test.*" -type f); do
+find [path] -name "*.test.*" -type f -print0 | while IFS= read -r -d '' f; do
   count=$(grep -c "vi\.mock\|vi\.hoisted\|jest\.mock" "$f" 2>/dev/null || echo 0)
   [ "$count" -gt 15 ] && echo "$f: $count mocks"
 done
@@ -113,7 +129,7 @@ grep -rn "if.*isVisible\(\)\|if.*\.\$(" [path] --include="*.spec.*" | wc -l
 grep -rn "password.*=.*['\"][^'\"]\+['\"]" [path] --include="*.test.*" --include="*.spec.*" --include="fixtures.*" -i | wc -l
 
 # P-65: API route test density (count tests per file)
-for f in $(find [path] -name "route.test.*" -type f); do
+find [path] -name "route.test.*" -type f -print0 | while IFS= read -r -d '' f; do
   count=$(grep -c "it(\|test(" "$f" 2>/dev/null || echo 0)
   echo "$f: $count tests"
 done
@@ -129,7 +145,7 @@ grep -rn "spyOn(service\|spyOn(controller\|jest\.spyOn.*service\|jest\.spyOn.*co
 
 # AP14: toBeDefined/toBeTruthy as SOLE assertion (files where it's the majority pattern)
 # Step 1: count files with high density
-for f in $(find [path] -name "*.test.*" -o -name "*.spec.*" | grep -v node_modules); do
+find [path] \( -name "*.test.*" -o -name "*.spec.*" \) -not -path "*/node_modules/*" -print0 | while IFS= read -r -d '' f; do
   total=$(grep -c "expect(" "$f" 2>/dev/null || echo 0)
   weak=$(grep -c "\.toBeDefined()\|\.toBeTruthy()" "$f" 2>/dev/null || echo 0)
   [ "$total" -gt 0 ] && ratio=$((weak * 100 / total)) || ratio=0
@@ -137,24 +153,27 @@ for f in $(find [path] -name "*.test.*" -o -name "*.spec.*" | grep -v node_modul
 done
 
 # AP2: Conditional assertions (if-guarded expect — silent skip when condition false)
-grep -rn "if (" [path] --include="*.test.*" --include="*.spec.*" | grep "expect\|assert" | grep -v "node_modules"
+# Multiline: find if-blocks containing expect within 3 lines (catches multi-line patterns)
+grep -rn -A3 "if (" [path] --include="*.test.*" --include="*.spec.*" | grep -B1 "expect\|assert" | grep "if (" | grep -v "node_modules"
+# Single-line fallback:
+grep -rn "if (.*) .*expect\|if (.*) return" [path] --include="*.test.*" --include="*.spec.*" | grep -v "node_modules"
 # Python variant:
-grep -rn "^    if " [path] --include="test_*.py" | grep -v "node_modules"
+grep -rn -A2 "^    if " [path] --include="test_*.py" | grep -B1 "assert " | grep "if " | grep -v "node_modules"
 
 # Q7-API: API wrapper files with zero error tests
-for f in $(find [path] -name "*.api.test.*" -o -name "*.api.spec.*" -o -name "*.client.test.*" | grep -v node_modules); do
+find [path] \( -name "*.api.test.*" -o -name "*.api.spec.*" -o -name "*.client.test.*" \) -not -path "*/node_modules/*" -print0 | while IFS= read -r -d '' f; do
   rejected=$(grep -c "mockRejectedValue\|rejects\|\.reject\b" "$f" 2>/dev/null || echo 0)
   [ "$rejected" -eq 0 ] && echo "$f: 0 error tests"
 done
 
 # AP5: as any / as never in test mocks (files with high density)
-for f in $(find [path] -name "*.test.*" -o -name "*.spec.*" | grep -v node_modules); do
+find [path] \( -name "*.test.*" -o -name "*.spec.*" \) -not -path "*/node_modules/*" -print0 | while IFS= read -r -d '' f; do
   count=$(grep -c "as any\|as never" "$f" 2>/dev/null || echo 0)
   [ "$count" -gt 5 ] && echo "$f: $count as-any casts"
 done
 
 # Q3-CalledWith: toHaveBeenCalled() without any CalledWith in same file
-for f in $(grep -rln "\.toHaveBeenCalled()\|\.toHaveBeenCalledTimes(" [path] --include="*.test.*" --include="*.spec.*" | grep -v node_modules); do
+grep -rln "\.toHaveBeenCalled()\|\.toHaveBeenCalledTimes(" [path] --include="*.test.*" --include="*.spec.*" | grep -v node_modules | while IFS= read -r f; do
   has_with=$(grep -c "toHaveBeenCalledWith\|toHaveBeenLastCalledWith\|toHaveBeenNthCalledWith" "$f" 2>/dev/null || echo 0)
   called=$(grep -c "\.toHaveBeenCalled()\|\.toHaveBeenCalledTimes(" "$f" 2>/dev/null || echo 0)
   [ "$has_with" -eq 0 ] && [ "$called" -gt 0 ] && echo "$f: $called bare .toHaveBeenCalled(), 0 CalledWith"
@@ -184,8 +203,8 @@ Triage results:
   P-65 (route density):  [N] routes with <6 tests → [ACTION: Fix / Skip]
 ```
 
-If `--pattern` specified: only run the relevant grep, proceed to Step 2 immediately.
-Otherwise: show triage report, ask user "Which patterns to fix? (all / list IDs)"
+**`--triage` mode:** show full triage report, ask user "Which patterns to fix? (all / list IDs)"
+**`--pattern` mode:** report only the relevant grep count, proceed to Step 2 immediately.
 
 ---
 
@@ -244,7 +263,7 @@ Split file pairs into batches of 5. For each batch, spawn a Task agent (`subagen
 ```
 You are a test repair specialist. Fix the test files below for the pattern: [PATTERN_ID].
 
-QUALITY GATES — read _agent/rules/testing.md before writing. Forbidden patterns (auto-fail Q17):
+QUALITY GATES — read [RESOLVED_RULES_PATH]/testing.md before writing. Forbidden patterns (auto-fail Q17):
 - expect(screen).toBeDefined()  → tests nothing; assert actual content
 - await userEvent.type(x, 'v'); expect(x).toHaveValue('v')  → UI echo; assert CalledWith on dispatch/callback instead
 - expect(payload.id).toEqual(id) where id comes from mock setup  → MSW echo; assert computed fields
@@ -256,10 +275,14 @@ QUALITY GATES — read _agent/rules/testing.md before writing. Forbidden pattern
 - if (await el.isVisible()) { ... }  → silent pass; use await expect(el).toBeVisible() to fail loud
 - >15 vi.mock() with many unused  → over-mocking; audit + remove unreferenced mocks
 
+RESOLVED PATHS (use these, not hardcoded):
+  Rules: [RESOLVED_RULES_PATH]       — resolved from ~/.claude/rules/ or _agent/rules/
+  Patterns: [RESOLVED_PATTERNS_PATH] — resolved from ~/.claude/ or _agent/
+
 PATTERN TO FIX: [PATTERN_ID]
 [PASTE FULL PATTERN DESCRIPTION from the correct file:
-  - Redux patterns (P-40, P-41, P-44, G-41–G-45): read _agent/test-patterns-redux.md
-  - General patterns (G-1–G-40, P-1–P-46): read _agent/test-patterns-catalog.md
+  - Redux patterns (P-40, P-41, P-44, G-41–G-45): read [RESOLVED_PATTERNS_PATH]/test-patterns-redux.md
+  - General patterns (G-1–G-40, P-1–P-46): read [RESOLVED_PATTERNS_PATH]/test-patterns-catalog.md
   Grep for the ### [PATTERN_ID] header to find the exact section.]
 
 PRODUCTION CONTEXT (extracted from source files):
@@ -355,7 +378,7 @@ After the report:
 ```
 NEXT STEPS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Run tests to verify fixes:  npm test [fixed-files]
+Run tests to verify fixes:  [detected-test-command] [fixed-files]
 Review fixed files:         /review [space-separated list of FIXED files]
 Manual fixes needed:        [N] NEEDS_REVIEW files in backlog (B-{X}–B-{Y})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -646,6 +669,8 @@ it('processes input with correct args and returns transformed result', async () 
 
 **Watch for Q17:** the return value assertion must verify a COMPUTED value, not an echo of RAW_RESULT. If service just passes through the dep's return unchanged, assert it's the correct passthrough with `toEqual(RAW_RESULT)` AND add a separate test for error propagation.
 
+**Optional Adjacent Fix (`--bundle-gates` only):** also add one error-path test per public method (Q7) — `mockRejectedValue` + `rejects.toThrow`. Without `--bundle-gates`, leave Q7 gaps for a separate `/fix-tests --pattern Q7-API` run.
+
 **SKIP when:** the method genuinely is a pure delegation (adapter) with no transformation — then `toEqual(RAW_RESULT)` is correct and the test should add `toHaveBeenCalledWith` but is not AP10.
 
 ### NestJS-P3: Self-Mock → Test External Dep + Computed Output
@@ -683,15 +708,7 @@ expect(result.newRecords).toBe(MOCK_DIFF.filter(d => d.isNew).length);  // compu
 expect(result.updatedRecords).toBe(MOCK_DIFF.filter(d => !d.isNew).length);
 ```
 
-**Also add (for Q7):** One error-path test per public method:
-```typescript
-it('throws when external service fails', async () => {
-  mockGoogleService.fetchData.mockRejectedValue(new Error('Google API down'));
-  await expect(service.importData(req)).rejects.toThrow('Google API down');
-  // Or if service wraps the error:
-  await expect(service.importData(req)).rejects.toThrow('Import failed');
-});
-```
+**Optional Adjacent Fix (`--bundle-gates` only):** also add one `.rejects.toThrow()` test per public method (Q7 gap that always appears with NestJS-P3). Without `--bundle-gates`, leave Q7 gaps for a separate run.
 
 **Batch note (from 2026-02-24 audit):** task-schedule services all follow the same 6-method structure (import/sheet/diff/add/update/logError). Same fix template applies to all. Each file also needs:
 - Direct test for the `getDataChanged`/diff method with real inputs (null req, empty req, new records, unchanged records)
