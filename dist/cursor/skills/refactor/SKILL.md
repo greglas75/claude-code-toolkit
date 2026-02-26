@@ -237,13 +237,14 @@ After each agent (@test-quality-auditor and @post-extraction-verifier) completes
 
 1. **Read** the project's `memory/backlog.md` (from the auto memory directory shown in system prompt)
 2. **If file doesn't exist**: create it with the template from `~/.cursor/skills/review/rules.md`
-3. **Append** each backlog item with:
+3. **Dedup check (MANDATORY):** Before appending, check if an OPEN item with the same fingerprint already exists. Fingerprint = `file|rule|signature` (e.g., `src/order.service.ts|CQ8|missing try-catch`). If match found -> update `occurrence` count and date instead of creating a new B-{N} ID. This prevents duplicate backlog items from repeated runs.
+4. **Append** new (non-duplicate) items with:
    - Next available B-{N} ID
    - Source: `refactor/{agent-name}`
    - Status: OPEN
    - Date: today
    - Confidence: N/A (these are verified observations, not scored)
-4. **Items that ARE fixed during refactoring**: mark any matching OPEN backlog items as FIXED
+5. **Items that ARE fixed during refactoring**: mark any matching OPEN backlog items as FIXED
 
 **THIS IS REQUIRED, NOT OPTIONAL.** Every issue found by agents that isn't fixed in this session must be persisted. Zero issues may be silently discarded.
 
