@@ -143,7 +143,7 @@ If blocked -> run `/review` (report only) + `Execute BLOCKING` instead.
 
 ### 5. SEVERITY HONESTY
 - Don't inflate. CRITICAL = actual data loss / security / auth bypass / money risk
-- "I would do it differently" ≠ "This is wrong"
+- "I would do it differently" != "This is wrong"
 
 ### 6. TESTS ARE BLOCKING
 - Missing tests for new/changed code = BLOCKING issue

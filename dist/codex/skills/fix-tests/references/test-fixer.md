@@ -445,7 +445,7 @@ Changes made:
   - [specific change 2]
 Self-eval: Q1=1 Q2=1 Q3=1 Q4=1 Q5=1 Q6=1 Q7=1 Q8=0 Q9=1 Q10=1 Q11=1 Q12=1 Q13=1 Q14=1 Q15=1 Q16=1 Q17=1
   Score: 16/17 -> PASS | Critical gate: Q7=1 Q11=1 Q13=1 Q15=1 Q17=1 -> PASS
-Status: FIXED [x] / SKIP ⏭️ ([reason]) / NEEDS_REVIEW ⚠️ ([what's wrong])
+Status: FIXED [x] / SKIP [SKIP] ([reason]) / NEEDS_REVIEW [!] ([what's wrong])
 ```
 
 ---

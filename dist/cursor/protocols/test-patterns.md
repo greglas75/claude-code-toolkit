@@ -66,7 +66,7 @@ Look at the function/component and pick ALL matching types:
 |------|----------|--------------|
 | `~/.cursor/test-patterns-catalog.md` | G-1 -- G-40, G-51 -- G-58, P-1 -- P-46, P-53 -- P-57, P-62 -- P-67 (general + E2E) | Always -- grep matched pattern IDs |
 | `~/.cursor/test-patterns-redux.md` | G-41 -- G-45, P-40, P-41, P-44 | Code type includes REDUX-SLICE |
-| `~/.cursor/test-patterns-nestjs.md` | G-33, G-34, NestJS-G1, NestJS-G2, NestJS-AP1, NestJS-P1–P3, security S1–S7, templates | Code type includes CONTROLLER + NestJS stack |
+| `~/.cursor/test-patterns-nestjs.md` | G-33, G-34, NestJS-G1, NestJS-G2, NestJS-AP1, NestJS-P1-P3, security S1-S7, templates | Code type includes CONTROLLER + NestJS stack |
 
 **Efficient loading:** Don't read entire catalog. Grep for `### G-4:` or `### P-28:` to jump to matched patterns only.
 
@@ -167,12 +167,14 @@ If ANY of Q7, Q11, Q13, Q15, Q17 = 0 -> result is **capped at FIX** regardless o
 **Scoring:**
 
 ```
-Total = (Q1-Q17 yes count, with N/A=1) - (AP deductions) - (stack deductions)
+Total = (Q1-Q17 yes count, with N/A=1) - (AP deductions)
 
 >= 14  PASS -- continue (unless critical gate triggers -> FIX)
 9-13  FIX -- identify worst dimension, improve it, re-score
 < 9   BLOCK -- major gaps, rewrite before continuing
 ```
+
+Stack-specific patterns (Redux P-40/P-41, NestJS NestJS-P1/P2/P3) are counted as AP deductions -- not a separate category. They apply only when auditing that code type.
 
 **Output format (append to your response after tests):**
 

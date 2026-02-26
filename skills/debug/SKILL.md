@@ -8,6 +8,12 @@ user-invocable: true
 
 Turns a bug report or error into a root cause + fix using a four-phase framework.
 
+## Path Resolution (non-Claude-Code environments)
+
+If running in Cursor, Codex, or other IDEs where `~/.claude/` is not accessible, resolve paths from `_agent/` in project root:
+- `~/.claude/rules/testing.md` → `_agent/rules/testing.md`
+- `~/.claude/rules/code-quality.md` → `_agent/rules/code-quality.md`
+
 ## Parse $ARGUMENTS
 
 | Input | Action |

@@ -2,7 +2,7 @@
 
 > Loaded when code type = **CONTROLLER** with NestJS stack detected.
 > Core protocol (Q1-Q17, scoring): `~/.cursor/test-patterns.md`
-> General patterns (G-1–G-40, G-51–G-55, P-1–P-46, P-53–P-57): `~/.cursor/test-patterns-catalog.md`
+> General patterns (G-1-G-40, G-51-G-55, P-1-P-46, P-53-P-57): `~/.cursor/test-patterns-catalog.md`
 
 ---
 

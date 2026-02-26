@@ -2,7 +2,7 @@
 
 > Loaded when code type = **REDUX-SLICE** (detected in Step 1 of `~/.codex/test-patterns.md`).
 > Core protocol (Q1-Q17, scoring): `~/.codex/test-patterns.md`
-> General patterns (G-1–G-40, P-1–P-46): `~/.codex/test-patterns-catalog.md`
+> General patterns (G-1-G-40, P-1-P-46): `~/.codex/test-patterns-catalog.md`
 
 ---
 

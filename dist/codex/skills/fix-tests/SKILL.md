@@ -24,8 +24,8 @@ Before starting ANY work, read the applicable files:
 
 **Conditional (load only when pattern matches):**
 ```
-4. [x]/[ ]/SKIP  ~/.codex/test-patterns-redux.md    -- LOAD when pattern is P-40, P-41, P-44, G-41–G-45
-5. [x]/[ ]/SKIP  ~/.codex/test-patterns-nestjs.md   -- LOAD when pattern is NestJS-AP1, NestJS-P1–P3, G-33, G-34
+4. [x]/[ ]/SKIP  ~/.codex/test-patterns-redux.md    -- LOAD when pattern is P-40, P-41, P-44, G-41-G-45
+5. [x]/[ ]/SKIP  ~/.codex/test-patterns-nestjs.md   -- LOAD when pattern is NestJS-AP1, NestJS-P1-P3, G-33, G-34
 ```
 
 **If any CORE file (1-3) is [ ] -> STOP.** Conditional files: SKIP with note if not needed for current pattern.
@@ -255,7 +255,7 @@ Attach this context to each fixer agent's prompt. Without it, the agent writes g
 
 Split file pairs into batches of 5. For each batch, evaluate each batch inline.
 
-**Send all batch spawns in a single message for parallel execution.**
+**Process each batch sequentially.**
 
 ### FIXER AGENT PROMPT (copy this for each batch):
 
@@ -280,8 +280,8 @@ RESOLVED PATHS (use these, not hardcoded):
 
 PATTERN TO FIX: [PATTERN_ID]
 [PASTE FULL PATTERN DESCRIPTION from the correct file:
-  - Redux patterns (P-40, P-41, P-44, G-41–G-45): read [RESOLVED_PATTERNS_PATH]/test-patterns-redux.md
-  - General patterns (G-1–G-40, P-1–P-46): read [RESOLVED_PATTERNS_PATH]/test-patterns-catalog.md
+  - Redux patterns (P-40, P-41, P-44, G-41-G-45): read [RESOLVED_PATTERNS_PATH]/test-patterns-redux.md
+  - General patterns (G-1-G-40, P-1-P-46): read [RESOLVED_PATTERNS_PATH]/test-patterns-catalog.md
   Grep for the ### [PATTERN_ID] header to find the exact section.]
 
 PRODUCTION CONTEXT (extracted from source files):
@@ -381,11 +381,11 @@ After report, persist SKIP and NEEDS_REVIEW items to `memory/backlog.md`:
 2. **If file doesn't exist**: create it with this template:
    ```markdown
    # Tech Debt Backlog
-   | ID | File | Issue | Severity | Source | Status | Seen | Dates |
-   |----|------|-------|----------|--------|--------|------|-------|
+   | ID | Fingerprint | File | Issue | Severity | Source | Status | Seen | Dates |
+   |----|-------------|------|-------|----------|--------|--------|------|-------|
    ```
 3. For each SKIP or NEEDS_REVIEW item:
-   - **Dedup:** check if backlog already has item with same file + same issue. If found -> increment `Seen`, update date, keep highest severity
+   - **Fingerprint:** `file|pattern-id|signature` (e.g., `user.test.ts|P-41|loading-only`). Search the `Fingerprint` column for an existing match. If found -> increment `Seen`, update date, keep highest severity
    - **New:** append with next `B-{N}` ID, source: `fix-tests/[pattern]`, status: OPEN, date: today
 4. Print: `Backlog updated: {N} new items, {M} deduped`
 
@@ -398,7 +398,7 @@ NEXT STEPS
 ------------------------------
 Run tests to verify fixes:  [detected-test-command] [fixed-files]
 Review fixed files:         /review [space-separated list of FIXED files]
-Manual fixes needed:        [N] NEEDS_REVIEW files in backlog (B-{X}–B-{Y})
+Manual fixes needed:        [N] NEEDS_REVIEW files in backlog (B-{X}-B-{Y})
 ------------------------------
 ```
 

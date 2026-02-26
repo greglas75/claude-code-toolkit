@@ -51,6 +51,7 @@ adapt_agent() {
     -e 's|~/.claude/skills/|~/.cursor/skills/|g' \
     -e 's|~/.claude/rules/|~/.cursor/rules/|g' \
     -e 's|~/.claude/|~/.cursor/|g' \
+    -e 's|\.claude/rules/|.cursor/rules/|g' \
     | normalize_unicode > "$dst"
 }
 
@@ -64,8 +65,8 @@ transform_skill() {
     # Skip "## Progress Tracking" section (until next ## or ---)
     /^## Progress Tracking$/ { skip=1; next }
 
-    # Skip "## Multi-Agent Compatibility" section
-    /^## Multi-Agent Compatibility$/ { skip=1; next }
+    # Skip "## Model Routing" section (Claude Code subagent_type table)
+    /^## Model Routing/ { skip=1; next }
 
     # Skip "## Path Resolution" section (contains literal cross-env paths)
     /^## Path Resolution/ { skip=1; next }
@@ -73,6 +74,12 @@ transform_skill() {
     # End skip at next heading or horizontal rule
     skip && /^(## |---)/ { skip=0 }
     skip { next }
+
+    # Rename Multi-Agent Compatibility header (keep section — it provides Cursor fallback instructions)
+    /^## Multi-Agent Compatibility$/ {
+      print "## Agent Compatibility"
+      next
+    }
 
     # Path replacements
     { gsub(/~\/\.claude\/skills\//, "~/.cursor/skills/") }
@@ -92,7 +99,19 @@ transform_skill() {
     { gsub(/Use `AskUserQuestion` to prompt/, "Prompt the user") }
 
     { print }
-  ' "$src" | normalize_unicode > "$dst"
+  ' "$src" \
+    | sed \
+      -e 's/Spawn via Task tool with:/Analysis to perform (execute inline):/g' \
+      -e 's/spawn a Task agent (`subagent_type: "general-purpose"`, `model: "sonnet"`)/process each batch inline/g' \
+      -e 's/spawn a Task agent/perform the analysis inline/g' \
+      -e 's/Spawn [0-9]* sub-agents in background\./Perform these analyses sequentially./g' \
+      -e 's/Spawn applicable agents in parallel.*Incorporate results when available\./Perform these analyses sequentially. Start auditing immediately./g' \
+      -e 's/`Task` tool to spawn parallel sub-agents/parallel analysis (executed inline in Cursor)/g' \
+      -e 's/`Task` tool to spawn parallel fixer agents/inline fixer execution/g' \
+      -e 's/`Task` tool/inline analysis/g' \
+      -e 's/Task tool/inline analysis/g' \
+      -e 's/**Send all batch spawns in a single message for parallel execution\.\*\*/**Process each batch sequentially.**/g' \
+    | normalize_unicode > "$dst"
 }
 
 # --- Unicode Normalization (reusable) ---
@@ -100,13 +119,20 @@ transform_skill() {
 normalize_unicode() {
   sed \
     -e 's/—/--/g' \
+    -e 's/–/-/g' \
     -e 's/→/->/g' \
     -e 's/✅/[x]/g' \
     -e 's/❌/[ ]/g' \
     -e 's/━/-/g' \
     -e 's/═/=/g' \
     -e 's/≤/<=/g' \
-    -e 's/≥/>=/g'
+    -e 's/≥/>=/g' \
+    -e 's/≠/!=/g' \
+    -e 's/⚠️/[!]/g' \
+    -e 's/⚠/[!]/g' \
+    -e 's/⏭️/[SKIP]/g' \
+    -e 's/⏭/[SKIP]/g' \
+    -e 's/❓/[?]/g'
 }
 
 # ============================================================
@@ -128,11 +154,17 @@ for f in "$TOOLKIT_DIR"/*.md; do
   base=$(basename "$f")
   [ "$base" = "README.md" ] && continue
   [ "$base" = "MEMORY.md" ] && continue
-  sed \
+  awk '
+    # Strip "### Team Execution" sections from protocols
+    /^### Team Execution/ { skip=1; next }
+    skip && /^### / { skip=0 }
+    skip { next }
+    { print }
+  ' "$f" | sed \
     -e 's|~/.claude/skills/|~/.cursor/skills/|g' \
     -e 's|~/.claude/rules/|~/.cursor/rules/|g' \
     -e 's|~/.claude/|~/.cursor/|g' \
-    "$f" | normalize_unicode > "$DIST/protocols/$base"
+    | normalize_unicode > "$DIST/protocols/$base"
 done
 echo "  + protocols/ (test-patterns, refactoring-protocol, review-protocol)"
 
@@ -186,6 +218,8 @@ for skill_dir in "$TOOLKIT_DIR"/skills/*/; do
           -e 's|~/.claude/|~/.cursor/|g' \
           -e '/^[[:space:]]*subagent_type:/d' \
           -e '/^[[:space:]]*run_in_background:/d' \
+          -e 's/spawn a Task agent/perform the analysis inline/g' \
+          -e 's/Spawn via Task tool with:/Analysis to perform (execute inline):/g' \
           | normalize_unicode > "$DIST/skills/$skill/$f"
     fi
   done

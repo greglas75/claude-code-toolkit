@@ -319,11 +319,11 @@ Lead runs all audit steps sequentially using protocol.md. No background agents u
 
 Perform these analyses sequentially. Start auditing immediately.
 
-**Agent 1: Blast Radius Mapper** (Sonnet, background) -- skip if files_changed < 3
+**Agent 1: Blast Radius Mapper** (read-only) -- skip if files_changed < 3
 Perform this analysis inline.
 
 
-**Agent 2: Pre-Existing Checker** (Haiku, background)
+**Agent 2: Pre-Existing Checker** (read-only)
 Perform this analysis inline.
 
 

@@ -87,9 +87,9 @@ If baseline run fails on infrastructure (no test runner, missing deps) -> note i
 
 ---
 
-## Phase 1: Analysis (parallel, background)
+## Phase 1: Analysis (sequential)
 
-Spawn 2 sub-agents in background. Start Phase 2 immediately -- incorporate results when ready.
+Perform 2 analyses sequentially. Start Phase 2 immediately -- incorporate results when ready.
 
 **Agent 1: Coverage Scanner**
 
@@ -143,10 +143,10 @@ For each target:
 | foo.service.ts | foo.service.test.ts | CREATE (no test file) |
 | bar.service.ts | bar.service.test.ts | ADD TO (partial, ~40%) |
 
-⚠️ ADD TO: never DELETE or REPLACE existing tests. New describe/it blocks only.
+[!] ADD TO: never DELETE or REPLACE existing tests. New describe/it blocks only.
    Allowed modifications to existing code: imports, beforeEach/afterEach setup, shared helpers/factories
    (when needed by new tests). Do NOT rewrite existing assertions or test logic.
-⚠️ File size: [current LOC of existing test file] + [estimated new LOC] = [total]
+[!] File size: [current LOC of existing test file] + [estimated new LOC] = [total]
    Flag if total > 400 lines -> plan split into [foo.service.errors.test.ts] etc.
 
 ## 3. Test Strategy Per File
@@ -312,11 +312,11 @@ For each item -> persist to `memory/backlog.md`:
 2. **If file doesn't exist**: create it with this template:
    ```markdown
    # Tech Debt Backlog
-   | ID | File | Issue | Severity | Source | Status | Seen | Dates |
-   |----|------|-------|----------|--------|--------|------|-------|
+   | ID | Fingerprint | File | Issue | Severity | Source | Status | Seen | Dates |
+   |----|-------------|------|-------|----------|--------|--------|------|-------|
    ```
 3. For each finding:
-   - **Fingerprint:** `file|Q/AP-id|signature` (e.g., `user.test.ts|Q7|no-error-path-test`). Search backlog for matching fingerprint.
+   - **Fingerprint:** `file|Q/AP-id|signature` (e.g., `user.test.ts|Q7|no-error-path-test`). Search the `Fingerprint` column for an existing match.
    - **Duplicate** (same fingerprint found): increment `Seen` count, update date, keep highest severity
    - **New** (no match): append with next `B-{N}` ID, source: `write-tests/{date}`, status: OPEN, date: today
 

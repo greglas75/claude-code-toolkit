@@ -23,13 +23,20 @@ mkdir -p "$DIST/skills"
 normalize_unicode() {
   sed \
     -e 's/—/--/g' \
+    -e 's/–/-/g' \
     -e 's/→/->/g' \
     -e 's/✅/[x]/g' \
     -e 's/❌/[ ]/g' \
     -e 's/━/-/g' \
     -e 's/═/=/g' \
     -e 's/≤/<=/g' \
-    -e 's/≥/>=/g'
+    -e 's/≥/>=/g' \
+    -e 's/≠/!=/g' \
+    -e 's/⚠️/[!]/g' \
+    -e 's/⚠/[!]/g' \
+    -e 's/⏭️/[SKIP]/g' \
+    -e 's/⏭/[SKIP]/g' \
+    -e 's/❓/[?]/g'
 }
 
 # --- Path Replacement (reusable) ---
@@ -184,6 +191,14 @@ transform_skill_for_codex() {
       -e 's/run_in_background: true//g' \
       -e 's/(use inline analysis, sequentially)/sequentially/g' \
       -e 's/Spawn applicable agents in parallel.*Incorporate results when available\./Perform these analyses sequentially. Start auditing immediately./g' \
+      -e 's/spawn 2 sub-agents to gather context/perform 2 analyses to gather context/g' \
+      -e 's/Spawn 2 sub-agents in background\. Start/Perform 2 analyses sequentially. Start/g' \
+      -e 's/Spawn two sub-agents in background/Perform two analyses sequentially/g' \
+      -e 's/These run in background while/Complete these before/g' \
+      -e 's/(parallel, background)/(sequential)/g' \
+      -e 's/(Sonnet, background)/(read-only)/g' \
+      -e 's/(Haiku, background)/(read-only)/g' \
+      -e 's/**Send all batch spawns in a single message for parallel execution\.\*\*/**Process each batch sequentially.**/g' \
     | normalize_unicode > "$dst"
 }
 

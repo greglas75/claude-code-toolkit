@@ -407,11 +407,11 @@ After report, persist SKIP and NEEDS_REVIEW items to `memory/backlog.md`:
 2. **If file doesn't exist**: create it with this template:
    ```markdown
    # Tech Debt Backlog
-   | ID | File | Issue | Severity | Source | Status | Seen | Dates |
-   |----|------|-------|----------|--------|--------|------|-------|
+   | ID | Fingerprint | File | Issue | Severity | Source | Status | Seen | Dates |
+   |----|-------------|------|-------|----------|--------|--------|------|-------|
    ```
 3. For each SKIP or NEEDS_REVIEW item:
-   - **Dedup:** check if backlog already has item with same file + same issue. If found → increment `Seen`, update date, keep highest severity
+   - **Fingerprint:** `file|pattern-id|signature` (e.g., `user.test.ts|P-41|loading-only`). Search the `Fingerprint` column for an existing match. If found → increment `Seen`, update date, keep highest severity
    - **New:** append with next `B-{N}` ID, source: `fix-tests/[pattern]`, status: OPEN, date: today
 4. Print: `Backlog updated: {N} new items, {M} deduped`
 

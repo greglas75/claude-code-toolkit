@@ -167,12 +167,14 @@ If ANY of Q7, Q11, Q13, Q15, Q17 = 0 -> result is **capped at FIX** regardless o
 **Scoring:**
 
 ```
-Total = (Q1-Q17 yes count, with N/A=1) - (AP deductions) - (stack deductions)
+Total = (Q1-Q17 yes count, with N/A=1) - (AP deductions)
 
 >= 14  PASS — continue (unless critical gate triggers -> FIX)
 9-13  FIX — identify worst dimension, improve it, re-score
 < 9   BLOCK — major gaps, rewrite before continuing
 ```
+
+Stack-specific patterns (Redux P-40/P-41, NestJS NestJS-P1/P2/P3) are counted as AP deductions — not a separate category. They apply only when auditing that code type.
 
 **Output format (append to your response after tests):**
 

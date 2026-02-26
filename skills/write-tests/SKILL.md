@@ -382,11 +382,11 @@ For each item → persist to `memory/backlog.md`:
 2. **If file doesn't exist**: create it with this template:
    ```markdown
    # Tech Debt Backlog
-   | ID | File | Issue | Severity | Source | Status | Seen | Dates |
-   |----|------|-------|----------|--------|--------|------|-------|
+   | ID | Fingerprint | File | Issue | Severity | Source | Status | Seen | Dates |
+   |----|-------------|------|-------|----------|--------|--------|------|-------|
    ```
 3. For each finding:
-   - **Fingerprint:** `file|Q/AP-id|signature` (e.g., `user.test.ts|Q7|no-error-path-test`). Search backlog for matching fingerprint.
+   - **Fingerprint:** `file|Q/AP-id|signature` (e.g., `user.test.ts|Q7|no-error-path-test`). Search the `Fingerprint` column for an existing match.
    - **Duplicate** (same fingerprint found): increment `Seen` count, update date, keep highest severity
    - **New** (no match): append with next `B-{N}` ID, source: `write-tests/{date}`, status: OPEN, date: today
 

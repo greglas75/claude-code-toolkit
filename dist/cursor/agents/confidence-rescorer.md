@@ -26,14 +26,14 @@ For EACH issue in the provided list, assign a confidence score 0-100:
 Score 0 immediately if ANY of these apply:
 - Issue is on a line NOT modified in this change (pre-existing) -- verify with `git blame` if unsure
 - Issue would be caught by linter, compiler, or CI (ESLint, TypeScript, Prettier)
-- Issue is stylistic preference without explicit project convention in `.claude/rules/`
+- Issue is stylistic preference without explicit project convention in `.cursor/rules/`
 - Issue is speculative ("might cause", "could lead to") without a concrete reproduction scenario
 - Issue is on code the author didn't write (just moved, reformatted, or auto-generated)
 
 ## Scoring Heuristics
 
 **Score UP (+10-20) when:**
-- Issue matches a rule in `.claude/rules/*.md` or project's CLAUDE.md
+- Issue matches a rule in `.cursor/rules/*.md` or project's CLAUDE.md
 - Issue has a concrete reproduction scenario (not hypothetical)
 - Issue is in a hot path (frequently called code)
 - Issue affects user-visible behavior

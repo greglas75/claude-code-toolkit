@@ -323,11 +323,11 @@ For each item → persist to `memory/backlog.md`:
 2. **If file doesn't exist**: create it with this template:
    ```markdown
    # Tech Debt Backlog
-   | ID | File | Issue | Severity | Source | Status | Seen | Dates |
-   |----|------|-------|----------|--------|--------|------|-------|
+   | ID | Fingerprint | File | Issue | Severity | Source | Status | Seen | Dates |
+   |----|-------------|------|-------|----------|--------|--------|------|-------|
    ```
 3. For each finding:
-   - **Dedup:** check if backlog already has item with same file + same issue. If found → increment `Seen`, update date, keep highest severity
+   - **Fingerprint:** `file|rule-id|signature` (e.g., `order.service.ts|CQ8|missing-try-catch`). Search the `Fingerprint` column for an existing match. If found → increment `Seen`, update date, keep highest severity
    - **New:** append with next `B-{N}` ID, source: `build/{source}` (e.g., `build/test-quality-auditor`, `build/cq-self-eval`, `build/review`), status: OPEN, date: today
 
 If any OPEN backlog items in related files were resolved → mark FIXED.

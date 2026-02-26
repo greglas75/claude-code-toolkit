@@ -83,7 +83,7 @@ For EACH file/project, check ALL categories:
 1. ALWAYS full audit -- never skip categories
 2. Show ALL problems -- don't hide "minor" ones
 3. Give options, don't decide for user
-4. "Continue" ≠ "Skip audit" -- even on continuation, show current state
+4. "Continue" != "Skip audit" -- even on continuation, show current state
 
 ### Tech Stack Detection
 
@@ -470,7 +470,7 @@ Use AST parsing for structure verification -- FORBIDDEN to use string matching.
 
 - ALLOWED: Add new test cases, add more specific assertions, discover edge cases
 - FORBIDDEN: Remove specs from 1A, weaken assertions, change expected values to match wrong behavior
-- If spec ≠ reality: STOP -> report mismatch -> user decides (restart 1A / mark bug / remove function)
+- If spec != reality: STOP -> report mismatch -> user decides (restart 1A / mark bug / remove function)
 
 ### Test Code Efficiency
 
@@ -783,87 +783,6 @@ For each phase in CONTRACT:
 1. **Show phase header:** goal, tasks, test files to verify
 2. **Execute each task:** EXACTLY what CONTRACT specifies (from, to, action)
 3. **Output format:** Small (<100 lines) -> complete. Medium (100-300) -> complete. Large (>300) -> diff + complete in chunks.
-
-### Team Execution (TEAM_MODE = true)
-
-#### Step 1: Create Team
-
-```
-TeamCreate("refactor-{contractId-short}")
-```
-
-#### Step 2: Create Task List from CONTRACT
-
-For each task in the dependency graph, create a TaskCreate entry:
-
-```
-TaskCreate:
-  subject: "[Task description from CONTRACT]"
-  description: |
-    CONTRACT: [contractId]
-    Type: [REFACTORING_TYPE]
-
-    YOUR TASK:
-    [Full task description -- what to do, from where, to where]
-
-    ALLOWED FILES (your scope):
-    - [only files THIS task touches]
-
-    CONTEXT:
-    [Relevant code snippets, function signatures, test specs from ETAP-1A]
-
-    RULES:
-    1. ONLY modify files listed in YOUR allowed scope
-    2. Run task-specific tests after completion: [test command]
-    3. If you discover something outside CONTRACT -> message lead, don't fix
-    4. If blocked or confused -> message lead, don't improvise
-    5. Mark task completed ONLY when tests pass
-
-    STACK: [detected stack] | RUNNER: [test runner]
-  activeForm: "[Present continuous of task]"
-```
-
-Set up dependencies:
-```
-TaskUpdate(task4, addBlockedBy: [task1, task2, task3])
-TaskUpdate(task5, addBlockedBy: [task4])
-```
-
-#### Step 3: Spawn Agents
-
-Spawn up to 3 teammates (general-purpose) for Group A (parallel) tasks:
-
-```
-Task(subagent_type="general-purpose", team_name="refactor-{id}", name="worker-{n}"):
-  "You are a refactoring agent on team refactor-{id}.
-   Check TaskList for available tasks. Claim the lowest-ID unblocked task.
-   Execute it following the task description exactly.
-   After modifying any production file, run CQ1-CQ20 self-eval (read ~/.cursor/rules/code-quality.md).
-   Report CQ score in your completion message. If any critical gate fails, flag it.
-   When done, mark completed and check for next available task.
-   If no tasks available, notify team lead and go idle."
-```
-
-Agent count = min(parallel_tasks, 3). More than 3 agents rarely helps -- coordination overhead grows.
-
-#### Step 4: Lead Monitors
-
-Team lead (main agent):
-- Monitors progress via TaskList
-- Handles sequential tasks (Group B, C) after parallel tasks complete
-- Resolves blockers if agents report issues
-- Does NOT duplicate work agents are doing
-
-#### Step 5: Convergence
-
-When all tasks complete:
-1. Run full verification (Stage 4C) on combined result
-2. If issues -> fix or assign back to agents
-3. Dissolve team: send shutdown_request to all agents -> TeamDelete
-
-#### Step 6: Continue to 4B.5+
-
-Proceed with Delegation Verification, Stage 4C, 4D, 4E as normal (solo -- team is dissolved).
 
 ### Discovery During Execution (both modes)
 

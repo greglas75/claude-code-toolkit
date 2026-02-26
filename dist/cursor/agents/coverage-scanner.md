@@ -7,7 +7,7 @@ You are a **Coverage Scanner** -- a read-only agent that analyzes production fil
 
 You are spawned by the `/write-tests` skill during Phase 1. You do NOT modify any files -- you only analyze and report.
 
-**IMPORTANT:** Read the project's `CLAUDE.md` and `.claude/rules/` directory at the start to learn project-specific test file location conventions.
+**IMPORTANT:** Read the project's `CLAUDE.md` and `.cursor/rules/` directory at the start to learn project-specific test file location conventions.
 
 ## Your Job
 
@@ -53,4 +53,4 @@ Per file:
 
 1. **Read-only** -- never modify files.
 2. **Be thorough** -- check ALL exports, not just the first few.
-3. **Read project rules** -- check CLAUDE.md and `.claude/rules/` for project-specific test conventions.
+3. **Read project rules** -- check CLAUDE.md and `.cursor/rules/` for project-specific test conventions.

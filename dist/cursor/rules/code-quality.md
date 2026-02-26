@@ -18,7 +18,7 @@ Agent runs this self-eval AFTER writing code, BEFORE writing tests.
 | CQ5 | Security | **CRITICAL** -- No sensitive data leaked in logs, error messages, or API responses? (tokens, passwords, PII, hardcoded secrets, user enumeration via error messages). Evidence: redaction/masking policy (logger scrubber, filter middleware) or explicit proof that no PII reaches logs. |
 | CQ6 | Resources | **CRITICAL** -- No unbounded memory from external data? Pagination, streaming, or batching for large datasets? |
 | CQ7 | Resources | All DB queries bounded? (LIMIT, pagination cursor). List endpoints return slim payload (`select` fields), not full entity with all relations? |
-| CQ8 | Errors | **CRITICAL** -- Infrastructure failures handled? (DB down, network timeout, transaction rollback, filesystem error, DB constraint violation). No empty `catch {}`. Timeouts set on all outbound calls. Error either handled locally with context (log + rethrow) OR explicitly propagated to global handler that logs with correlation ID. **Global filter credit:** only if the specific failure mode is handled gracefully -- a race condition causing unhandled constraint violation that global filter turns into generic 500 ≠ "handled". |
+| CQ8 | Errors | **CRITICAL** -- Infrastructure failures handled? (DB down, network timeout, transaction rollback, filesystem error, DB constraint violation). No empty `catch {}`. Timeouts set on all outbound calls. Error either handled locally with context (log + rethrow) OR explicitly propagated to global handler that logs with correlation ID. **Global filter credit:** only if the specific failure mode is handled gracefully -- a race condition causing unhandled constraint violation that global filter turns into generic 500 != "handled". |
 | CQ9 | Data | Multi-table mutations wrapped in transactions? FK order respected in delete/create sequences? |
 | CQ10 | Data | Nullable values handled explicitly? No silent `null` propagation, no unsafe `array[0]`/`.find()` without guard? No `as Type` cast on nullable/unknown data without narrowing? (Note: `as Type` on external API data is primarily CQ3/CQ19 -- CQ10 covers casts on nullable/unknown within already-validated code.) |
 | CQ11 | Structure | Functions <= 50 lines? Single responsibility? No god methods mixing concerns? |
@@ -457,7 +457,7 @@ CQ20 = **dual source of truth** -- two independent fields storing the same data,
 // BAD -- dual fields stored independently (which is truth?)
 interface Offer {
   offer_stage_id: number;    // canonical?
-  offer_stage: string;       // or this?  "offer_stage_3" ≠ stage ID 2
+  offer_stage: string;       // or this?  "offer_stage_3" != stage ID 2
 }
 
 // BAD -- money as number AND string-with-currency in same domain

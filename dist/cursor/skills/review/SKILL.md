@@ -73,8 +73,8 @@ Different environments have different tools. Adapt as follows:
 | `TaskCreate` (progress tracking) | [x] | [ ] | [ ] | [ ] |
 | File read/write, Bash, git | [x] | [x] | [x] | [x] |
 
-**If `Task` tool NOT available:**
-- Skip all "Spawn via Task tool" blocks -- do NOT attempt to call tools that don't exist
+**If inline analysis NOT available:**
+- Skip all "Spawn via inline analysis" blocks -- do NOT attempt to call tools that don't exist
 - Execute agent work **inline**, sequentially -- read the agent's prompt and perform that analysis directly
 - Model routing is ignored -- use whatever model you are running on
 
@@ -271,7 +271,7 @@ CHANGE INTENT: [BUGFIX/REFACTOR/FEATURE/INFRA]
 ### Sub-Agent Preparation (tier-gated)
 
 **IMPORTANT -- Model Routing:**
-The Task tool does NOT read `.claude/agents/*.md` files automatically. You MUST specify the `model` parameter explicitly on every Task call. Agent definition files are referenced in prompts so agents can read their own instructions, but the model is set by YOU.
+The inline analysis does NOT read `.claude/agents/*.md` files automatically. You MUST specify the `model` parameter explicitly on every Task call. Agent definition files are referenced in prompts so agents can read their own instructions, but the model is set by YOU.
 
 **Agent spawning is gated by tier to avoid unnecessary API calls:**
 
@@ -320,11 +320,11 @@ Lead runs all audit steps sequentially using protocol.md. No background agents u
 
 #### TIER 3 Agent Spawning (+ Behavior Auditor for TIER 2 new files)
 
-Spawn applicable agents in parallel (use Task tool, in the background). Don't wait -- start auditing immediately. Incorporate results when available.
+Perform these analyses sequentially. Start auditing immediately.
 
 **Agent 1: Blast Radius Mapper** (Sonnet, background) -- skip if files_changed < 3
 ```
-Spawn via Task tool with:
+Analysis to perform (execute inline):
   prompt: "Analyze the blast radius of these changed files: [list from triage].
 For each file:
 1. Run: grep -r 'import.*[filename]' or grep -r 'from.*[module]' to find all importers
@@ -336,7 +336,7 @@ Return a dependency map showing blast radius per file."
 
 **Agent 2: Pre-Existing Checker** (Haiku, background)
 ```
-Spawn via Task tool with:
+Analysis to perform (execute inline):
   prompt: "For each changed file in this diff, run git blame on the changed line ranges.
 Categorize each changed hunk as:
 - NEW: line didn't exist before (added by this change)
@@ -423,7 +423,7 @@ Rationale: Sonnet handles CQ3-CQ10 adequately for medium reviews. Opus adds valu
 
 **Structure Auditor** -- `~/.cursor/skills/review/agents/structure-auditor.md` (Sonnet, read-only):
 ```
-Spawn via Task tool with:
+Analysis to perform (execute inline):
   prompt: "Read your full instructions at ~/.cursor/skills/review/agents/structure-auditor.md, then audit these changed files.
 
 CHANGED FILES: [list from Step 1]
@@ -444,7 +444,7 @@ Output STRUCT-N issues per the format in your instructions."
 
 **Behavior Auditor** -- `~/.cursor/skills/review/agents/behavior-auditor.md` (Sonnet or Opus, read-only):
 ```
-Spawn via Task tool with:
+Analysis to perform (execute inline):
   model: [use model from Behavior Auditor Model Routing above]
   prompt: "Read your full instructions at ~/.cursor/skills/review/agents/behavior-auditor.md, then audit these changed files.
 
@@ -549,7 +549,7 @@ For each issue, state: `Confidence: [X]/100 -- [reason]`
 3. Spawn **Confidence Re-Scorer** -- `~/.cursor/skills/review/agents/confidence-rescorer.md` (Haiku):
 
 ```
-Spawn via Task tool with:
+Analysis to perform (execute inline):
   prompt: "Read your full instructions at ~/.cursor/skills/review/agents/confidence-rescorer.md, then re-score these issues.
 
 ISSUES:
@@ -662,7 +662,7 @@ FIXES TO APPLY:
 
    **Parallel execution (when 3+ fixes touch DIFFERENT files):**
    Analyze which fixes can be applied independently (different target files, no interaction).
-   Spawn up to 3 general-purpose agents via Task tool -- each gets:
+   Spawn up to 3 general-purpose agents via inline analysis -- each gets:
    - The issue(s) assigned to them (from report, with full fix code)
    - Allowed files (only files their issues touch)
    - Scope fence rules

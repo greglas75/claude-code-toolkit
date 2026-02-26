@@ -386,7 +386,7 @@ Item format (aligned with `/backlog` template):
 - **Seen:** 1x
 ```
 
-Print summary: `Backlog updated: {N} new items (B-{X}–B-{Y}), {M} duplicates incremented`
+Print summary: `Backlog updated: {N} new items (B-{X}-B-{Y}), {M} duplicates incremented`
 
 ### Next-Step Routing
 

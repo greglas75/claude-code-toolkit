@@ -180,12 +180,12 @@ If no uncertainty -> skip questions, go directly to HARD STOP.
 
 ---
 
-## Phase 2: Sub-Agent Spawn (parallel, background)
+## Phase 2: Sub-Agent Spawn (sequential)
 
 **Skip this phase for IMPROVE_TESTS type** -- no production code analysis needed. Go directly to Phase 3.
 **Skip this phase for QUICK mode** -- overhead not justified for small refactors. Go directly to Phase 3.
 
-Spawn two sub-agents in background using the inline analysis:
+Perform two analyses sequentially using the inline analysis:
 
 **Agent 1: Dependency Mapper** -- uses `references/dependency-mapper.md`
 Read `references/dependency-mapper.md` and perform this analysis yourself.
@@ -195,7 +195,7 @@ Read `references/dependency-mapper.md` and perform this analysis yourself.
 Read `references/existing-code-scanner.md` and perform this analysis yourself.
 
 
-These run in background while ETAP-1A proceeds. Results feed into Stage 1 (audit) and Stage 2 (extraction list).
+Complete these before ETAP-1A proceeds. Results feed into Stage 1 (audit) and Stage 2 (extraction list).
 
 ---
 

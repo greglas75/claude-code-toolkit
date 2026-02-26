@@ -83,7 +83,7 @@ For EACH file/project, check ALL categories:
 1. ALWAYS full audit -- never skip categories
 2. Show ALL problems -- don't hide "minor" ones
 3. Give options, don't decide for user
-4. "Continue" ≠ "Skip audit" -- even on continuation, show current state
+4. "Continue" != "Skip audit" -- even on continuation, show current state
 
 ### Tech Stack Detection
 
@@ -470,7 +470,7 @@ Use AST parsing for structure verification -- FORBIDDEN to use string matching.
 
 - ALLOWED: Add new test cases, add more specific assertions, discover edge cases
 - FORBIDDEN: Remove specs from 1A, weaken assertions, change expected values to match wrong behavior
-- If spec ≠ reality: STOP -> report mismatch -> user decides (restart 1A / mark bug / remove function)
+- If spec != reality: STOP -> report mismatch -> user decides (restart 1A / mark bug / remove function)
 
 ### Test Code Efficiency
 

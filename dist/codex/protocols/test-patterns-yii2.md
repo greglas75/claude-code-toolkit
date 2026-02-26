@@ -2,7 +2,7 @@
 
 > Loaded when stack = **Yii2** and writing/auditing tests.
 > Core protocol (Q1-Q17, scoring): `~/.codex/test-patterns.md`
-> General patterns (G-1–G-40, P-1–P-46): `~/.codex/test-patterns-catalog.md`
+> General patterns (G-1-G-40, P-1-P-46): `~/.codex/test-patterns-catalog.md`
 > PHP/Yii2 code rules: `~/.codex/conditional-rules/php-yii2.md`
 
 ---

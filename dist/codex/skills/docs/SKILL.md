@@ -49,12 +49,12 @@ For each extracted claim, read the source file it references:
 | API endpoints | Route/controller files -- path, method, auth, params |
 | Architecture | Import graph, docker-compose, infrastructure config |
 
-Mark each claim: [x] still true, [ ] stale, ❓ cannot verify (source missing).
+Mark each claim: [x] still true, [ ] stale, [?] cannot verify (source missing).
 
 ### Step 3: Patch only stale sections
 - **[x] claims** -> leave unchanged (preserve original wording)
 - **[ ] claims** -> update with correct information from source
-- **❓ claims** -> add `<!-- TODO: verify -- source not found -->` comment
+- **[?] claims** -> add `<!-- TODO: verify -- source not found -->` comment
 - **Missing info** -> add new sections only if source code reveals undocumented features
 
 ### Step 4: Output a change summary
@@ -62,7 +62,7 @@ Mark each claim: [x] still true, [ ] stale, ❓ cannot verify (source missing).
 Update summary for [file]:
   [x] [N] sections unchanged
   [ ] [N] sections updated: [list section names]
-  ❓ [N] sections unverifiable: [list section names]
+  [?] [N] sections unverifiable: [list section names]
   + [N] new sections added: [list section names]
 ```
 
@@ -488,7 +488,7 @@ After writing any doc that contains shell commands, validate they actually exist
    - CI config -> do the referenced jobs/steps exist?
 3. **Flag** any command that doesn't match a real script/target:
    ```
-   ⚠ Command validation:
+   [!] Command validation:
      [x] pnpm dev -> matches package.json scripts.dev
      [x] pnpm test -> matches package.json scripts.test
      [ ] pnpm run lint -> no "lint" in package.json scripts (found "lint:check" instead)
