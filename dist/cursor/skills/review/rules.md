@@ -1,4 +1,4 @@
-ocen f# Code Review Rules (Always Active)
+# Code Review Rules (Always Active)
 
 These rules govern all code reviews via `/review`.
 Full protocol with detailed checklists, red-flag patterns, and report templates is at `~/.cursor/review-protocol.md` -- read it on-demand when `/review` starts.
@@ -56,21 +56,21 @@ The sub-agent acts as a skeptic defending the code author. See `/review` for ful
 **Threshold: 51+** goes into the report with fix code. 26-50 -> backlog only. 0-25 -> DISCARD (hallucinations and total false positives don't pollute backlog).
 For each reported issue, show the confidence score: `Confidence: [X]/100`
 
-Sub-agents used during review (tier-gated -- see SKILL.md for full logic):
+Sub-agents used during review (tier-gated -- SKILL.md is canonical source):
 
 | Agent | Model | Spawned When |
 |-------|-------|--------------|
-| **Blast Radius Mapper** | Sonnet | TIER 2 (3+ files) or TIER 3. TIER 1 / TIER 2 (<3 files): lead does inline grep. |
-| **Pre-Existing Checker** | Haiku | TIER 2+. TIER 1: lead does inline `git blame`. |
-| **Structure Auditor** | Sonnet | Team audit only (TIER 2 with 5+ files OR TIER 3). |
-| **Behavior Auditor** | Sonnet or Opus | Team audit only. Sonnet for TIER 2 team and small TIER 3. Opus only for TIER 3 with 15+ files OR security/money risk signals. |
-| **Confidence Re-Scorer** | Haiku | TIER 2+. TIER 1: lead scores inline (max 2-3 issues). |
+| **Blast Radius Mapper** | Sonnet | TIER 3 only. TIER 0-2: lead does inline grep. |
+| **Pre-Existing Checker** | Haiku | TIER 3 only. TIER 0-1: lead does inline `git blame`. TIER 2: lead does inline blame. |
+| **Structure Auditor** | Sonnet | TIER 3 only. |
+| **Behavior Auditor** | Sonnet or Opus | TIER 2 (new production files only) or TIER 3. Opus for TIER 3 with 15+ files OR security/money risk. |
+| **Confidence Re-Scorer** | Haiku | TIER 2+ (when agents spawned). TIER 0-1: lead scores inline. TIER 2 without agents: lead scores inline. |
 
-### Team Audit Mode (TIER 2 with 5+ files OR TIER 3)
+### Team Audit Mode (TIER 3 only)
 
-For larger reviews, `/review` splits audit steps across 2 custom agents in parallel. Agents are defined in `~/.cursor/skills/review/agents/` with enforced read-only tool access (no Write/Edit) and optimized model routing.
+For large reviews, `/review` splits audit steps across 2 custom agents in parallel. Agents are defined in `~/.cursor/skills/review/agents/` with enforced read-only tool access (no Write/Edit) and optimized model routing.
 
-**Activation:** `(TIER 2 AND files_changed >= 5) OR TIER 3`
+**Activation:** `TIER 3` (TIER 2 uses solo audit + optional Behavior Auditor for new files only -- see SKILL.md).
 
 **Structure:**
 | Role | Agent | Model | Steps | Focus |
@@ -113,11 +113,14 @@ During Execute (Phase B), if 3+ fixes target different files with no interaction
 
 ## Tier Selection
 
+Canonical source: SKILL.md Step 4. This table is a quick reference.
+
 | Tier | When | Audit Steps | Mode 2 OK? |
 |------|------|-------------|------------|
-| TIER 1 (LIGHT) | <50 lines, no risk signals | 0 -> 1 -> 2.1 -> 6.1 -> Report | YES |
-| TIER 2 (STANDARD) | 50-500 lines, max 1 risk signal | 0 -> 1-6 -> **7.0** -> 9 -> Report | YES (if no risky changes) |
-| TIER 3 (DEEP) | >500 lines OR 2+ risk signals | ALL 0-11 -> Report | NO |
+| TIER 0 (NANO) | <15 lines, no risk signals, no new production files | 0 -> 1 -> 2.1 -> Confidence (inline) -> Report (skip CQ) | YES |
+| TIER 1 (LIGHT) | 15-100 lines, no risk signals | 0 -> 1 -> 2.1 -> 6.1 -> Confidence (inline) -> Report | YES |
+| TIER 2 (STANDARD) | 100-500 lines OR 5-15 files OR 1 risk signal | 0 -> 1-6 -> **7.0** -> 9 -> Confidence -> Report | YES (if no risky changes) |
+| TIER 3 (DEEP) | >500 lines OR 15+ files OR 2+ risk signals | ALL 0-11 -> Confidence -> Report | NO |
 
 ## Mode 2 Blocker
 

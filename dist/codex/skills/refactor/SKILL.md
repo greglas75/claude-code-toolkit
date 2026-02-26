@@ -24,7 +24,7 @@ Read files based on mode and refactoring type. Parse $ARGUMENTS first to determi
 
 | File | Read when | Skip when |
 |------|-----------|-----------|
-| `~/.codex/rules/code-quality.md` | Production refactor (any type except IMPROVE_TESTS) | IMPROVE_TESTS, QUICK mode |
+| `~/.codex/rules/code-quality.md` | Production refactor (any type except IMPROVE_TESTS) -- including QUICK | IMPROVE_TESTS only |
 | `~/.codex/rules/testing.md` | Test mode = WRITE_NEW, IMPROVE_TESTS, RUN_EXISTING+NEW_EDGES | RUN_EXISTING, VERIFY_COMPILATION |
 | `~/.codex/test-patterns.md` | Test mode = WRITE_NEW, IMPROVE_TESTS | All other test modes |
 
@@ -76,10 +76,9 @@ For small, low-risk refactors. Skips sub-agents, backup branch, CONTRACT.json, m
 
 ### no-commit Mode
 
-Identical to FULL mode except Stage 4E (Commit Checkpoint):
-- Instead of committing: show `git diff --staged` + proposed commit message
-- User decides when and how to commit
-- Iron Rule 4 (COMMIT PER PHASE) is suspended -- user controls git history
+Identical to FULL mode except:
+- **Stage 4E (Commit Checkpoint):** instead of committing, show `git diff --staged` + proposed commit message. User decides when and how to commit. Iron Rule 4 (COMMIT PER PHASE) is suspended -- user controls git history.
+- **Phase 5 (Completion):** skip Pre-Tag Review (no commits to review), skip Tag (nothing to tag), skip metrics commit. Completion Output replaces `Commit:` and `Tag:` lines with `Staged: [N files] -- run 'git diff --staged' to review` and `Commits deferred: user controls git history`.
 
 ---
 
@@ -201,6 +200,8 @@ Complete these before ETAP-1A proceeds. Results feed into Stage 1 (audit) and St
 
 ## Phase 3: Execute Protocol
 
+**Skip this phase for QUICK mode** -- QUICK uses its own inline flow (see QUICK Mode section above). After QUICK step 8, go directly to Phase 5 (Completion).
+
 Read and execute the full protocol:
 
 ```
@@ -289,19 +290,21 @@ Read `references/post-extraction-verifier.md` and perform this analysis yourself
 After each sub-agent (Agent 3 and Agent 4) completes, check their output for a `BACKLOG ITEMS` section. If present:
 
 1. **Read** the project's `memory/backlog.md` (from the auto memory directory shown in system prompt)
-2. **If file doesn't exist**: create it with the template from `~/.codex/skills/review/rules.md`
-3. **Dedup check (MANDATORY):** Before appending, check if an OPEN item with the same fingerprint already exists. Fingerprint = `file|rule|signature` (e.g., `src/order.service.ts|CQ8|missing try-catch`). If match found -> update `occurrence` count and date instead of creating a new B-{N} ID. This prevents duplicate backlog items from repeated runs.
-4. **Append** new (non-duplicate) items with:
-   - Next available B-{N} ID
-   - Source: `refactor/{agent-name}`
-   - Status: OPEN
-   - Date: today
-   - Confidence: N/A (these are verified observations, not scored)
-5. **Items that ARE fixed during refactoring**: mark any matching OPEN backlog items as FIXED
+2. **If file doesn't exist**: create it with this template:
+   ```markdown
+   # Tech Debt Backlog
+   | ID | Fingerprint | File | Issue | Severity | Category | Source | Seen | Dates |
+   |----|-------------|------|-------|----------|----------|--------|------|-------|
+   ```
+3. For each finding:
+   - **Fingerprint:** `file|rule-id|signature` (e.g., `order.service.ts|CQ8|missing-try-catch`). Search the `Fingerprint` column for an existing match.
+   - **Duplicate**: increment `Seen` count, update date, keep highest severity
+   - **New**: append table row with next `B-{N}` ID, category: Code, source: `refactor/{agent-name}`, date: today
+4. **Items that ARE fixed during refactoring**: delete matching backlog rows (fixed = deleted per backlog policy; git has history)
 
 **THIS IS REQUIRED, NOT OPTIONAL.** Every issue found by sub-agents that isn't fixed in this session must be persisted. Zero issues may be silently discarded.
 
-After Phase 5 completion, verify: "Did I persist all backlog items from Agent 3 and Agent 4?" If not -> persist them now before showing completion output.
+**Self-check before Phase 5:** verify "Did I persist all backlog items from Agent 3 and Agent 4?" If not -> persist them now, before proceeding to Phase 5 completion output.
 
 ---
 
