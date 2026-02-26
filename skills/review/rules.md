@@ -271,12 +271,16 @@ Issues with confidence 0-25 are DISCARDED — hallucinations don't go to backlog
 ### How to persist
 
 1. Read current `backlog.md`
-2. For each issue to persist:
-   - Search backlog for same file + same function/location
-   - If **duplicate**: increment `Seen` count, keep highest confidence score
+2. For each issue to persist, compute **fingerprint**: `file_path:rule_id:line_range`
+   - `rule_id` = CQ number (e.g., CQ8), or issue category (e.g., "missing-test", "dead-code")
+   - `line_range` = approximate hunk location (e.g., "L45-60"). Use ±10 line tolerance for matching.
+   - Example fingerprint: `src/auth/auth.service.ts:CQ4:L45-60`
+3. For each issue:
+   - Search backlog for matching fingerprint (same file + same rule + overlapping line range)
+   - If **duplicate**: increment `Seen` count, keep highest confidence score, update line range if shifted
    - If **new**: append under `## OPEN Issues` with next `B-{N}` ID
-3. **Prune:** delete any FIXED/WONT_FIX items.
-4. Write updated `backlog.md`
+4. **Prune:** delete any FIXED/WONT_FIX items.
+5. Write updated `backlog.md`
 
 ### When to delete items
 

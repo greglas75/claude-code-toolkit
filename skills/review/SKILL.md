@@ -124,7 +124,8 @@ $ARGUMENTS controls WHAT gets reviewed AND which mode to use.
 **Special: `new` keyword** — baseline resolution order:
 1. Read `memory/last-reviewed.txt` → if file exists and hash is valid in current repo → use it
 2. Fallback: git tag `reviewed` → if tag exists → use it
-3. Fallback: warn + use `git diff --stat HEAD~5` (last 5 commits as approximation)
+3. Fallback: `git merge-base HEAD main` → diverge point from main (accurate for feature branches)
+4. Final fallback: warn + `HEAD~5` (if merge-base fails or HEAD is main)
 
 Reason for file-first: in Codex/Cursor, review fixes land on a separate branch. After merge to main, the `memory/last-reviewed.txt` file is already present with the correct hash — the git tag may be on the wrong branch.
 
@@ -157,6 +158,19 @@ Examples: `/review`, `/review fix`, `/review HEAD~1 blocking`, `/review new apps
 ### Step 1: Detect Changes
 
 Run the git command determined in Step 0 from the current working directory (git repo root).
+
+**Filter noise files BEFORE counting lines.** Exclude from diff stat (these inflate tier and waste tokens):
+```
+Noise patterns (exclude from line count AND from audit):
+  *.lock, package-lock.json, pnpm-lock.yaml, yarn.lock
+  dist/, build/, .next/, out/, coverage/
+  *.snap, __snapshots__/
+  *.generated.*, *.min.js, *.min.css, *.map
+  *.svg, *.png, *.jpg, *.ico (binary assets)
+```
+Use: `git diff --stat [scope] -- . ':!*.lock' ':!package-lock.json' ':!dist/' ':!*.snap' ':!*.min.*' ':!*.map' ':!*.generated.*'`
+
+If ALL changed files are noise → print "Only noise files changed (locks, snapshots, dist). Nothing to review." → STOP.
 
 **Capture `REVIEWED_THROUGH` hash** — the end of the reviewed range. This is used in Phase C to mark the correct baseline (not the fix branch HEAD, which may not exist after squash merge):
 - If scope = `HEAD`, `HEAD~N`, `staged`, or `new` → `REVIEWED_THROUGH = git rev-parse HEAD`
