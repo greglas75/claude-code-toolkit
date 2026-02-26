@@ -197,7 +197,7 @@ Report format:
 Triage results:
   AP10 (delegation-only): [N] files (no CalledWith) → [ACTION: Fix / Skip]
   NestJS-P3 (self-mock):  [N] hits in [M] files → [ACTION: Fix / Skip]
-  AP14 (toBeDefined sole): [N] files with >50% AP14 → [ACTION: Fix / Skip]
+  AP14 (toBeDefined sole): [N] files with >40% AP14 → [ACTION: Fix / Skip]
   AP2 (conditional assert):  [N] hits → [ACTION: Fix / Skip]
   Q7-API (no rejection):  [N] api wrapper files with 0 mockRejectedValue → [ACTION: Fix / Skip]
   AP5 (as-any mocks):    [N] files with >5 as-any casts → [ACTION: Fix / Skip]
@@ -220,6 +220,17 @@ Triage results:
 
 ---
 
+### Dry-Run Gate
+
+If `--dry-run` was specified:
+1. Show the triage report (Step 1) normally
+2. Show the list of affected files (Step 2) normally
+3. Show what production context would be read (Step 3 headers only)
+4. **STOP HERE.** Do NOT spawn fixers, do NOT write any files.
+5. Output: `DRY RUN COMPLETE — [N] files would be modified for pattern [ID]. Run without --dry-run to apply fixes.`
+
+---
+
 ## Step 2: Identify Affected Files
 
 For the chosen pattern(s), get the specific files (not just counts):
@@ -232,7 +243,9 @@ grep -rln "expect(state.loading).toBe(false)\|expect(state.loading).toEqual(fals
 For each affected test file, find its production counterpart:
 - `profileSlice.test.ts` → `profileSlice.ts` (same directory)
 - `__tests__/MyComponent.test.tsx` → `MyComponent.tsx`
-- If production file not found → flag as ORPHAN, skip that file
+- If production file not found:
+  - **Patterns that need production context** (P-41, G-43, P-40, P-43, P-44, P-45, P-46, AP10, NestJS-P3, AP14, Q7-API, AP5, Q3-CalledWith, P-65) → flag as ORPHAN, skip
+  - **Patterns that are mechanical** (AP2, P-62, P-63, P-64) → proceed without production file
 
 ---
 
@@ -328,21 +341,37 @@ Status: FIXED / SKIP ([reason]) / NEEDS_REVIEW
 
 ---
 
-## Step 5: Validate Results
+## Step 5: Verify (HARD GATE)
 
-Collect all fixer agent outputs. Build summary:
+### 5.1: Run test suite
+
+Run the project test command on ALL fixed files:
+```bash
+[detected-test-command] [list of fixed test files]
+```
+
+- **All tests pass** → proceed to Step 5.2
+- **Any test fails** → diagnose: is it a bug in the fix or a pre-existing failure?
+  - Fix introduced → fix it, re-run self-eval
+  - Pre-existing → note in report, proceed
+
+### 5.2: Collect results
+
+Build summary from all fixer outputs:
 
 ```markdown
 ## Fix Results
 
-| File | Pattern | Before | After | Status |
-|------|---------|--------|-------|--------|
-| profileSlice.test.ts | P-41 | 6/17 | 14/17 | FIXED ✅ |
-| clientProfileFilter.test.tsx | G-43 | 8/17 | 15/17 | FIXED ✅ |
-| industrySlice.test.ts | P-41 | 5/17 | 13/17 | NEEDS_REVIEW ⚠️ |
+| File | Pattern | Before | After | Tests | Status |
+|------|---------|--------|-------|-------|--------|
+| profileSlice.test.ts | P-41 | 6/17 | 14/17 | ✅ | FIXED |
+| clientProfileFilter.test.tsx | G-43 | 8/17 | 15/17 | ✅ | FIXED |
+| industrySlice.test.ts | P-41 | 5/17 | 13/17 | ✅ | NEEDS_REVIEW |
 ```
 
 For any NEEDS_REVIEW: read the file yourself and add targeted fixes.
+
+**Gate:** Do NOT proceed to Step 6 until test suite is green for all FIXED files.
 
 ---
 
@@ -373,15 +402,18 @@ Final report structure:
 ### Backlog Persistence (MANDATORY)
 
 After report, persist SKIP and NEEDS_REVIEW items to `memory/backlog.md`:
-1. Read existing backlog — skip if already tracked
-2. For each SKIP file: add item with reason
-3. For each NEEDS_REVIEW file: add item with pattern ID + what failed
-4. Print: `Backlog updated: {N} new items`
 
-Item format:
-```
-| B-{N} | MEDIUM | src/profiles/profileSlice.test.ts | fix-tests SKIP: P-41 — state shape too complex for mechanical fix | fix-tests/2026-02-25 | OPEN |
-```
+1. **Read** the project's `memory/backlog.md` (from the auto memory directory shown in system prompt)
+2. **If file doesn't exist**: create it with this template:
+   ```markdown
+   # Tech Debt Backlog
+   | ID | File | Issue | Severity | Source | Status | Seen | Dates |
+   |----|------|-------|----------|--------|--------|------|-------|
+   ```
+3. For each SKIP or NEEDS_REVIEW item:
+   - **Dedup:** check if backlog already has item with same file + same issue. If found → increment `Seen`, update date, keep highest severity
+   - **New:** append with next `B-{N}` ID, source: `fix-tests/[pattern]`, status: OPEN, date: today
+4. Print: `Backlog updated: {N} new items, {M} deduped`
 
 ### Next Steps
 

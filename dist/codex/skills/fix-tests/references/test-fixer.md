@@ -333,7 +333,7 @@ One rejection test per exported function minimum. If wrapper has per-status-code
 
 ### AP14: toBeDefined/toBeTruthy Sole Assertion
 
-**Trigger:** `expect(x).toBeDefined()` or `expect(x).toBeTruthy()` is the ONLY assertion in a test, or constitutes >50% of assertions in a file.
+**Trigger:** `expect(x).toBeDefined()` or `expect(x).toBeTruthy()` is the ONLY assertion in a test, or constitutes >40% of assertions in a file.
 
 **Read production file first** -- you need to know what the actual value is before replacing the assertion.
 

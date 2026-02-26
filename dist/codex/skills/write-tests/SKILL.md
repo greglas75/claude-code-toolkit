@@ -56,7 +56,7 @@ Before starting ANY work, read ALL files below. Confirm each with [x] or [ ]:
 |----------|----------|
 | `[file.ts]` | Write tests for single production file |
 | `[directory/]` | Write tests for all production files in directory |
-| `auto` | Discover production files missing test coverage (see Phase 1 auto-mode) |
+| `auto` | Discover production files missing test coverage (see Phase 1 auto-mode). **Batch limit: 15 files per run.** |
 | `--dry-run` | Plan only, do NOT write files (output plan + stop before Phase 3) |
 
 Output:
@@ -100,6 +100,22 @@ Read `references/coverage-scanner.md` and perform this analysis yourself.
 
 Read `references/pattern-selector.md` and perform this analysis yourself.
 
+
+### Auto-Mode: Batch Limit + Priority (when `auto`)
+
+When Coverage Scanner returns discovered files, apply these rules:
+
+1. **Hard cap: 15 files per run.** If more discovered -> take top 15, note remainder as `DEFERRED: [N] files (next run)`.
+2. **Priority ordering** (process highest risk first):
+   | Priority | Criteria | Why |
+   |----------|----------|-----|
+   | 1 (highest) | UNTESTED (0%) + SERVICE, CONTROLLER, GUARD | Core logic / security surface, zero safety net |
+   | 2 | UNTESTED + HOOK, ORCHESTRATOR, API-CALL | Complex async / coordination code |
+   | 3 | UNTESTED + PURE, COMPONENT, ORM | Lower blast radius |
+   | 4 | PARTIAL (<50% methods covered) | Some coverage, gaps are surgical |
+   | 5 (lowest) | PARTIAL (>=50% methods covered) | Diminishing returns |
+3. Within same priority -> sort by file size descending (larger = more risk).
+4. Log in Phase 2 plan: `AUTO BATCH: [N]/[total] files, priority 1: [N], priority 2: [N], ...`
 
 ---
 
@@ -210,18 +226,21 @@ For each mock hazard identified by Pattern Selector:
 
 Run Q1-Q17 self-eval (from `~/.codex/rules/testing.md`) on each test file written/modified.
 
-- Score each Q individually (1/0)
+- Score each Q individually (1/0). N/A counts as 1 (with justification).
+- **AP deductions:** scan for anti-patterns (AP9, AP10, AP13, AP14, AP16, etc. from `~/.codex/test-patterns.md`). Each unique AP found = −1 (max −5). Same AP occurring multiple times in one file = still −1.
+- **Scoring formula:** Total = (yes-count + N/A-count) − AP-deductions
 - Critical gate: Q7, Q11, Q13, Q15, Q17 -- any = 0 -> fix before Phase 4
 - Score < 14 -> fix worst gaps, re-score
 - Q12 procedure: list ALL public methods in production file -> for each repeated test pattern (auth guard, validation, error path) verify EVERY method has it. One missing = 0.
+- Stack-specific deductions (Redux P-40/P-41, NestJS NestJS-P1 from domain pattern files) apply only when auditing that code type -- included in the AP list, not a separate deduction.
 
 Output format:
 ```
 [filename]: Q1=1 Q2=1 Q3=0 Q4=1 Q5=1 Q6=1 Q7=1 Q8=0 Q9=1 Q10=1 Q11=1 Q12=0 Q13=1 Q14=1 Q15=1 Q16=1 Q17=1
-  Score: 14/17 -> PASS | Critical gate: Q7=1 Q11=1 Q13=1 Q15=1 Q17=1 -> PASS
+  APs: AP10(−1) | Total: 14 − 1 = 13/17 -> FIX | Critical gate: Q7=1 Q11=1 Q13=1 Q15=1 Q17=1 -> PASS
 ```
 
-Only proceed to Phase 4 when ALL test files score >= 14 AND all critical gates pass.
+Only proceed to Phase 4 when ALL test files score >= 14 (after AP deductions) AND all critical gates pass.
 
 ---
 
@@ -282,14 +301,28 @@ WRITE-TESTS VERIFICATION
 
 ### 5.1: Backlog Persistence (MANDATORY)
 
-1. Check Test Quality Auditor output for `BACKLOG ITEMS` section
-2. If present -> persist to `memory/backlog.md`:
-   - Next available B-{N} ID
-   - Source: `write-tests/{date}`
-   - Status: OPEN
-3. Mark FIXED any OPEN backlog items for the same test files that are now resolved
+Collect items from ALL sources:
+1. **Test Quality Auditor** -- `BACKLOG ITEMS` section from Phase 4.1
+2. **Self-Eval** -- any Q scored 0 that was not fixed, any AP deductions applied
+3. **Review warnings** -- warnings from Phase 5.2 `/review` (if run)
 
-**Zero issues may be silently discarded.**
+For each item -> persist to `memory/backlog.md`:
+
+1. **Read** the project's `memory/backlog.md` (from the auto memory directory shown in system prompt)
+2. **If file doesn't exist**: create it with this template:
+   ```markdown
+   # Tech Debt Backlog
+   | ID | File | Issue | Severity | Source | Status | Seen | Dates |
+   |----|------|-------|----------|--------|--------|------|-------|
+   ```
+3. For each finding:
+   - **Fingerprint:** `file|Q/AP-id|signature` (e.g., `user.test.ts|Q7|no-error-path-test`). Search backlog for matching fingerprint.
+   - **Duplicate** (same fingerprint found): increment `Seen` count, update date, keep highest severity
+   - **New** (no match): append with next `B-{N}` ID, source: `write-tests/{date}`, status: OPEN, date: today
+
+If any OPEN backlog items for the same test files were resolved -> mark FIXED.
+
+**THIS IS REQUIRED.** Zero issues may be silently discarded.
 
 ### 5.2: Stage + Pre-Commit Review
 
