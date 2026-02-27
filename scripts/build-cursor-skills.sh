@@ -82,6 +82,8 @@ transform_skill() {
     }
 
     # Path replacements
+    # Agent paths: flatten skill-specific agents/ to shared ~/.cursor/agents/
+    { gsub(/~\/\.claude\/skills\/[a-z-]+\/agents\//, "~/.cursor/agents/") }
     { gsub(/~\/\.claude\/skills\//, "~/.cursor/skills/") }
     { gsub(/~\/\.claude\/rules\//, "~/.cursor/rules/") }
     { gsub(/~\/\.claude\//, "~/.cursor/") }

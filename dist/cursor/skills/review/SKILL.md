@@ -423,10 +423,10 @@ IF TIER 3 AND files_changed < 15 AND no security/money risk:
 
 Rationale: Sonnet handles CQ3-CQ10 adequately for medium reviews. Opus adds value only for large, complex reviews with security/financial cross-cutting concerns.
 
-**Structure Auditor** -- `~/.cursor/skills/review/agents/structure-auditor.md` (Sonnet, read-only):
+**Structure Auditor** -- `~/.cursor/agents/structure-auditor.md` (Sonnet, read-only):
 ```
 Analysis to perform (execute inline):
-  prompt: "Read your full instructions at ~/.cursor/skills/review/agents/structure-auditor.md, then audit these changed files.
+  prompt: "Read your full instructions at ~/.cursor/agents/structure-auditor.md, then audit these changed files.
 
 CHANGED FILES: [list from Step 1]
 DIFF: [scoped diff -- see Diff Scoping section above]
@@ -444,11 +444,11 @@ SCOPE RULES by TIER + INTENT:
 Output STRUCT-N issues per the format in your instructions."
 ```
 
-**Behavior Auditor** -- `~/.cursor/skills/review/agents/behavior-auditor.md` (Sonnet or Opus, read-only):
+**Behavior Auditor** -- `~/.cursor/agents/behavior-auditor.md` (Sonnet or Opus, read-only):
 ```
 Analysis to perform (execute inline):
   model: [use model from Behavior Auditor Model Routing above]
-  prompt: "Read your full instructions at ~/.cursor/skills/review/agents/behavior-auditor.md, then audit these changed files.
+  prompt: "Read your full instructions at ~/.cursor/agents/behavior-auditor.md, then audit these changed files.
 
 CHANGED FILES: [list from Step 1]
 DIFF: [scoped diff -- see Diff Scoping section above]
@@ -548,11 +548,11 @@ For each issue, state: `Confidence: [X]/100 -- [reason]`
 
 #### TIER 2+: Confidence Re-Scorer Agent
 
-3. Spawn **Confidence Re-Scorer** -- `~/.cursor/skills/review/agents/confidence-rescorer.md` (Haiku):
+3. Spawn **Confidence Re-Scorer** -- `~/.cursor/agents/confidence-rescorer.md` (Haiku):
 
 ```
 Analysis to perform (execute inline):
-  prompt: "Read your full instructions at ~/.cursor/skills/review/agents/confidence-rescorer.md, then re-score these issues.
+  prompt: "Read your full instructions at ~/.cursor/agents/confidence-rescorer.md, then re-score these issues.
 
 ISSUES:
 [paste issue list with: ID, severity, file, code quote, problem description]
