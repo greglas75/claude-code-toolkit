@@ -49,4 +49,4 @@ Any skill that writes tests SHOULD update `memory/coverage.md`:
 | `/refactor` | ETAP-1B (test writing) -> update files it tested |
 | `/fix-tests` | After repairing tests -> update files repaired |
 | `/review fix` | Execute stage -> update files it wrote tests for |
-| `/test-audit` | After audit -> update Status (may downgrade COVERED -> PARTIAL if quality is low) |
+| `/test-audit` | After audit -> update Status (downgrade COVERED -> PARTIAL if score < 14/17 or critical gate fails) |

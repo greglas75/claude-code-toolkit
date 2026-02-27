@@ -62,9 +62,9 @@ Canonical column definition -- ALL interactions use these columns:
 
 `fix` and `wontfix` both **delete** the item from the backlog. Fixed/won't-fix items are not kept -- git history preserves them. This matches `/review`'s model: no "resolved" section, no unbounded growth.
 
-- `fix B-{N}` -> confirm item ID, delete it, report "B-{N} deleted (fixed)"
-- `wontfix B-{N} {reason}` -> confirm item ID, log reason to console, delete it
-- `delete B-{N}` -> silent delete (for cleanup, no reason needed)
+- `fix B-{N}` -> verify B-{N} exists (error if not -- see Error Handling), delete it, report "B-{N} deleted (fixed)"
+- `wontfix B-{N} {reason}` -> verify B-{N} exists, log reason to console, delete it
+- `delete B-{N}` -> verify exists, silent delete (for cleanup, no reason needed)
 
 ## Adding Items
 
@@ -180,6 +180,8 @@ Analyze all OPEN items by pattern and propose batch actions:
 | 3+ items pointing to same module | `/refactor [module]` or `/architecture review [module]` |
 | 5+ Tier D items | `/code-audit --deep [path]` -- serious quality debt |
 | No OPEN items | "Backlog is clear -- consider scheduling a periodic `/code-audit`" |
+
+**If multiple patterns match the same items** (e.g., 4 items have CQ8 AND are in the same module), show all matching suggestions -- user picks which to run first.
 
 Output:
 ```

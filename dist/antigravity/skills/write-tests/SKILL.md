@@ -481,15 +481,8 @@ If any OPEN backlog items for the same test files were resolved -> delete them (
 
 Update `memory/coverage.md` with results of this session. This file is the project's **persistent coverage registry** -- read by all skills that write or audit tests.
 
-1. **Read** the project's `memory/coverage.md` (in project root, same level as `package.json`). Create `memory/` dir if missing.
-2. **If file doesn't exist**: create it with this template:
-   ```markdown
-   # Test Coverage Registry
-   > Auto-maintained by `/write-tests`, `/build`, `/refactor`, `/review`, `/fix-tests`.
-   | File | Status | Methods | Covered | Test file | Risk | Updated | Source | Duration | TestRunTime |
-   |------|--------|---------|---------|-----------|------|---------|--------|----------|-------------|
-   ```
-   Column definitions: Status (UNCOVERED/PARTIAL/COVERED), Risk (HIGH/MEDIUM/LOW), Updated (YYYY-MM-DD), Source (skill that wrote it), Duration (time writing tests), TestRunTime (runner execution time).
+1. **Read** `memory/coverage.md` (path defined in Phase 0 step 5). Create `memory/` dir if missing.
+2. **If file doesn't exist**: create it from `~/.antigravity/agents/coverage-template.md` (template + column definitions).
 3. For each file processed in this session:
    - **Search** the `File` column for an existing row
    - **Existing row**: update Status, Methods, Covered, Test file, Updated date, Source, Duration, TestRunTime
@@ -500,7 +493,7 @@ Update `memory/coverage.md` with results of this session. This file is the proje
 5. For files that were COVERED in scanner results:
    - Add/update as COVERED rows -- so next run skips them entirely
 
-**Cross-skill usage:** `/build` (Phase 3.4), `/refactor` (ETAP-1B), `/fix-tests`, `/review fix`, `/test-audit` -- all SHOULD update coverage.md when writing or auditing tests.
+**Column definitions and cross-skill usage:** see `~/.antigravity/agents/coverage-template.md`.
 
 ### 5.2: Stage + Pre-Commit Review
 
