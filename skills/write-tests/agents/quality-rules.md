@@ -25,6 +25,7 @@ For EVERY parameter the method accepts, check which input types apply and write 
 | **Date** | `null`, invalid date (`new Date('invalid')`), epoch (`new Date(0)`), far future | `expect(fn(new Date('invalid'))).toThrow()` |
 | **optional param** | omitted entirely vs passed as `undefined` vs passed as `null` — verify all three behave correctly | `fn()` vs `fn(undefined)` vs `fn(null)` |
 | **enum/union** | every member of the union, plus an invalid value not in the union | `expect(fn('INVALID_STATUS')).toThrow()` |
+| **enum × enum (matrix)** | When two enum/union params interact (e.g., configured level × called level), test the full cross-product or at minimum: all diagonal + all boundary transitions. Use `it.each` with table. | `it.each([['warn','info',false], ['warn','warn',true], ['warn','error',true]])('level %s filters %s → %s', ...)` |
 
 **How to apply:** For each method, list its parameters. For each parameter, find its type in the table above. Write at least the `null`/`undefined`/empty test. Write boundary tests where the method has conditional logic (if/switch) that depends on that parameter.
 
@@ -41,6 +42,8 @@ it('handles null userComment', () => {
 - Optional field omitted vs explicitly `undefined`
 - Array with one element (off-by-one in `.length` checks)
 - Mock returning `[]` or `null` instead of expected data (tests the caller's null handling)
+- **Hardcoded lists in production code** (allowlists, PII keys, status enums, level maps) — extract the list, test EVERY member. 4 out of 5 = incomplete.
+- **Enum × enum interactions** — when two enum params control behavior (configured vs runtime), test the cross-product not just happy path
 
 ---
 
@@ -57,6 +60,18 @@ When code type is VALIDATOR (files with `validator`, `schema`, `dto` in name, or
 | **Valid edge cases** | Minimum valid payload, optional fields omitted, Unicode in string fields | `makePayload({ name: '日本語テスト' })` |
 
 Minimum test count for a validator with N fields: **N×3** (valid + invalid + boundary per field) + 1 multi-error + 1 minimal valid = **N×3 + 2**.
+
+---
+
+## Delegation / Inheritance
+
+When production code creates child/derived instances (factory, `.child()`, `.clone()`, `new X(parentConfig)`):
+
+| What to test | Why | Example |
+|-------------|-----|---------|
+| **Inherited properties** | Child must preserve parent config (level, serviceName, environment) | `expect(child.level).toBe(parent.level)` |
+| **Override behavior** | Child context overrides specific parent values | `expect(child.module).toBe('childModule')` while `child.service === parent.service` |
+| **Isolation** | Child changes don't mutate parent | After `child.setLevel('debug')`, `expect(parent.level).toBe('info')` |
 
 ---
 
