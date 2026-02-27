@@ -41,9 +41,10 @@ This skill uses parallel analysis (executed inline in Cursor). **If inline analy
 Before starting ANY work, read ALL files below. Confirm each with [x] or [ ]:
 
 ```
-1. [x]/[ ]  ~/.antigravity/rules/testing.md              -- Q1-Q17 test self-eval checklist + iron rules
-2. [x]/[ ]  ~/.antigravity/test-patterns.md              -- Q1-Q17 protocol + code-type lookup table
-3. [x]/[ ]  ~/.antigravity/rules/file-limits.md          -- 400-line test file limit
+1. [x]/[ ]  ~/.antigravity/rules/testing.md                              -- Q1-Q17 test self-eval checklist + iron rules
+2. [x]/[ ]  ~/.antigravity/test-patterns.md                              -- Q1-Q17 protocol + code-type lookup table
+3. [x]/[ ]  ~/.antigravity/rules/file-limits.md                          -- 400-line test file limit
+4. [x]/[ ]  ~/.antigravity/agents/quality-rules.md    -- edge cases, mock safety, self-eval evidence, auto-fail patterns
 ```
 
 **If ANY file is [ ] -> STOP. Do not proceed with a partial rule set.**
@@ -252,14 +253,14 @@ For each file, list:
 ## 4. Questions for Author
 
 [Only if genuine uncertainty -- ambiguous test scope, conflicting patterns.
-Leave empty if clear.]
+Leave empty if clear. Auto mode: write "N/A (auto mode)" and proceed.]
 ```
 
-**A plan missing any section is INCOMPLETE -- do not proceed.**
+**A plan missing sections 1-3 is INCOMPLETE -- do not proceed.** Section 4 is optional in auto mode.
 
 ### Questions Gate
 
-**Auto mode:** skip questions entirely -- make best-judgment decisions, document assumptions in plan, proceed immediately.
+**Auto mode:** write `## 4. Questions: N/A (auto mode)` -- make best-judgment decisions, document assumptions in plan, proceed immediately.
 
 Non-auto modes: if section 4 is non-empty -> ask user, wait for answers, update plan. If empty -> present plan and wait for approval.
 
@@ -291,18 +292,24 @@ Before writing, verify:
 6. Fix loop until score = 17/17 (or all Q=0 justified N/A) with all critical gates passing
 7. -> Move to next file
 
-**Do NOT stop after one file.** The batch is complete only when ALL files in the plan have tests written and self-eval passing. If you have 8 files in the plan, you write 8 test files.
+**Do NOT stop after one file.** After each file, print progress with explicit next target:
+```
+BATCH: [N]/[total] complete. Next: [next-filename] (do NOT stop)
+```
+The batch is complete only when ALL files in the plan have tests written and self-eval passing.
 
 **Minimum tests per public method:**
-- 1 happy path test
+- 1 test per branch/path in the method (minimum -- required for Q11)
 - 1 error/rejection test (required for Q7 critical gate)
-- Edge case tests from the checklist below (required for Q8/Q11)
+- Minimum 2 `it()` blocks per method (positive + negative)
+- Methods with branching (if/else, switch, ternary): minimum 1 test per branch -> typically 3+ tests
+- Trivial one-liners (single expression, no branching): 2 tests (positive + negative) is sufficient
 
-A single `it('should work')` per method is NOT sufficient. Minimum 3 `it()` blocks per public method. Controllers/API routes additionally need S1-S4 security tests from the plan.
+A single `it('should work')` per method is NOT sufficient. Controllers/API routes additionally need S1-S4 security tests from the plan.
 
 **Edge Case Checklist + Validator Depth (MANDATORY):**
 
-Read `~/.antigravity/agents/quality-rules.md` § **Edge Case Checklist** and § **Validator/Schema/DTO**. For every parameter, apply the input-type table. For VALIDATOR code type, apply depth requirements (N×3 + 2 minimum tests).
+Apply `quality-rules.md` § **Edge Case Checklist** (loaded in Phase 0). For every parameter, apply the input-type table. For VALIDATOR code type, apply § **Validator/Schema/DTO** depth requirements (N×3 + 2 minimum tests).
 
 **Rules:**
 
@@ -313,9 +320,15 @@ Allowed modifications to existing code: imports, `beforeEach`/`afterEach` setup,
 
 **Mock Safety -- REQUIRED check before writing mocks:**
 
-Read `~/.antigravity/agents/quality-rules.md` § **Mock Safety**. For each mock hazard from Pattern Selector, use the correct mock pattern. Mental trace: does the mock return something the production code can iterate/await/subscribe to? If not -> test will hang silently.
+Apply `quality-rules.md` § **Mock Safety** (loaded in Phase 0). For each mock hazard from Pattern Selector, use the correct mock pattern. Mental trace: does the mock return something the production code can iterate/await/subscribe to? If not -> test will hang silently.
 
-**File size check after each file**: if test file exceeds 400 lines -> split NOW. New files expand the scope fence automatically. Example: `foo.service.test.ts` (300 lines existing) + 150 new lines -> split new tests into `foo.service.edge-cases.test.ts`.
+**File size -- plan splits early, not after:**
+- If production file has >15 public methods -> plan the split in Phase 2:
+  - `[file].test.ts` -- core business logic methods
+  - `[file].errors.test.ts` -- error paths for all methods
+  - `[file].edge-cases.test.ts` -- boundary conditions
+- If test file exceeds 400 lines during writing -> split NOW into above pattern
+- Example: `foo.service.test.ts` (300 lines existing) + 150 new lines -> split new tests into `foo.service.edge-cases.test.ts`
 
 ### 3.3: Test Self-Eval (mandatory per file)
 
@@ -332,18 +345,21 @@ Run Q1-Q17 self-eval (from `~/.antigravity/rules/testing.md`) on each test file 
 
 **EVIDENCE REQUIRED for critical gates -- Q=1 without evidence = Q=0:**
 
-Read `~/.antigravity/agents/quality-rules.md` § **Self-Eval Evidence Requirements** and § **Auto-Fail Patterns**. For each critical gate (Q7, Q11, Q15, Q17), provide proof citing specific test names or line ranges. Without proof -> score as 0. Scan for auto-fail patterns -- if found, corresponding Q = 0 regardless of other evidence.
+Apply `quality-rules.md` § **Self-Eval Evidence Requirements** and § **Auto-Fail Patterns** (loaded in Phase 0). For each critical gate (Q7, Q11, Q15, Q17), provide proof citing specific test names or line ranges. Without proof -> score as 0. Scan for auto-fail patterns -- if found, corresponding Q = 0 regardless of other evidence.
 
-Output format (with evidence):
+**Output format -- compact when passing, verbose when failing:**
+
+When 17/17 and all critical gates pass:
 ```
-[filename]: Q1=1 Q2=1 Q3=0 Q4=1 Q5=1 Q6=1 Q7=1 Q8=0 Q9=1 Q10=1 Q11=1 Q12=0 Q13=1 Q14=1 Q15=1 Q16=1 Q17=1
+[filename]: 17/17 [x] | Q7->line45 Q11->5branches Q13->real-imports Q15->80%value Q17->computed
+```
+
+When score < 17 or critical gate = 0 (verbose -- show what to fix):
+```
+[filename]: Q1=1 Q2=1 Q3=0 Q4=1 Q5=1 Q6=1 Q7=1 Q8=0 Q9=1 Q10=1 Q11=0 Q12=0 Q13=1 Q14=1 Q15=1 Q16=1 Q17=1
   APs: AP10(−1) | Total: 14 − 1 = 13/17 -> FIX
-  Critical gate:
-    Q7=1  -> 'it throws when embedding fails' (line 45): expect(...).rejects.toThrow('embedding failed')
-    Q11=1 -> branches: if(index){3 tests} | if(!correction){1 test} | level switch{4 tests via it.each}
-    Q13=1 -> imports: extractCategory, indexCorrectionAsync from './correction-sync.service'
-    Q15=1 -> value:12 weak:3 ratio=80% value -> PASS
-    Q17=1 -> key computed: embedding text built from originalContent+correctedContent+comment (not from mock)
+  Critical gate FAIL: Q11=0 -> branch `if(!correction)` has no test
+  Fix: add it('should handle missing correction') testing the !correction path
 ```
 
 Only proceed to Phase 4 when ALL test files score 17/17 (or all Q=0 are justified N/A), zero AP deductions, AND all critical gates pass with evidence.
@@ -363,6 +379,8 @@ If `N < total` -> you are NOT done. Go back to Phase 3.2 and continue with the n
 ## Phase 4: Verify
 
 ### 4.1: Test Quality Auditor
+
+**Why both 3.3 AND 4.1?** Phase 3.3 = writer self-check (fast, inline, catches obvious gaps). Phase 4.1 = independent audit by different model -- catches blind spots the writer is blind to (mock hazards assumed safe, production behavior assumed but not verified).
 
 Spawn the auditor:
 
@@ -464,7 +482,14 @@ If any OPEN backlog items for the same test files were resolved -> delete them (
 Update `memory/coverage.md` with results of this session. This file is the project's **persistent coverage registry** -- read by all skills that write or audit tests.
 
 1. **Read** the project's `memory/coverage.md` (in project root, same level as `package.json`). Create `memory/` dir if missing.
-2. **If file doesn't exist**: read `~/.antigravity/agents/coverage-template.md` for template and create the file.
+2. **If file doesn't exist**: create it with this template:
+   ```markdown
+   # Test Coverage Registry
+   > Auto-maintained by `/write-tests`, `/build`, `/refactor`, `/review`, `/fix-tests`.
+   | File | Status | Methods | Covered | Test file | Risk | Updated | Source | Duration | TestRunTime |
+   |------|--------|---------|---------|-----------|------|---------|--------|----------|-------------|
+   ```
+   Column definitions: Status (UNCOVERED/PARTIAL/COVERED), Risk (HIGH/MEDIUM/LOW), Updated (YYYY-MM-DD), Source (skill that wrote it), Duration (time writing tests), TestRunTime (runner execution time).
 3. For each file processed in this session:
    - **Search** the `File` column for an existing row
    - **Existing row**: update Status, Methods, Covered, Test file, Updated date, Source, Duration, TestRunTime
@@ -475,7 +500,7 @@ Update `memory/coverage.md` with results of this session. This file is the proje
 5. For files that were COVERED in scanner results:
    - Add/update as COVERED rows -- so next run skips them entirely
 
-**Column definitions and cross-skill usage:** see `~/.antigravity/agents/coverage-template.md`.
+**Cross-skill usage:** `/build` (Phase 3.4), `/refactor` (ETAP-1B), `/fix-tests`, `/review fix`, `/test-audit` -- all SHOULD update coverage.md when writing or auditing tests.
 
 ### 5.2: Stage + Pre-Commit Review
 
