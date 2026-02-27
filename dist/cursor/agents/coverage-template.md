@@ -27,7 +27,7 @@ Read this file at **Phase 5.1b** when creating or updating `memory/coverage.md`.
 
 | Column | Values | Description |
 |--------|--------|-------------|
-| **Status** | UNCOVERED \| PARTIAL \| PARTIAL-QUALITY \| COVERED | Coverage tier. PARTIAL-QUALITY = has tests but weak assertions (>30% typeof/toBeDefined) -> needs `/fix-tests` |
+| **Status** | UNCOVERED \| PARTIAL \| PARTIAL-QUALITY \| COVERED | Coverage tier. PARTIAL-QUALITY = has tests but auto-fail patterns (typeof >=3×, toBeDefined-only) or untested branches despite 100% method coverage -> action: FIX in `/write-tests` (or `/fix-tests` for 10+ files with same pattern) |
 | **Methods** | integer | Total exported methods/functions count |
 | **Covered** | integer | Methods with at least one test (0 for UNCOVERED) |
 | **Test file** | path or "none" | Path to test file |

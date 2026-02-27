@@ -36,7 +36,8 @@ You receive:
 **Step 0: Read existing coverage registry**
 
 Read `memory/coverage.md` from the project root directory (same level as `package.json`/`CLAUDE.md`). If it exists, extract:
-- **COVERED files** (Status = COVERED) -> skip these entirely in discovery (already tested)
+- **COVERED files** (Status = COVERED) -> skip Steps A-D discovery for these, BUT still run Step E.5 quality sniff on them (cached COVERED may have quality issues not detected in previous runs)
+- **PARTIAL-QUALITY files** -> these are pre-known FIX candidates, verify they still exist
 - **UNCOVERED/PARTIAL files** -> these are pre-known candidates, verify they still exist and status hasn't changed
 - If `coverage.md` has > 50 UNCOVERED entries from a recent scan (< 7 days) -> skip Steps A-D, use cached data directly. Only re-verify the top 30 candidates still exist on disk.
 
@@ -105,23 +106,33 @@ If fewer than 15 UNCOVERED files found -> also check HAS_TEST files for gaps:
 
 If 15+ UNCOVERED -> skip PARTIAL analysis (enough work already).
 
-**Step E.5: Quality sniff on COVERED / HAS_TEST files**
+**Step E.5: Quality sniff + branch check on COVERED / HAS_TEST files**
 
-For files classified as COVERED (all methods have tests), do a quick quality check by scanning the test file for weak assertion patterns:
+For files classified as COVERED (all methods have tests), do a **two-part quality check:**
 
+**Part 1: Auto-fail pattern scan** (scan test file):
 1. Count total assertions (`expect(` calls)
 2. Count weak assertions: `typeof === 'function'`, `toBeDefined()`, `toBeTruthy()`, `toBeInTheDocument()` as SOLE assertion in an `it()` block
-3. If **weak > 30% of total** -> reclassify as **PARTIAL-QUALITY**
+3. If **weak > 30% of total** OR `typeof === 'function'` appears >=3× -> flag as auto-fail
 
-**PARTIAL-QUALITY** means: line coverage exists but tests verify shape/existence, not behavior. These files need `/fix-tests` (quality repair), not `/write-tests` (new tests).
+**Part 2: Branch coverage check** (READ the production file -- MANDATORY):
+1. List all branches in production code: `if/else`, `switch`, ternary `?:`, `??`, `||`, early `return`
+2. For each branch, check if the test file has a test that exercises BOTH sides
+3. If ANY branch is untested -> flag as missing-branch
 
-Report PARTIAL-QUALITY files separately:
+**Classification:**
+- Auto-fail patterns present -> **PARTIAL-QUALITY** (action: FIX)
+- Untested branches found -> **PARTIAL** (action: ADD TO)
+- Both -> **PARTIAL-QUALITY** (action: FIX -- covers both)
+- Neither -> **COVERED** (skip)
+
+Report PARTIAL-QUALITY files with specifics:
 ```
-COVERED but low quality: [N] files -> recommend /fix-tests
-  - [path]: [weak]% weak assertions ([N] typeof, [N] toBeDefined)
+PARTIAL-QUALITY: [N] files (100% method coverage, but quality issues -> action: FIX)
+  - [path]: [weak]% weak assertions ([N] typeof, [N] toBeDefined) + [N] untested branches
 ```
 
-**Do NOT include PARTIAL-QUALITY files in the UNCOVERED/PARTIAL candidate list.** They have different treatment (fix existing tests, not write new ones).
+**Include PARTIAL-QUALITY files in the candidate list** -- they need FIX action from `/write-tests`, not delegation to another skill.
 
 **Step F: Return results**
 

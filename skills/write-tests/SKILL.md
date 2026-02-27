@@ -17,8 +17,10 @@ Heavier than inline test writing (sub-agents for coverage + pattern analysis), l
 
 **When NOT to use:**
 - New feature code → tests written in `/build` Phase 3.4
-- Mass repair of existing test quality → `/fix-tests`
+- Mass repair of SAME anti-pattern across 10+ files → `/fix-tests` (batch mode)
 - Auditing existing tests → `/test-audit`
+
+**Scope rule:** If `/write-tests` identifies quality issues (auto-fail patterns, weak assertions, untested branches) in target files → **fix them directly.** Do NOT delegate to `/fix-tests` unless the issue is outside write-tests scope (e.g., flaky test infrastructure, test runner config, 10+ files with same pattern). Replacing `typeof === 'function'` with behavioral assertions IS in scope. Adding missing branch tests IS in scope.
 
 Parse `$ARGUMENTS` as: `[path | auto] [--dry-run]`
 
@@ -220,7 +222,9 @@ Merge both results — each file now has coverage status + risk (from Scanner) A
 | 4 | PARTIAL (<50% methods covered) | Some coverage, gaps are surgical |
 | 5 (lowest) | PARTIAL (≥50% methods covered) | Diminishing returns |
 
-**PARTIAL-QUALITY files** (covered but weak tests) → do NOT include in this batch. Report them separately: `PARTIAL-QUALITY: [N] files → recommend /fix-tests --pattern [pattern]`. These need test repair, not new tests.
+**PARTIAL-QUALITY files** (covered but weak tests) → **include as FIX action** in this batch. These have auto-fail patterns (typeof, toBeDefined-only) or untested branches despite 100% method coverage. `/write-tests` fixes them directly — do NOT delegate to `/fix-tests` unless there are 10+ such files with the same pattern (batch mode is more efficient).
+
+Sort PARTIAL-QUALITY after UNCOVERED but before PARTIAL in priority.
 
 Within same priority → sort by file size descending (larger = more risk).
 
@@ -243,8 +247,17 @@ Files to cover (from Coverage Scanner results):
 | File | Status | Untested methods | Risk |
 |------|--------|-----------------|------|
 
-Files to SKIP (already COVERED tier A):
-[list with reason]
+Files to SKIP (must satisfy ALL three conditions):
+- Coverage: 100% methods covered
+- Quality: zero auto-fail patterns (no typeof ≥3×, no toBeDefined-only, no echo assertions)
+- Branches: no untested branches in production code (requires reading the file)
+[list with reason for each SKIP — cite evidence for all 3 conditions]
+
+Files to FIX (100% coverage but auto-fail patterns or weak assertions):
+[list — these are NOT skipped, they go through Phase 3 with action=FIX]
+
+Files to ADD TO (existing tests, but missing methods or branches):
+[list with untested methods/branches]
 
 ## 2. Test Files
 
@@ -253,10 +266,14 @@ For each target:
 |----------------|-----------|--------|
 | foo.service.ts | foo.service.test.ts | CREATE (no test file) |
 | bar.service.ts | bar.service.test.ts | ADD TO (partial, ~40%) |
+| baz.service.ts | baz.service.test.ts | FIX (100% coverage, but 14× typeof auto-fail + untested branches) |
 
 ⚠️ ADD TO: never DELETE or REPLACE existing tests. New describe/it blocks only.
    Allowed modifications to existing code: imports, beforeEach/afterEach setup, shared helpers/factories
    (when needed by new tests). Do NOT rewrite existing assertions or test logic.
+⚠️ FIX: REPLACE auto-fail assertions (typeof, toBeDefined-only) with behavioral tests.
+   DELETE weak assertions and write proper ones. Add missing branch/error tests.
+   This is the ONLY action that modifies existing test logic.
 ⚠️ File size: [current LOC of existing test file] + [estimated new LOC] = [total]
    Flag if total > 400 lines → plan split into [foo.service.errors.test.ts] etc.
 
@@ -314,10 +331,12 @@ Before writing, verify:
 
 **Process EVERY file in the Phase 2 plan.** For each production file listed in the Scope table:
 
-1. Log: `FILE [N]/[total]: [path]`
-2. Read the production file (full — don't skip methods)
-3. If ADD TO: read the existing test file to know what's already there
-4. Write the test file following Phase 2 strategy for this file
+1. Log: `FILE [N]/[total]: [path] — Action: [CREATE | ADD TO | FIX]`
+2. Read the production file (full — don't skip methods). **This is mandatory for ALL actions including FIX.**
+   List all branches (if/else, switch, ternary, `??`, `||`) — these are needed for Q11.
+3. If ADD TO or FIX: read the existing test file to know what's already there.
+   For FIX: identify auto-fail patterns to remove (typeof, toBeDefined-only, echo assertions).
+4. Write/fix the test file following Phase 2 strategy for this file
 5. Run Q1-Q17 self-eval (Phase 3.3) on this test file
 6. Fix loop until score = 17/17 (or all Q=0 justified N/A) with all critical gates passing
 7. → Move to next file
