@@ -60,7 +60,7 @@ Before starting ANY work, read ALL files below. Confirm each with [x] or [ ]:
 |----------|----------|
 | `[file.ts]` | Write tests for single production file |
 | `[directory/]` | Write tests for all production files in directory |
-| `auto` | **Full autonomy.** Discover uncovered files, write tests, commit -- no approval gates, no questions. Quality gates (mandatory reads, Q1-Q17, verification checklist) still enforced. Batch limit: 15 files per run. |
+| `auto` | **Full autonomy with auto-loop.** Discover uncovered files, write tests, commit -- no approval gates, no questions. Quality gates (mandatory reads, Q1-Q17, verification checklist) still enforced. Batch limit: 15 files per batch. **After each batch completes, automatically start next batch** until no UNCOVERED/PARTIAL files remain (see Auto-Loop below). |
 | `--dry-run` | Plan only, do NOT write files (output plan + stop before Phase 3) |
 
 Output:
@@ -484,11 +484,30 @@ Tag: [tag name] (rollback: git reset --hard [tag])
 Mock hazards resolved: [N -- list hazard types fixed]
 
 Next steps:
-  /write-tests auto    -> Continue with next batch (reads coverage.md)
   /test-audit [path]   -> Re-audit to confirm tier improvement
   Push                 -> git push origin [branch]
 ------------------------------------
 ```
+
+### 5.5: Auto-Loop (auto mode only)
+
+**After Phase 5.4 output, check if more work remains:**
+
+1. Read `memory/coverage.md` -- count UNCOVERED + PARTIAL entries
+2. If UNCOVERED + PARTIAL > 0 -> **automatically start next batch:**
+   - Log: `AUTO-LOOP: batch [N] complete. [M] UNCOVERED + [K] PARTIAL remaining. Starting next batch...`
+   - Go back to **Phase 1** (auto mode) -- Coverage Scanner reads updated coverage.md, skips already-COVERED files
+   - Each batch gets its own commit + tag (Phase 5.3)
+3. If UNCOVERED + PARTIAL = 0 -> **all done:**
+   - Log: `AUTO-LOOP COMPLETE: all files covered after [N] batches`
+   - Stop
+
+**Loop continues until:**
+- All files COVERED (normal exit)
+- A batch produces zero new test files (nothing left to cover -- stop to prevent infinite loop)
+- A Phase 4 verification fails 3 times in a row (something is broken -- stop and report)
+
+**Each batch is independent:** own commit, own tag, own backlog persistence. If interrupted, previous batches are already committed and safe.
 
 ---
 
@@ -498,5 +517,5 @@ Next steps:
 |------|---------|---------|---------|---------|---------|
 | `/write-tests foo.ts` | Scan 1 file | Plan 1 file | Write 1 test file | Audit + run | Commit |
 | `/write-tests src/services/` | Scan N files | Plan N files | Write N test files | Audit + run | Commit |
-| `/write-tests auto` | Discover uncovered files | Plan (no approval) | Write batch | Audit + run | Commit (no review) |
+| `/write-tests auto` | Discover -> loop batches | Plan (no approval) | Write batch | Audit + run | Commit -> next batch |
 | `/write-tests foo.ts --dry-run` | Scan 1 file | Plan + STOP | -- | -- | -- |
