@@ -300,6 +300,20 @@ Before writing, verify:
 
 A single `it('should work')` per method is NOT sufficient. Minimum 3 `it()` blocks per public method. Controllers/API routes additionally need S1-S4 security tests from the plan.
 
+**Validator/Schema/DTO tests -- DEPTH requirements:**
+
+When code type is VALIDATOR (files with `validator`, `schema`, `dto` in name, or Joi/Zod/class-validator schemas):
+
+| Requirement | What to test | Example |
+|-------------|-------------|---------|
+| **Each rule individually** | One `it()` per validation rule -- not just "valid passes, invalid fails" | `it('should reject email without @')`, `it('should reject pid shorter than 3 chars')` |
+| **Error messages** | Assert the specific error message text, not just that it throws | `expect(error.message).toContain('must be a valid email')` |
+| **Boundary values per field** | Empty string, null, undefined, min length, max length, type mismatch, special chars | `makePayload({ email: '' })`, `makePayload({ email: 'a'.repeat(256) })` |
+| **Multiple errors** | Send payload with 2+ invalid fields -- verify ALL errors returned | `expect(error.details).toHaveLength(2)` |
+| **Valid edge cases** | Minimum valid payload, optional fields omitted, Unicode in string fields | `makePayload({ name: '日本語テスト' })` |
+
+Minimum test count for a validator with N fields: **N×3** (valid + invalid + boundary per field) + 1 multi-error + 1 minimal valid = **N×3 + 2**.
+
 **Rules:**
 
 **Never delete or replace existing tests** -- add new `describe` blocks or `it` blocks only.

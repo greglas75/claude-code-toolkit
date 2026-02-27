@@ -26,7 +26,7 @@ You receive:
    PURE | REACT | SERVICE | REDIS/CACHE | ORM/DB | API-CALL | GUARD/AUTH |
    STATE-MACHINE | ORCHESTRATOR | EXPORT/FORMAT | ADAPTER/TRANSFORM |
    CONTROLLER | STATIC-ANALYSIS | INTEGRATION-PIPELINE | REDUX-SLICE |
-   API-ROUTE | E2E-BROWSER
+   API-ROUTE | E2E-BROWSER | VALIDATOR
    ```
 
 3. **For each code type, select patterns** from this lookup:
@@ -39,6 +39,13 @@ You receive:
    - CONTROLLER -> Good: G-2,G-4,G-6,G-9,G-28,G-32,G-33,G-34 | Gap: P-1,P-5,P-28,P-33,P-34,P-38,NestJS-P1,NestJS-P2,NestJS-P3
    - ORCHESTRATOR -> Good: G-2,G-20,G-21,G-23,G-24,G-25,G-31 | Gap: P-5,P-14,P-20,P-21,P-22,P-23
    - API-ROUTE -> Good: G-2,G-4,G-6,G-11,G-28,G-29,G-32,G-55 | Gap: P-1,P-5,P-6,P-28,P-38,P-62
+   - VALIDATOR -> Good: G-2,G-3,G-5,G-20,G-22 | Gap: P-1,P-8,P-13,P-22,P-27
+     **Classification signal:** file name contains `validator`, `schema`, `dto`, or exports Joi/Zod/class-validator schemas, validation pipes, or `validate()` functions.
+     **IMPORTANT -- validator tests require DEPTH (see SKILL.md Phase 3.2 Validator section):**
+     - Each validation rule tested individually (not just "valid passes")
+     - Error messages asserted (not just "throws")
+     - Boundary values per field (empty, null, min, max, special chars, type mismatch)
+     - Multiple simultaneous errors tested
 
 4. **Flag MOCK HAZARDS** -- async patterns that require special mock implementation:
    - `async function*` / `AsyncGenerator` -> vi.fn() returns undefined -> test HANGS
