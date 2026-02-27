@@ -380,13 +380,42 @@ Run Q1-Q17 self-eval (from `~/.cursor/rules/testing.md`) on each test file writt
 - Q12 procedure: list ALL public methods in production file -> for each repeated test pattern (auth guard, validation, error path) verify EVERY method has it. One missing = 0.
 - Stack-specific deductions (Redux P-40/P-41, NestJS NestJS-P1 from domain pattern files) apply only when auditing that code type -- included in the AP list, not a separate deduction.
 
-Output format:
+**EVIDENCE REQUIRED for critical gates -- Q=1 without evidence = Q=0:**
+
+Self-eval inflation is the #1 quality problem. Agents give 17/17 when real score is 8/17. To prevent this, each critical gate Q=1 MUST include a proof line. Without proof -> score as 0.
+
+| Q | Proof required (cite specific test names or line ranges) |
+|---|----------------------------------------------------------|
+| **Q7** | Name the `it()` block that tests an error/rejection path. Quote the `toThrow`/`rejects`/error assertion. |
+| **Q11** | List ALL conditional branches (`if/else`, `switch`, ternary, `??`, `\|\|`) in the production code. For EACH branch, name the test that exercises it. Any branch without a test -> Q11=0. |
+| **Q15** | Count assertions by type: (a) **value assertions** (`toEqual`, `toBe`, `toContain` with specific values), (b) **weak assertions** (`toBeDefined`, `toBeTruthy`, `typeof`, `toHaveBeenCalled` without args). If weak > 50% of total -> Q15=0. |
+| **Q17** | For each key assertion, answer: "Does this verify something the CODE COMPUTED, or something I SET UP in the test?" If the expected value comes from a mock/fixture setup (not a computation by the production code) -> that assertion is echo, not verification. If >50% are echo -> Q17=0. |
+
+**Auto-fail patterns (if found -> corresponding Q = 0, no exceptions):**
+
+| Pattern | Auto-fails | Why |
+|---------|-----------|-----|
+| `typeof x === 'function'` appears >=3× | Q15 | Tests interface shape, not behavior |
+| `toBeDefined()` is the SOLE assertion in an `it()` block | Q15 | Proves existence, not correctness |
+| `expect(screen).toBeDefined()` | Q15, Q17 | Screen is always defined -- tests nothing |
+| No test calls the function with invalid/error input | Q7 | No error path coverage |
+| Production code has `if (level)` / `switch` but no test varies that param | Q11 | Untested branch |
+| All `toHaveBeenCalledWith` args are literals from mock setup | Q17 | Echo, not computed verification |
+| `expect(spy).toHaveBeenCalled()` without `CalledWith` checking args | Q15 | Proves call happened, not correctness |
+
+Output format (with evidence):
 ```
 [filename]: Q1=1 Q2=1 Q3=0 Q4=1 Q5=1 Q6=1 Q7=1 Q8=0 Q9=1 Q10=1 Q11=1 Q12=0 Q13=1 Q14=1 Q15=1 Q16=1 Q17=1
-  APs: AP10(−1) | Total: 14 − 1 = 13/17 -> FIX | Critical gate: Q7=1 Q11=1 Q13=1 Q15=1 Q17=1 -> PASS
+  APs: AP10(−1) | Total: 14 − 1 = 13/17 -> FIX
+  Critical gate:
+    Q7=1  -> 'it throws when embedding fails' (line 45): expect(...).rejects.toThrow('embedding failed')
+    Q11=1 -> branches: if(index){3 tests} | if(!correction){1 test} | level switch{4 tests via it.each}
+    Q13=1 -> imports: extractCategory, indexCorrectionAsync from './correction-sync.service'
+    Q15=1 -> value:12 weak:3 ratio=80% value -> PASS
+    Q17=1 -> key computed: embedding text built from originalContent+correctedContent+comment (not from mock)
 ```
 
-Only proceed to Phase 4 when ALL test files score >= 14 (after AP deductions) AND all critical gates pass.
+Only proceed to Phase 4 when ALL test files score >= 14 (after AP deductions) AND all critical gates pass with evidence.
 
 ### 3.4: Batch Completion Gate
 
