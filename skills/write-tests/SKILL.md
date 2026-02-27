@@ -370,12 +370,15 @@ Run Q1-Q17 self-eval (from `~/.claude/rules/testing.md`) on each test file writt
 - Critical gate: Q7, Q11, Q13, Q15, Q17 — any = 0 → fix before Phase 4
 - **Target: 17/17.** For each Q=0: fix the tests, then re-score. Only accept Q=0 if genuinely N/A with written justification (e.g., "Q3=N/A — pure function, zero mocks"). "Hard to test" or "not important" are NOT valid reasons — fix it.
 - **Fix loop:** score → fix worst Q=0 → re-score → repeat until 17/17 or all remaining Q=0 are justified N/A. Do NOT proceed with Q=0 that can be fixed.
+- **Fix priority: address flagged gaps FIRST.** If self-eval or reviewer flags a specific missing test (e.g., "log level filtering not tested"), write THAT test before adding anything else. Do NOT add more tests in areas that already pass while ignoring Q=0 items. Pattern: agent adds "more of what it knows" instead of "what's missing" — this is the #1 fix loop failure mode.
 - Q12 procedure: list ALL public methods in production file → for each repeated test pattern (auth guard, validation, error path) verify EVERY method has it. One missing = 0.
 - Stack-specific deductions (Redux P-40/P-41, NestJS NestJS-P1 from domain pattern files) apply only when auditing that code type — included in the AP list, not a separate deduction.
 
 **EVIDENCE REQUIRED for critical gates — Q=1 without evidence = Q=0:**
 
 Apply `quality-rules.md` § **Self-Eval Evidence Requirements** and § **Auto-Fail Patterns** (loaded in Phase 0). For each critical gate (Q7, Q11, Q15, Q17), provide proof citing specific test names or line ranges. Without proof → score as 0. Scan for auto-fail patterns — if found, corresponding Q = 0 regardless of other evidence.
+
+**Auto-fail patterns must be REMOVED, not just scored.** If `typeof === 'function'` appears ≥3× → delete or replace those assertions with behavioral tests (`expect(fn(input)).toEqual(output)`). If `toBeDefined()` is the sole assertion → add a value assertion. Leaving auto-fail patterns in place and accepting Q=0 is NOT acceptable — fix the tests.
 
 **Output format — compact when passing, verbose when failing:**
 

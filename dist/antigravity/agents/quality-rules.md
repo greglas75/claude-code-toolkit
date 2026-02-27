@@ -91,7 +91,7 @@ Self-eval inflation is the #1 quality problem. Agents give 17/17 when real score
 
 ## Auto-Fail Patterns
 
-If found -> corresponding Q = 0, no exceptions:
+If found -> corresponding Q = 0, no exceptions. **These patterns must be REMOVED during the fix loop** -- delete or replace with behavioral assertions. Do not leave them and accept Q=0.
 
 | Pattern | Auto-fails | Why |
 |---------|-----------|-----|
