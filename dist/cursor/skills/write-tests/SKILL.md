@@ -296,9 +296,40 @@ Before writing, verify:
 **Minimum tests per public method:**
 - 1 happy path test
 - 1 error/rejection test (required for Q7 critical gate)
-- 1+ edge case tests (null, empty, boundary -- required for Q8/Q11)
+- Edge case tests from the checklist below (required for Q8/Q11)
 
 A single `it('should work')` per method is NOT sufficient. Minimum 3 `it()` blocks per public method. Controllers/API routes additionally need S1-S4 security tests from the plan.
+
+**Edge Case Checklist (MANDATORY) -- scan each parameter/input:**
+
+For EVERY parameter the method accepts, check which input types apply and write tests for each:
+
+| Input type | Edge cases to test | Example assertion |
+|------------|-------------------|-------------------|
+| **string** | `null`, `undefined`, `''` (empty), `' '` (whitespace only), very long (`'a'.repeat(10000)`), Unicode (`'日本語'`), special chars (`'<script>alert(1)</script>'`) | `expect(fn('')).toThrow()` or verify fallback behavior |
+| **number** | `null`, `undefined`, `0`, `-1`, `NaN`, `Infinity`, `Number.MAX_SAFE_INTEGER`, float where int expected (`3.14`) | `expect(fn(NaN)).toThrow()` |
+| **array** | `null`, `undefined`, `[]` (empty), single element `[x]`, very large array, duplicate elements | `expect(fn([])).toEqual([])` or verify empty handling |
+| **object** | `null`, `undefined`, `{}` (empty), missing required keys, extra unknown keys, nested null (`{ meta: null }`) | `expect(fn({ meta: null })).not.toThrow()` |
+| **boolean** | explicit `false` (not just truthy/falsy check), `undefined` vs `false` distinction | `expect(fn(false)).toBe(X)` -- not same as `fn(undefined)` |
+| **Date** | `null`, invalid date (`new Date('invalid')`), epoch (`new Date(0)`), far future | `expect(fn(new Date('invalid'))).toThrow()` |
+| **optional param** | omitted entirely vs passed as `undefined` vs passed as `null` -- verify all three behave correctly | `fn()` vs `fn(undefined)` vs `fn(null)` |
+| **enum/union** | every member of the union, plus an invalid value not in the union | `expect(fn('INVALID_STATUS')).toThrow()` |
+
+**How to apply:** For each method, list its parameters. For each parameter, find its type in the table above. Write at least the `null`/`undefined`/empty test. Write boundary tests where the method has conditional logic (if/switch) that depends on that parameter.
+
+**Shortcut for methods with many params:** Use factory pattern. Test one edge case per `it()`, override one field at a time:
+```typescript
+it('handles null userComment', () => {
+  expect(fn(createInput({ userComment: null }))).toBe(expectedFallback);
+});
+```
+
+**Common misses** (agents frequently skip these):
+- `null` in nested objects (`{ metadata: { category: null } }` vs `{ metadata: null }`)
+- Empty string vs null (`''` and `null` are different -- test both)
+- Optional field omitted vs explicitly `undefined`
+- Array with one element (off-by-one in `.length` checks)
+- Mock returning `[]` or `null` instead of expected data (tests the caller's null handling)
 
 **Validator/Schema/DTO tests -- DEPTH requirements:**
 
