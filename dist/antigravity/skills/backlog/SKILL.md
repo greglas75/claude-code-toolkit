@@ -8,7 +8,31 @@ user-invocable: true
 
 Add, list, or manage backlog items manually.
 
-**Backlog location:** `memory/backlog.md` in the project's auto memory directory (path shown in system prompt). If the file doesn't exist, create it from the embedded template below.
+**Backlog location:** `memory/backlog.md` in the project root (same level as `package.json`/`CLAUDE.md`). If `memory/` dir does not exist -> `mkdir -p memory`. If the file doesn't exist, create it from the embedded template below.
+
+## Backlog Schema
+
+Canonical column definition -- ALL interactions use these columns:
+
+| Column | Description | Required |
+|--------|-------------|----------|
+| **ID** | `B-{N}` sequential | auto |
+| **Fingerprint** | Dedup key (see format below) | auto |
+| **File** | File path | yes |
+| **Problem** | Short description of the issue | yes |
+| **Severity** | CRITICAL \| HIGH \| MEDIUM \| LOW | yes |
+| **Category** | Code \| Test \| Architecture \| Dependency \| Documentation \| Infrastructure | yes |
+| **Source** | Which skill added it (`code-audit/2026-02-27`, `manual`, etc.) | auto |
+| **Seen** | Occurrence count (deduplicated) | auto |
+| **Added** | Date first added (YYYY-MM-DD) | auto |
+
+**Fingerprint formats by source:**
+- From `/code-audit`: `file|CQ{N}|signature` (e.g., `auth.service.ts|CQ8|missing-try-catch`)
+- From `/test-audit`: `file|{pattern-id}|signature` (e.g., `auth.test.ts|P-41|loading-only`)
+- From `/write-tests`: `file|Q{N}|signature` (e.g., `user.test.ts|Q7|no-error-path`)
+- Manual add: `file|manual|first-3-words-slugified` (e.g., `auth.ts|manual|missing-rate-limiting`)
+
+**Listing view** (compact subset): `ID | Severity | File | Problem | Seen`
 
 ## Parse $ARGUMENTS
 
@@ -22,8 +46,18 @@ Add, list, or manage backlog items manually.
 | `wontfix B-{N} {reason}` | Delete item with reason logged to console |
 | `delete B-{N}` | Remove item entirely (no reason needed) |
 | `stats` | Show counts by severity |
-| `prioritize` | Score and rank all OPEN items by Impact/Risk/Effort |
-| `suggest` | Analyze backlog content and recommend batch fix actions |
+| `prioritize` | Rank individual items by urgency score (view-only ordering) |
+| `suggest` | Group items by pattern and propose batch fix commands |
+
+## Error Handling
+
+| Situation | Response |
+|-----------|----------|
+| `fix B-99` but B-99 doesn't exist | "B-99 not found in backlog. Run `/backlog list` to see current items." |
+| `list` but backlog.md is empty (header only) | "Backlog is empty. Use `/backlog add` to track issues." |
+| `add` with vague description (no file path) | Ask for file path and specific problem before adding |
+| `prioritize` with 0 or 1 items | "Only {N} item(s) -- no ranking needed." Show the item if 1. |
+| `suggest` with 0 items | "Backlog is clear -- consider scheduling a periodic `/code-audit`." |
 
 ## Resolving Items
 
@@ -40,18 +74,27 @@ When adding (either interactive or from description):
 1. Read the current `backlog.md`
 2. Determine next `B-{N}` ID
 3. If user gave natural language description, extract:
-   - **File + function** (ask if not obvious)
-   - **Severity** (infer from description, confirm if unsure)
-   - **Category** (Code/Test/Architecture/Dependency/Documentation/Infrastructure)
-   - **Problem** (from user's description)
-   - **Fix** (suggest one if obvious, otherwise "TBD")
-4. **Dedup check** -- compute fingerprint `file|rule-id|signature` (e.g., `auth.service.ts|CQ8|missing-try-catch`). Search the `Fingerprint` column for an existing match. If found -> increment `Seen` count, keep highest severity, update date. Do NOT create duplicate.
-5. Append as new table row
+   - **File** (ask if not obvious from description)
+   - **Problem** (short description from user input)
+   - **Severity** (infer from description -- see batch add inference rules)
+   - **Category** (infer from file path -- see batch add inference rules)
+4. **Dedup check** -- compute fingerprint per schema format (see Backlog Schema). Search the `Fingerprint` column for an existing match. If found -> increment `Seen` count, keep highest severity, update date. Do NOT create duplicate.
+5. Append as new table row (all schema columns)
 6. Confirm what was added
 
 ### Batch Add
 
 If user provides multiple issues (numbered list, bullet points, or comma-separated), add them all in one pass. Show a summary table of what was added.
+
+**Auto-inference for missing fields** (do NOT ask per-item):
+- **Severity**: infer from keywords -- `race condition`/`security`/`data loss` -> HIGH, `any type`/`missing test` -> MEDIUM, `typo`/`naming` -> LOW
+- **Category**: infer from file path -- `*.test.*` -> Test, `*.service.*`/`*.controller.*` -> Code, `docker*`/`*.yml` -> Infrastructure, `types.*` -> Code
+- **Source**: `manual`
+- **Seen**: `1x`
+- **Added**: today
+- **Fingerprint**: `file|manual|first-3-words-slugified`
+
+Infer all fields, then show summary table for confirmation before writing.
 
 Example: `/backlog add` then user pastes:
 ```
@@ -90,7 +133,7 @@ By category:
   Code: _  Test: _  Architecture: _
   Dependency: _  Documentation: _  Infrastructure: _
 
-Top files:
+Top files (group by File column, sort by count descending, show top 5):
   1. services/payout.service.ts (3 items)
   2. handlers/webhook.ts (2 items)
 ----------------------------
@@ -153,29 +196,16 @@ Hotspot: src/offer/offer.service.ts (6 items) -> /refactor src/offer/offer.servi
 
 ## Tech Debt Categories
 
-When classifying new items (for filtering/planning):
-
-| Category | Examples |
-|----------|----------|
-| **Code** | Duplicated logic, magic numbers, poor abstractions, any-types |
-| **Architecture** | Wrong data store, monolith boundaries, missing service split |
-| **Test** | Low coverage, flaky tests, missing integration tests |
-| **Dependency** | Outdated libraries, CVEs, unmaintained packages |
-| **Documentation** | Missing runbooks, outdated READMEs, tribal knowledge |
-| **Infrastructure** | Manual deploys, no monitoring, missing IaC |
-
 Assign category when adding items. Enables `/backlog list category:test` filtered views.
 
-### CLI Alias -> Column Value
-
-| CLI shortcut | Category column value |
-|-------------|----------------------|
-| `code` | Code |
-| `test` | Test |
-| `arch` | Architecture |
-| `dep` | Dependency |
-| `doc` | Documentation |
-| `infra` | Infrastructure |
+| CLI alias | Category | Examples |
+|-----------|----------|----------|
+| `code` | Code | Duplicated logic, magic numbers, poor abstractions, any-types |
+| `arch` | Architecture | Wrong data store, monolith boundaries, missing service split |
+| `test` | Test | Low coverage, flaky tests, missing integration tests |
+| `dep` | Dependency | Outdated libraries, CVEs, unmaintained packages |
+| `doc` | Documentation | Missing runbooks, outdated READMEs, tribal knowledge |
+| `infra` | Infrastructure | Manual deploys, no monitoring, missing IaC |
 
 ---
 
@@ -189,8 +219,8 @@ When `memory/backlog.md` doesn't exist, create it from this template:
 > Auto-maintained by `/review`, `/build`, `/code-audit`, `/test-audit`, `/write-tests`, `/fix-tests`, `/backlog`.
 > Fixed items are deleted (git has history).
 
-| ID | Fingerprint | File | Issue | Severity | Category | Source | Seen | Dates |
-|----|-------------|------|-------|----------|----------|--------|------|-------|
+| ID | Fingerprint | File | Problem | Severity | Category | Source | Seen | Added |
+|----|-------------|------|---------|----------|----------|--------|------|-------|
 ```
 
-This is the same table format used by all producer skills (build, test-audit, fix-tests, write-tests, code-audit). Each row = one backlog item. Fingerprint format: `file|rule-id|signature`.
+This is the same table format used by all producer skills. Columns match the **Backlog Schema** at the top of this file.
