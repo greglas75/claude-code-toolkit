@@ -509,6 +509,8 @@ All tests must pass. If any fail:
 3. Fix the cause (test bug or mock hazard)
 4. Re-run
 
+**Capture test run time per file** from the runner output (e.g., Vitest `Duration 361ms`, Jest `Time: 1.2s`, pytest `passed in 0.45s`). Record this as `TestRunTime` in coverage.md — used to identify slow tests for optimization.
+
 ### 4.3: Verification Checklist (NON-NEGOTIABLE)
 
 Print each with ✅/❌:
@@ -569,8 +571,8 @@ Update `memory/coverage.md` with results of this session. This file is the proje
    > Auto-maintained by `/write-tests`, `/build`, `/refactor`, `/review`, `/fix-tests`.
    > Updated after each test writing session. Read at start to skip re-scanning.
 
-   | File | Status | Methods | Covered | Test file | Risk | Updated | Source | Duration |
-   |------|--------|---------|---------|-----------|------|---------|--------|----------|
+   | File | Status | Methods | Covered | Test file | Risk | Updated | Source | Duration | TestRunTime |
+   |------|--------|---------|---------|-----------|------|---------|--------|----------|-------------|
    ```
 3. For each file processed in this session:
    - **Search** the `File` column for an existing row
@@ -591,6 +593,7 @@ Update `memory/coverage.md` with results of this session. This file is the proje
 - **Updated**: date of last update (YYYY-MM-DD)
 - **Source**: which skill updated it (`write-tests/auto`, `build/phase-3`, `refactor/etap-1b`, etc.)
 - **Duration**: time spent writing tests for this file in this session (e.g., `3m`, `12m`). Set `—` for scan-only entries.
+- **TestRunTime**: execution time of the test file from test runner output (e.g., `13ms`, `361ms`, `2.1s`). Parsed from the runner's Duration/Time line after running the test. Used to identify slow tests that need optimization.
 
 **Cross-skill usage:** any skill that writes tests SHOULD update coverage.md:
 - `/build` Phase 3.4 (test writing) → update files it tested
