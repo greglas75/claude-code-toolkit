@@ -192,6 +192,8 @@ Merge both results -- each file now has coverage status + risk (from Scanner) AN
 | 4 | PARTIAL (<50% methods covered) | Some coverage, gaps are surgical |
 | 5 (lowest) | PARTIAL (>=50% methods covered) | Diminishing returns |
 
+**PARTIAL-QUALITY files** (covered but weak tests) -> do NOT include in this batch. Report them separately: `PARTIAL-QUALITY: [N] files -> recommend /fix-tests --pattern [pattern]`. These need test repair, not new tests.
+
 Within same priority -> sort by file size descending (larger = more risk).
 
 **Hard cap: 15 files per run.** Take top 15 from priority-sorted list. If more -> note `DEFERRED: [N] files (next run)`.

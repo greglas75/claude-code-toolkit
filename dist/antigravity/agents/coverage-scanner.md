@@ -28,7 +28,7 @@ You receive:
    a. All exported functions/methods/classes in production file
    b. Which ones have at least one `it()` / `test()` / `def test_` block in the test file
    c. Which ones have NO coverage -> if gaps exist, report as **PARTIAL** (with list of untested methods)
-   d. If all methods covered -> report as **COVERED**
+   d. If all methods covered -> do a **quality sniff** (see Step E.5 below). If quality is low -> report as **PARTIAL-QUALITY**. Otherwise -> report as **COVERED**
    e. Estimate branch coverage: count if/else/switch in production code, check if test exercises both/all branches
 
 ### Auto-discovery mode (TARGET=auto)
@@ -105,6 +105,24 @@ If fewer than 15 UNCOVERED files found -> also check HAS_TEST files for gaps:
 
 If 15+ UNCOVERED -> skip PARTIAL analysis (enough work already).
 
+**Step E.5: Quality sniff on COVERED / HAS_TEST files**
+
+For files classified as COVERED (all methods have tests), do a quick quality check by scanning the test file for weak assertion patterns:
+
+1. Count total assertions (`expect(` calls)
+2. Count weak assertions: `typeof === 'function'`, `toBeDefined()`, `toBeTruthy()`, `toBeInTheDocument()` as SOLE assertion in an `it()` block
+3. If **weak > 30% of total** -> reclassify as **PARTIAL-QUALITY**
+
+**PARTIAL-QUALITY** means: line coverage exists but tests verify shape/existence, not behavior. These files need `/fix-tests` (quality repair), not `/write-tests` (new tests).
+
+Report PARTIAL-QUALITY files separately:
+```
+COVERED but low quality: [N] files -> recommend /fix-tests
+  - [path]: [weak]% weak assertions ([N] typeof, [N] toBeDefined)
+```
+
+**Do NOT include PARTIAL-QUALITY files in the UNCOVERED/PARTIAL candidate list.** They have different treatment (fix existing tests, not write new ones).
+
 **Step F: Return results**
 
 Sort: UNCOVERED first (HIGH -> MEDIUM -> LOW), then PARTIAL, then by file size DESC.
@@ -117,6 +135,7 @@ DISCOVERY SUMMARY
   Test files: [N]
   UNCOVERED: [N] (HIGH: [N], MEDIUM: [N], LOW: [N])
   PARTIAL: [N]
+  PARTIAL-QUALITY: [N] (covered but weak tests -> /fix-tests)
   COVERED: [N] (skipped)
 ```
 
@@ -125,7 +144,7 @@ DISCOVERY SUMMARY
 Per file:
 ```
 - File: [path]
-- Status: UNCOVERED | PARTIAL | COVERED
+- Status: UNCOVERED | PARTIAL | PARTIAL-QUALITY | COVERED
 - Untested methods: [list or "all covered"]
 - Untested branches: [list of if/switch with only one side tested, or "none found"]
 - Existing test file: [path or "none"]
