@@ -232,6 +232,34 @@ Within same priority → sort by file size descending (larger = more risk).
 
 Log: `AUTO BATCH: [N]/[total] files, priority 1: [N], priority 2: [N], ...`
 
+### Phase 1.5: Mandatory Production Code Read (ALL files, including COVERED)
+
+**Before planning, read EVERY target file's production code.** This is the #1 quality driver — without it, agent writes tests for imagined behavior.
+
+For each file in the batch:
+
+1. **Read the production file** (full — don't stop at line 50)
+2. **List ALL branches**: `if/else`, `switch`, ternary `?:`, `??`, `||`, early `return`, `try/catch`
+3. **Classify what the file OWNS vs DELEGATES:**
+   - **Owns**: business logic computed in this file (transformations, calculations, branching decisions)
+   - **Delegates**: calls passed through to dependencies (service.method(), logger.log(), cache.get())
+4. **Classify complexity:**
+
+| Classification | Criteria | Test depth | Target tests |
+|---------------|----------|------------|-------------|
+| **Thin wrapper** | <50 LOC, no owned branching, pure delegation | Wiring correctness + error propagation + cache/singleton if applicable. **Skip edge case checklist.** | 5-12 tests |
+| **Standard** | 50-200 LOC, moderate branching (3-10 branches) | Full edge case checklist per parameter. | 15-40 tests |
+| **Complex** | >200 LOC or >10 branches | Split test files by concern. Full coverage. | 40-80 tests |
+
+5. **Log per file:**
+```
+[path]: [N] LOC, [N] branches, [N] owned / [N] delegated → [THIN|STANDARD|COMPLEX]
+  Owned logic: [brief description of what this file actually computes]
+  Key branches: [list the if/switch that need both-side testing]
+```
+
+**Why this matters:** A 25-line wrapper that delegates to logger doesn't need 30 tests with edge cases for every parameter type. A 500-line service with 15 branches needs more than the default minimum. Test depth must match file complexity.
+
 ---
 
 ## Phase 2: Plan
@@ -280,16 +308,20 @@ For each target:
 ## 3. Test Strategy Per File
 
 For each file, list:
+- Complexity: [THIN | STANDARD | COMPLEX] (from Phase 1.5)
+- Owned logic: [what this file computes — from Phase 1.5]
 - Code types: [from Pattern Selector]
 - Patterns to apply: [G-IDs to follow, P-IDs to avoid]
 - Domain file: [if needed]
 - Mock hazards: [from Pattern Selector — async generators, streams, etc.]
   → For each hazard: required mock pattern (see Phase 3.2 Mock Safety section)
-- Describe blocks:
+- Describe blocks (scope to complexity):
+  - THIN: wiring + error propagation only (no edge case checklist)
+  - STANDARD/COMPLEX: full edge case checklist per parameter
   - describe('[MethodName]')
     - it('should [happy path]')
     - it('should [error case]')
-    - it('should [edge case]')
+    - it('should [edge case — STANDARD/COMPLEX only]')
 - Security tests (if CONTROLLER/API-ROUTE/GUARD):
   S1: Invalid schema → 400
   S2: No auth → 401
@@ -347,18 +379,24 @@ BATCH: [N]/[total] complete. Next: [next-filename] (do NOT stop)
 ```
 The batch is complete only when ALL files in the plan have tests written and self-eval passing.
 
-**Minimum tests per public method:**
-- 1 test per branch/path in the method (minimum — required for Q11)
-- 1 error/rejection test (required for Q7 critical gate)
-- Minimum 2 `it()` blocks per method (positive + negative)
-- Methods with branching (if/else, switch, ternary): minimum 1 test per branch → typically 3+ tests
-- Trivial one-liners (single expression, no branching): 2 tests (positive + negative) is sufficient
+**Minimum tests — scaled by complexity (from Phase 1.5):**
+
+| Complexity | Minimum per method | Edge case checklist | Total target |
+|------------|-------------------|--------------------|----|
+| **THIN** | 1 happy + 1 error propagation | **NO** — test wiring, caching, error passthrough only | 5-12 total |
+| **STANDARD** | 2 per method (positive + negative) + 1 per branch | **YES** — full checklist per parameter | 15-40 total |
+| **COMPLEX** | 1 per branch + error per method | **YES** + split test files by concern | 40-80 total |
+
+**Always required regardless of complexity:**
+- 1 error/rejection test per public method (Q7 critical gate)
+- 1 test per branch/path (Q11 critical gate) — even THIN wrappers need error propagation
+- Tests must verify OWNED logic, not re-test dependencies (Q17)
 
 A single `it('should work')` per method is NOT sufficient. Controllers/API routes additionally need S1-S4 security tests from the plan.
 
-**Edge Case Checklist + Validator Depth (MANDATORY):**
+**Edge Case Checklist + Validator Depth (STANDARD/COMPLEX only):**
 
-Apply `quality-rules.md` § **Edge Case Checklist** (loaded in Phase 0). For every parameter, apply the input-type table. For VALIDATOR code type, apply § **Validator/Schema/DTO** depth requirements (N×3 + 2 minimum tests).
+Apply `quality-rules.md` § **Edge Case Checklist** (loaded in Phase 0). For every parameter, apply the input-type table. For VALIDATOR code type, apply § **Validator/Schema/DTO** depth requirements (N×3 + 2 minimum tests). **Skip for THIN wrappers** — they don't own the logic that processes edge cases.
 
 **Rules:**
 
