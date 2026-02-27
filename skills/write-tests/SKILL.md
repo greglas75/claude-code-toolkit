@@ -316,7 +316,7 @@ Before writing, verify:
 3. If ADD TO: read the existing test file to know what's already there
 4. Write the test file following Phase 2 strategy for this file
 5. Run Q1-Q17 self-eval (Phase 3.3) on this test file
-6. Fix until score ≥ 14 with all critical gates passing
+6. Fix loop until score = 17/17 (or all Q=0 justified N/A) with all critical gates passing
 7. → Move to next file
 
 **Do NOT stop after one file.** The batch is complete only when ALL files in the plan have tests written and self-eval passing. If you have 8 files in the plan, you write 8 test files.
@@ -404,7 +404,8 @@ Run Q1-Q17 self-eval (from `~/.claude/rules/testing.md`) on each test file writt
 - **AP deductions:** scan for anti-patterns (AP9, AP10, AP13, AP14, AP16, etc. from `~/.claude/test-patterns.md`). Each unique AP found = −1 (max −5). Same AP occurring multiple times in one file = still −1.
 - **Scoring formula:** Total = (yes-count + N/A-count) − AP-deductions
 - Critical gate: Q7, Q11, Q13, Q15, Q17 — any = 0 → fix before Phase 4
-- Score < 14 → fix worst gaps, re-score
+- **Target: 17/17.** For each Q=0: fix the tests, then re-score. Only accept Q=0 if genuinely N/A with written justification (e.g., "Q3=N/A — pure function, zero mocks"). "Hard to test" or "not important" are NOT valid reasons — fix it.
+- **Fix loop:** score → fix worst Q=0 → re-score → repeat until 17/17 or all remaining Q=0 are justified N/A. Do NOT proceed with Q=0 that can be fixed.
 - Q12 procedure: list ALL public methods in production file → for each repeated test pattern (auth guard, validation, error path) verify EVERY method has it. One missing = 0.
 - Stack-specific deductions (Redux P-40/P-41, NestJS NestJS-P1 from domain pattern files) apply only when auditing that code type — included in the AP list, not a separate deduction.
 
@@ -443,7 +444,7 @@ Output format (with evidence):
     Q17=1 → key computed: embedding text built from originalContent+correctedContent+comment (not from mock)
 ```
 
-Only proceed to Phase 4 when ALL test files score ≥ 14 (after AP deductions) AND all critical gates pass with evidence.
+Only proceed to Phase 4 when ALL test files score 17/17 (or all Q=0 are justified N/A), zero AP deductions, AND all critical gates pass with evidence.
 
 ### 3.4: Batch Completion Gate
 
